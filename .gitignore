@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local environments and secrets
+.venv/
+venv/
+.env
+
+# Streamlit and editor state
+.streamlit/secrets.toml
+.vscode/
+.idea/
+
+# Local runtime data; source data in data/ is intentionally tracked.
+runtime_data/
