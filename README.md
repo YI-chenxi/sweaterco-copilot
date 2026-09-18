@@ -71,7 +71,7 @@ python -m pytest
 └─ pyproject.toml             # pytest 与 ruff 的统一规则
 ```
 
-## A/B/C 的接口约定
+## A/B/C 分工详情
 
 ### A：Data & Intelligence Tools
 
@@ -83,7 +83,7 @@ python -m pytest
 4. 对不支持、缺失或不可回答的请求给出明确说明，而不推测。
 5. 为正常、边界和失败情况添加测试。
 
-[app/tools/order_lookup.py](app/tools/order_lookup.py) 是可复制的最小模板。它按订单号读取 `orders.csv`，返回原始记录，并以订单 ID 作为行级证据。
+[app/tools/order_lookup.py](app/tools/order_lookup.py) 是一个初步的sample。它按订单号读取 `orders.csv`，返回原始记录，并以订单 ID 作为行级证据。
 
 ### B：LLM Agent & System Integration
 
@@ -102,19 +102,12 @@ python -m pytest
 
 `app/ui/` 用于实现 Streamlit 页面。UI 主要展示事实、证据和工具建议，无需复制计算逻辑。对于创建提醒、写订单备注或发送消息等有副作用的操作，建议提供预览、用户确认和审计记录。
 
-## 数据使用边界
-
-- `data/` 可视为只读源数据；测试结果和运行状态可与原 CSV 分开保存。
-- 临时数据、watch 和 audit log 建议写入 `runtime_data/`。该目录已被 Git 忽略。
-- 数据集中“今天”是 **2026-04-01**；工厂周日停工；生产流程为 `KNITTING -> ASSEMBLY -> WASHING -> PACKING`。
-- 对数据未覆盖的问题，系统可以先澄清或明确说明无法回答，以保持结果可信。
-
 ## 协作流程
 
 1. 可以从最新 `main` 创建功能分支，例如 `feat/risk-tool`。
 2. 功能与相关测试通常放在同一个小提交中，方便他人审阅。
 3. 提交前可运行 `python -m ruff check .` 和 `python -m pytest`，来检查代码集成问题。
-4. 清晰的提交前缀，例如 `feat:`、`fix:`、`test:`、`docs:` 或 `chore:`，有助于查看项目历史。
+4. 加入提交前缀，例如 `feat:`、`fix:`、`test:`、`docs:` 或 `chore:`，有助于查看项目历史。
 5. 合并前建议检查 `.env`、`.venv`、API key 和本地运行产物没有被加入提交。
 
 ## 建议的下一步
@@ -122,4 +115,4 @@ python -m pytest
 1. A 组先把订单检索、生产数据查询、normal/risk/anomaly、feasibility 和 trace 做成独立工具。
 2. B 组基于 `contracts.py` 实现工具注册、问题澄清和一个不接 LLM 也可测试的编排流程。
 3. C 组将 `streamlit_app.py` 扩展为 briefing、聊天和证据面板，并接入 B 的 `AgentReply`。
-4. 全组尽早在 `evaluation/` 定义 30+ 道有 ground truth 的题目，而不是等功能完成后再补。
+4. 尽早在 `evaluation/` 定义 30+ 道有 ground truth 的题目，而不是等功能完成后再补。
