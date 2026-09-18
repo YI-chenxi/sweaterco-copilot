@@ -2,13 +2,13 @@
 
 NUS DSS5105 Capstone Project - Track 1.
 
-这是一个面向快反服装厂总经理的 AI 副驾驶。它的目标不是生成看似合理的回答，而是从课程提供的工厂数据中检索事实、计算指标、发现风险，并让每条用户可见的结论能够回溯到数据来源。
+这是一个面向快反服装厂总经理的 AI 助手。系统以课程提供的工厂数据为基础检索事实、计算指标和发现风险，并尽量让每条用户可见的结论能够回溯到数据来源。
 
 ## 当前状态
 
 项目目前是可运行的协作骨架，而不是完整产品。
 
-- 已有：课程数据、统一 Python 环境配置、Streamlit 临时页面、A/B/C 模块边界、工具标准返回格式、一个订单查询示例工具和自动化测试。
+- 已有：数据、Python 环境配置、Streamlit 临时页面、A/B/C 模块边界、工具标准返回格式、一个订单查询示例工具和自动化测试。
 - 尚未完成：晨间简报、真实 LLM 调用与编排、多轮对话、风险/异常检测、可行性评估、watch、确认式行动和审计日志。
 
 ## 运行项目
@@ -43,7 +43,7 @@ python -m pytest
   -> data/                    课程提供的 orders、production log、workshops
 ```
 
-**核心原则：** LLM 负责理解和表达；任何订单数、产量、平均值、比较、风险判断或可行性估算都必须由 `app/tools/` 的确定性工具完成。每一个对用户展示的数值都应附带证据。
+**核心原则：** LLM 负责理解和表达；订单数、产量、平均值、比较、风险判断和可行性估算由 `app/tools/` 的确定性工具完成。这样每一个对用户展示的数值都有相应证据。
 
 ## 目录与文件说明
 
@@ -56,7 +56,7 @@ python -m pytest
 │  │  └─ order_lookup.py       # 示例：按订单号查询订单
 │  └─ ui/                     # C 组：Streamlit 界面
 │     └─ streamlit_app.py      # 当前可启动的临时应用入口
-├─ data/                      # 课程提供的源数据；不要覆盖或修改
+├─ data/                      # 课程提供的源数据；建议保持原样
 │  ├─ orders.csv              # 120 个客户订单
 │  ├─ production_log.csv      # 90 天、4 个工序的生产记录
 │  ├─ workshops.csv           # 8 家外协车间资料
@@ -75,12 +75,12 @@ python -m pytest
 
 ### A：Data & Intelligence Tools
 
-在 `app/tools/` 中实现业务逻辑。每个工具必须：
+`app/tools/` 用于放置业务逻辑。为便于 A、B、C 三组协作，建议每个工具具备以下特征：
 
 1. 输入明确，例如 `order_id`、`days_threshold` 或 `due_date`。
-2. 只做确定性检索或计算，绝不调用 LLM。
+2. 只做确定性检索或计算，不调用 LLM。
 3. 返回 `ToolResult`，包含 `data`、`evidence` 和必要的 `warnings`。
-4. 对不支持、缺失或不可回答的请求明确说明，而不是推测。
+4. 对不支持、缺失或不可回答的请求给出明确说明，而不推测。
 5. 为正常、边界和失败情况添加测试。
 
 [app/tools/order_lookup.py](app/tools/order_lookup.py) 是可复制的最小模板。它按订单号读取 `orders.csv`，返回原始记录，并以订单 ID 作为行级证据。
@@ -89,33 +89,33 @@ python -m pytest
 
 在 `app/agent/` 中实现：意图识别、工具选择、澄清问题、多轮对话状态和基于工具结果的回答生成。
 
-[app/agent/contracts.py](app/agent/contracts.py) 是跨模块边界，暂时不要随意改变：
+[app/agent/contracts.py](app/agent/contracts.py) 是当前的跨模块边界；如需调整，建议同步通知相关模块负责人：
 
 - `Evidence`：支撑一个结论的来源，例如 `orders.csv` 中的 `ORD-057`。
 - `ToolResult`：A 工具返回的数据、证据和警告。
 - `Tool`：工具的统一最小协议：`name`、`description` 和 `execute()`。
 - `AgentReply`：B 交给 C 的文本、证据，以及是否需要用户澄清。
 
-新增真实模型时，应集中在一个独立的 LLM client/adapter 中读取 `.env`；不要把 API key、模型调用或 prompt 分散写进工具和 UI。
+新增真实模型时，可以集中在一个独立的 LLM client/adapter 中读取 `.env`，这样 API key、模型调用和 prompt 不会分散在工具与 UI 中。
 
 ### C：Product / UI / Actions
 
-在 `app/ui/` 实现 Streamlit 页面。UI 应负责显示事实、证据和工具建议；它不应复制计算逻辑。任何有副作用的操作（创建提醒、写订单备注、发送消息）必须显示预览、获得用户确认并留下审计记录。
+`app/ui/` 用于实现 Streamlit 页面。UI 主要展示事实、证据和工具建议，无需复制计算逻辑。对于创建提醒、写订单备注或发送消息等有副作用的操作，建议提供预览、用户确认和审计记录。
 
 ## 数据使用边界
 
-- `data/` 是只读源数据；不要在原 CSV 中写回测试结果或运行状态。
-- 临时数据、watch 和 audit log 应写入 `runtime_data/`。该目录已被 Git 忽略。
+- `data/` 可视为只读源数据；测试结果和运行状态可与原 CSV 分开保存。
+- 临时数据、watch 和 audit log 建议写入 `runtime_data/`。该目录已被 Git 忽略。
 - 数据集中“今天”是 **2026-04-01**；工厂周日停工；生产流程为 `KNITTING -> ASSEMBLY -> WASHING -> PACKING`。
-- 不知道或数据未覆盖的问题，系统应澄清或拒答，不得编造答案。
+- 对数据未覆盖的问题，系统可以先澄清或明确说明无法回答，以保持结果可信。
 
 ## 协作流程
 
-1. 从最新 `main` 创建自己的功能分支，例如 `feat/risk-tool`。
-2. 小范围开发，并在 `tests/` 增加或更新相应测试。
-3. 提交前运行 `python -m ruff check .` 和 `python -m pytest`。
-4. 提交信息使用清晰前缀，例如 `feat:`、`fix:`、`test:`、`docs:` 或 `chore:`。
-5. 合并前确认没有提交 `.env`、`.venv`、API key 或本地运行产物。
+1. 可以从最新 `main` 创建功能分支，例如 `feat/risk-tool`。
+2. 功能与相关测试通常放在同一个小提交中，方便他人审阅。
+3. 提交前可运行 `python -m ruff check .` 和 `python -m pytest`，尽早发现集成问题。
+4. 清晰的提交前缀，例如 `feat:`、`fix:`、`test:`、`docs:` 或 `chore:`，有助于查看项目历史。
+5. 合并前建议检查 `.env`、`.venv`、API key 和本地运行产物没有被加入提交。
 
 ## 建议的下一步
 
