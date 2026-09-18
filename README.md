@@ -37,3 +37,7 @@ python -m pytest
 - 任何面向用户的数值都必须来自 `app/tools/` 的结果，并附带可追溯证据；LLM 不做算术。
 - 对工具接口的改动必须同步更新 `app/agent/contracts.py`、相关测试和 README。
 - 默认 `MODEL_PROVIDER=mock`，不会要求或读取真实 API key；接入真实模型前，团队需要共同确定供应商、成本和密钥管理方式。
+
+## 示例工具
+
+`app/tools/order_lookup.py` 提供 `OrderLookupTool`：它按 `order_id` 返回一条 `orders.csv` 原始记录，并附上该订单行的 `Evidence`。它演示了 A 组工具的最低标准：输入明确、只做确定性检索、不调用 LLM，并让 B/C 能展示数据来源。
