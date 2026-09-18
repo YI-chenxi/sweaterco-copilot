@@ -16,11 +16,18 @@ NUS DSS5105 Capstone Project - Track 1.
 需要 Python 3.10 或更高版本。在项目根目录执行：
 
 ```powershell
+# 创建虚拟环境
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
+
+# 安装包
 python -m pip install --upgrade pip
 python -m pip install -r requirements-dev.txt
+
+# 环境变量，后续需要手动加入 API KEY
 Copy-Item .env.example .env
+
+# 启动 Streamlit 应用程序
 streamlit run app/ui/streamlit_app.py
 ```
 
