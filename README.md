@@ -113,7 +113,7 @@ python -m pytest
 
 1. 可以从最新 `main` 创建功能分支，例如 `feat/risk-tool`。
 2. 功能与相关测试通常放在同一个小提交中，方便他人审阅。
-3. 提交前可运行 `python -m ruff check .` 和 `python -m pytest`，尽早发现集成问题。
+3. 提交前可运行 `python -m ruff check .` 和 `python -m pytest`，来检查代码集成问题。
 4. 清晰的提交前缀，例如 `feat:`、`fix:`、`test:`、`docs:` 或 `chore:`，有助于查看项目历史。
 5. 合并前建议检查 `.env`、`.venv`、API key 和本地运行产物没有被加入提交。
 
