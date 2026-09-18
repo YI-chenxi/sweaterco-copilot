@@ -1,19 +1,19 @@
-# Track 1 - General Manager's Co-Pilot
+# SweaterCo General Manager's Co-Pilot
 
-一个面向快反服装厂总经理的Co-Pilot。系统从本地结构化数据中检索事实、计算指标、发现风险，并以可追溯的方式回答问题和提出行动建议。
+NUS DSS5105 Capstone Project - Track 1.
 
-## 团队边界
+这是一个面向快反服装厂总经理的 AI 副驾驶。它的目标不是生成看似合理的回答，而是从课程提供的工厂数据中检索事实、计算指标、发现风险，并让每条用户可见的结论能够回溯到数据来源。
 
-- `app/tools/`（A）：确定性数据检索、计算、normal/risk/anomaly、可行性与溯源工具。工具不得调用 LLM。
-- `app/agent/`（B）：理解问题、选择和调用工具、澄清歧义、维护多轮上下文、生成只基于工具结果的回答。
-- `app/ui/`（C）：Streamlit briefing、chat、证据查看、watch、确认和审计界面。
-- `tests/`（全组）：按模块放单元测试；端到端和评测资产后续补充。
+## 当前状态
 
-`data/` 是课程提供的只读源数据；本地运行生成的 watches、audit log 等放在被忽略的 `runtime_data/`。
+项目目前是可运行的协作骨架，而不是完整产品。
 
-## 本地启动
+- 已有：课程数据、统一 Python 环境配置、Streamlit 临时页面、A/B/C 模块边界、工具标准返回格式、一个订单查询示例工具和自动化测试。
+- 尚未完成：晨间简报、真实 LLM 调用与编排、多轮对话、风险/异常检测、可行性评估、watch、确认式行动和审计日志。
 
-需要 Python 3.10+。在项目根目录执行：
+## 运行项目
+
+需要 Python 3.10 或更高版本。在项目根目录执行：
 
 ```powershell
 python -m venv .venv
@@ -24,20 +24,102 @@ Copy-Item .env.example .env
 streamlit run app/ui/streamlit_app.py
 ```
 
-检查代码和测试：
+当前页面是暂时的集成壳；可以输入问题，但在 Agent 接入前不会给出真实答案。
+
+运行质量检查：
 
 ```powershell
 python -m ruff check .
 python -m pytest
 ```
 
-## 协作约定
+## 系统架构
 
-- 每项功能使用独立分支和小而清晰的提交；合并前运行 ruff 与 pytest。
-- 任何面向用户的数值都必须来自 `app/tools/` 的结果，并附带可追溯证据；LLM 不做算术。
-- 对工具接口的改动必须同步更新 `app/agent/contracts.py`、相关测试和 README。
-- 默认 `MODEL_PROVIDER=mock`，不会要求或读取真实 API key；接入真实模型前，团队需要共同确定供应商、成本和密钥管理方式。
+```text
+用户
+  -> app/ui/                  C：展示 briefing、chat、证据、确认和审计记录
+  -> app/agent/               B：理解问题、澄清歧义、选择工具、管理多轮上下文、组织回答
+  -> app/tools/               A：确定性读取、计算、风险判断、可行性评估和溯源
+  -> data/                    课程提供的 orders、production log、workshops
+```
 
-## 示例工具
+**核心原则：** LLM 负责理解和表达；任何订单数、产量、平均值、比较、风险判断或可行性估算都必须由 `app/tools/` 的确定性工具完成。每一个对用户展示的数值都应附带证据。
 
-`app/tools/order_lookup.py` 提供 `OrderLookupTool`：它按 `order_id` 返回一条 `orders.csv` 原始记录，并附上该订单行的 `Evidence`。它演示了 A 组工具的最低标准：输入明确、只做确定性检索、不调用 LLM，并让 B/C 能展示数据来源。
+## 目录与文件说明
+
+```text
+.
+├─ app/
+│  ├─ agent/                  # B 组：Agent 编排层
+│  │  └─ contracts.py          # A/B/C 共享的数据和工具接口
+│  ├─ tools/                  # A 组：所有确定性业务工具
+│  │  └─ order_lookup.py       # 示例：按订单号查询订单
+│  └─ ui/                     # C 组：Streamlit 界面
+│     └─ streamlit_app.py      # 当前可启动的临时应用入口
+├─ data/                      # 课程提供的源数据；不要覆盖或修改
+│  ├─ orders.csv              # 120 个客户订单
+│  ├─ production_log.csv      # 90 天、4 个工序的生产记录
+│  ├─ workshops.csv           # 8 家外协车间资料
+│  └─ data_dictionary.md      # 所有字段及业务含义
+├─ evaluation/                # 30+ 题评测集、ground truth、结果和 failure analysis
+├─ notebooks/                 # 探索性分析；正式应用逻辑不要只留在 notebook 中
+├─ tests/                     # 自动化测试，目录结构应尽量对应 app/
+├─ .env.example               # 本地环境变量模板；不含密钥
+├─ .gitignore                 # 排除虚拟环境、密钥、缓存和本地运行数据
+├─ requirements.txt           # 应用运行依赖
+├─ requirements-dev.txt       # 测试和 lint 所需的开发依赖
+└─ pyproject.toml             # pytest 与 ruff 的统一规则
+```
+
+## A/B/C 的接口约定
+
+### A：Data & Intelligence Tools
+
+在 `app/tools/` 中实现业务逻辑。每个工具必须：
+
+1. 输入明确，例如 `order_id`、`days_threshold` 或 `due_date`。
+2. 只做确定性检索或计算，绝不调用 LLM。
+3. 返回 `ToolResult`，包含 `data`、`evidence` 和必要的 `warnings`。
+4. 对不支持、缺失或不可回答的请求明确说明，而不是推测。
+5. 为正常、边界和失败情况添加测试。
+
+[app/tools/order_lookup.py](app/tools/order_lookup.py) 是可复制的最小模板。它按订单号读取 `orders.csv`，返回原始记录，并以订单 ID 作为行级证据。
+
+### B：LLM Agent & System Integration
+
+在 `app/agent/` 中实现：意图识别、工具选择、澄清问题、多轮对话状态和基于工具结果的回答生成。
+
+[app/agent/contracts.py](app/agent/contracts.py) 是跨模块边界，暂时不要随意改变：
+
+- `Evidence`：支撑一个结论的来源，例如 `orders.csv` 中的 `ORD-057`。
+- `ToolResult`：A 工具返回的数据、证据和警告。
+- `Tool`：工具的统一最小协议：`name`、`description` 和 `execute()`。
+- `AgentReply`：B 交给 C 的文本、证据，以及是否需要用户澄清。
+
+新增真实模型时，应集中在一个独立的 LLM client/adapter 中读取 `.env`；不要把 API key、模型调用或 prompt 分散写进工具和 UI。
+
+### C：Product / UI / Actions
+
+在 `app/ui/` 实现 Streamlit 页面。UI 应负责显示事实、证据和工具建议；它不应复制计算逻辑。任何有副作用的操作（创建提醒、写订单备注、发送消息）必须显示预览、获得用户确认并留下审计记录。
+
+## 数据使用边界
+
+- `data/` 是只读源数据；不要在原 CSV 中写回测试结果或运行状态。
+- 临时数据、watch 和 audit log 应写入 `runtime_data/`。该目录已被 Git 忽略。
+- 数据集中“今天”是 **2026-04-01**；工厂周日停工；生产流程为 `KNITTING -> ASSEMBLY -> WASHING -> PACKING`。
+- 不知道或数据未覆盖的问题，系统应澄清或拒答，不得编造答案。
+
+## 协作流程
+
+1. 从最新 `main` 创建自己的功能分支，例如 `feat/risk-tool`。
+2. 小范围开发，并在 `tests/` 增加或更新相应测试。
+3. 提交前运行 `python -m ruff check .` 和 `python -m pytest`。
+4. 提交信息使用清晰前缀，例如 `feat:`、`fix:`、`test:`、`docs:` 或 `chore:`。
+5. 合并前确认没有提交 `.env`、`.venv`、API key 或本地运行产物。
+
+## 建议的下一步
+
+1. A 组先把订单检索、生产数据查询、normal/risk/anomaly、feasibility 和 trace 做成独立工具。
+2. B 组基于 `contracts.py` 实现工具注册、问题澄清和一个不接 LLM 也可测试的编排流程。
+3. C 组将 `streamlit_app.py` 扩展为 briefing、聊天和证据面板，并接入 B 的 `AgentReply`。
+4. 全组尽早在 `evaluation/` 定义 30+ 道有 ground truth 的题目，而不是等功能完成后再补。
