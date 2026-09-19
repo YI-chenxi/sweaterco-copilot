@@ -4,6 +4,7 @@ import csv
 from pathlib import Path
 
 from app.agent.contracts import Evidence, ToolResult
+from app.tools.data_parsing import parse_order_row
 
 
 class OrderLookupTool:
@@ -26,7 +27,7 @@ class OrderLookupTool:
             for row in csv.DictReader(orders_file):
                 if row["order_id"] == normalized_order_id:
                     return ToolResult(
-                        data=dict(row),
+                        data=parse_order_row(row),
                         evidence=[
                             Evidence(
                                 source="orders.csv",

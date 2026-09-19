@@ -88,3 +88,26 @@ def test_retrieve_factory_workshops_requires_filter():
     assert result.warnings == [
         "At least one workshop search filter must be provided."
     ]
+
+def test_retrieve_factory_workshops_returns_typed_data():
+    tool = WorkshopRetrievalTool()
+
+    result = tool.execute(workshop_id="W8")
+
+    workshop = result.data["workshops"][0]
+
+    assert isinstance(workshop["capacity_pieces_per_day"], int)
+    assert isinstance(workshop["pickup_lead_days"], int)
+    assert isinstance(workshop["defect_rate"], float)
+    assert isinstance(workshop["cost_per_piece"], float)
+    assert isinstance(workshop["current_queue_days"], float)
+    assert isinstance(workshop["max_batch_pieces"], int)
+
+def test_retrieve_factory_workshops_converts_missing_batch_limit_to_none():
+    tool = WorkshopRetrievalTool()
+
+    result = tool.execute(workshop_id="W1")
+
+    workshop = result.data["workshops"][0]
+
+    assert workshop["max_batch_pieces"] is None

@@ -14,6 +14,10 @@ def test_search_factory_orders_by_customer():
         for order in result.data["orders"]
     )
     assert len(result.evidence) == result.data["count"]
+    assert all(
+    isinstance(order["pieces"], int)
+    for order in result.data["orders"]
+     )
 
 
 def test_search_factory_orders_with_multiple_filters():
@@ -82,3 +86,18 @@ def test_search_factory_orders_rejects_invalid_due_date_range():
         assert str(error) == "due_after must be earlier than due_before."
     else:
         raise AssertionError("Expected ValueError for invalid due-date range.")
+
+def test_search_factory_orders_returns_typed_order_data():
+    tool = OrderSearchTool()
+
+    result = tool.execute(
+        status="IN_PROGRESS",
+        current_stage="ASSEMBLY",
+    )
+
+    assert result.data["count"] > 0
+
+    for order in result.data["orders"]:
+        assert isinstance(order["pieces"], int)
+        assert order["completed_date"] is None
+        assert order["days_late"] is None

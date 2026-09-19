@@ -4,6 +4,7 @@ import csv
 from pathlib import Path
 
 from app.agent.contracts import Evidence, ToolResult
+from app.tools.data_parsing import parse_workshop_row
 
 
 class WorkshopRetrievalTool:
@@ -98,7 +99,7 @@ class WorkshopRetrievalTool:
                     if normalized_category not in supported_categories:
                         continue
 
-                matched_workshops.append(dict(row))
+                matched_workshops.append(parse_workshop_row(row))
 
         evidence = [
             Evidence(

@@ -5,6 +5,7 @@ from datetime import date
 from pathlib import Path
 
 from app.agent.contracts import Evidence, ToolResult
+from app.tools.data_parsing import parse_production_row
 
 
 class ProductionRetrievalTool:
@@ -88,7 +89,7 @@ class ProductionRetrievalTool:
                 if end_date is not None and row_date > end_date:
                     continue
 
-                matched_records.append(dict(row))
+                matched_records.append(parse_production_row(row))
 
         evidence = [
             Evidence(
@@ -107,9 +108,9 @@ class ProductionRetrievalTool:
             )
 
         pieces = [
-            int(row["pieces_completed"])
-            for row in matched_records
-        ]
+             row["pieces_completed"]
+             for row in matched_records
+         ]
 
         summary = {}
 

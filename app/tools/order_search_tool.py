@@ -5,6 +5,7 @@ from datetime import date
 from pathlib import Path
 
 from app.agent.contracts import Evidence, ToolResult
+from app.tools.data_parsing import parse_order_row
 
 
 class OrderSearchTool:
@@ -88,7 +89,7 @@ class OrderSearchTool:
                 if due_after is not None and row_due_date <= due_after:
                     continue
 
-                matched_orders.append(dict(row))
+                matched_orders.append(parse_order_row(row))
 
         evidence = [
             Evidence(

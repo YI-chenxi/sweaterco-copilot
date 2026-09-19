@@ -16,9 +16,12 @@ def test_retrieve_factory_production_by_stage_and_date():
     assert result.data["count"] == 1
     assert result.data["records"][0]["stage"] == "PACKING"
     assert result.data["records"][0]["date"] == "2026-03-31"
-    assert result.data["records"][0]["pieces_completed"] == "657"
+    assert result.data["records"][0]["pieces_completed"] == 657
     assert len(result.evidence) == 1
-
+    assert isinstance(
+    result.data["records"][0]["pieces_completed"],
+    int,
+    )
 
 def test_retrieve_factory_production_all_stages_on_date():
     tool = ProductionRetrievalTool()

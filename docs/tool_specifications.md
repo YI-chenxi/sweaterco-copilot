@@ -235,6 +235,25 @@ Each tool:
 
 ---
 
+### Typed retrieval outputs
+
+Retrieval tools normalize CSV storage values into stable business-facing
+Python types before returning `ToolResult`.
+
+Current conventions:
+
+- integer quantities such as `pieces`, `pieces_completed`, capacity, and
+  batch limits are returned as `int`
+- numeric rates, costs, and queue durations are returned as `float`
+- missing optional numeric values are returned as `None`
+- ISO date fields remain `YYYY-MM-DD` strings at the Retrieval boundary
+  for simple serialization; downstream Judgement tools may parse them
+  into `date` objects when required
+
+This keeps CSV parsing inside the Retrieval layer and prevents downstream
+Judgement, Discovery, and Feasibility tools from repeatedly converting
+raw CSV strings.
+
 ## Planned Tool Areas
 
 The following areas are owned or co-owned by other parts of the project
