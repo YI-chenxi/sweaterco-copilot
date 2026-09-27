@@ -6,8 +6,8 @@ NUS DSS5105 Capstone Project - Track 1.
 
 ## 当前状态
 
-- 已有：数据、Python 环境配置、Streamlit 临时页面、A/B/C 模块边界、工具标准返回格式、一个订单查询示例工具和自动化测试。
-- 尚未完成：晨间简报、真实 LLM 调用与编排、多轮对话、风险/异常检测、可行性评估、watch、确认式行动和审计日志。
+- 已有：数据、Python 环境配置、Streamlit 临时页面、A/B/C 模块边界、A1 订单/生产/车间检索与 Evidence 溯源，以及 A2 订单状态、生产正常性、生产风险发现和接单可行性工具；相关工具和集成测试已覆盖。
+- 尚未完成：晨间简报、真实 LLM 调用与编排、多轮对话、watch、确认式行动和审计日志。
 
 ## 运行项目
 
@@ -57,8 +57,16 @@ python -m pytest
 ├─ app/
 │  ├─ agent/                  # B 组：Agent 编排层
 │  │  └─ contracts.py          # A/B/C 共享的数据和工具接口
-│  ├─ tools/                  # A 组：所有确定性业务工具
-│  │  └─ order_lookup.py       # 示例：按订单号查询订单
+│  ├─ tools/                  # A 组：确定性检索、判断、风险和可行性工具
+│  │  ├─ a2_integration.py     # A1 Retrieval 到 A2 业务工具的适配层
+│  │  ├─ order_lookup.py       # A1：按订单号检索订单
+│  │  ├─ order_search_tool.py  # A1：按条件检索订单
+│  │  ├─ production_retrieval_tool.py # A1：检索生产记录
+│  │  ├─ workshop_retrieval_tool.py   # A1：检索车间资料
+│  │  ├─ order_status/         # A2：订单状态与风险判断
+│  │  ├─ production_normality/ # A2：生产正常性判断
+│  │  ├─ production_risks/     # A2：生产风险发现
+│  │  └─ order_feasibility/    # A2：接单可行性估算
 │  └─ ui/                     # C 组：Streamlit 界面
 │     └─ streamlit_app.py      # 当前可启动的临时应用入口
 ├─ data/                      # 课程提供的源数据；建议保持原样
@@ -117,7 +125,7 @@ python -m pytest
 
 ## 建议的下一步
 
-1. A 组先把订单检索、生产数据查询、normal/risk/anomaly、feasibility 和 trace 做成独立工具。
+1. 基于现有 A1/A2 工具完善评测集与边界场景测试，保持结论可由 Evidence 回溯。
 2. B 组基于 `contracts.py` 实现工具注册、问题澄清和一个不接 LLM 也可测试的编排流程。
 3. C 组将 `streamlit_app.py` 扩展为 briefing、聊天和证据面板，并接入 B 的 `AgentReply`。
 4. 尽早在 `evaluation/` 定义 30+ 道有 ground truth 的题目，而不是等功能完成后再补。
