@@ -15,6 +15,13 @@ class Intent(str, Enum):
     UNKNOWN = "unknown"
 
 
+class ResponseLanguage(str, Enum):
+    """Languages supported by user-facing B-agent interactions."""
+
+    ENGLISH = "en"
+    CHINESE = "zh"
+
+
 REQUIRED_SLOTS: dict[Intent, frozenset[str]] = {
     Intent.ORDER_STATUS: frozenset({"order_id"}),
     Intent.PRODUCTION_NORMALITY: frozenset({"stage"}),
@@ -33,6 +40,7 @@ class IntentDecision:
     intent: Intent
     slots: dict[str, Any] = field(default_factory=dict)
     missing_slots: tuple[str, ...] = ()
+    language: ResponseLanguage = ResponseLanguage.ENGLISH
 
 
 def required_slots_for(intent: Intent) -> frozenset[str]:

@@ -54,7 +54,8 @@ def test_feasibility_pipeline_preserves_conditional_result_and_assumptions():
     result = reply.metadata["structured_result"]
     assert result["estimate"] == "CONDITIONAL"
     assert result["working_days"] == 21
-    assert reply.assumptions == result["assumptions"]
+    assert reply.metadata["source_assumptions"] == result["assumptions"]
+    assert reply.assumptions[0] == "Sundays are excluded from production days"
     assert "CONDITIONAL" in reply.text
     assert reply.evidence
 
@@ -94,7 +95,8 @@ def test_invalid_feasibility_request_becomes_explicit_failure():
 
     assert reply.metadata["status"] == "failed"
     assert reply.warnings
-    assert "必须晚于 today" in reply.text
+    assert "must be later than today" in reply.text
+    assert reply.warnings == ["requested_delivery_date 必须晚于 today"]
 
 
 def test_boolean_piece_count_is_rejected_instead_of_becoming_one_piece():
