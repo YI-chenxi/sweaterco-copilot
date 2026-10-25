@@ -1,0 +1,144 @@
+/* SweaterCo · Chat-first Operations Co-Pilot · UI only.
+   Layout inspired by enterprise AI workspaces, not a PPT.
+   Subtle motion is decorative and never touches business calculations. */
+:root{
+  --sc-navy:#0d2330;--sc-side:#0d202c;--sc-side-light:#153341;
+  --sc-ink:#1b3240;--sc-gray:#647784;--sc-teal:#087f78;--sc-teal-dark:#07645f;
+  --sc-line:#cbd9df;--sc-light:#f5f9fa;--sc-pale:#eaf6f5;--sc-orange:#9e5b13;
+}
+html,body,[class*="css"]{font-family:"Segoe UI",Inter,Arial,sans-serif!important}
+[data-testid="stAppViewContainer"]{background:#f8fbfc;color:var(--sc-ink)}
+[data-testid="stHeader"]{background:rgba(248,251,252,.82);backdrop-filter:blur(10px)}
+.block-container{max-width:1550px;padding:1.35rem 1.6rem 2.5rem}
+[data-testid="stCaptionContainer"]{color:var(--sc-gray)!important}
+[data-testid="stMarkdownContainer"] p{line-height:1.55}
+
+/* Dark product sidebar */
+[data-testid="stSidebar"]{background:linear-gradient(155deg,#0e2936 0%,#081824 83%);border-right:1px solid #204355}
+[data-testid="stSidebar"] [data-testid="stSidebarContent"]{padding-top:.7rem}
+[data-testid="stSidebar"] p,[data-testid="stSidebar"] label,[data-testid="stSidebar"] small{color:#c7dce2}
+.sc-brand{display:flex;align-items:center;gap:.75rem;margin:.15rem 0 1.2rem;padding:.3rem .1rem}
+.sc-mark{display:grid;place-items:center;width:42px;height:42px;border-radius:12px;
+ background:linear-gradient(145deg,#0fa99d,#05655f);color:white;font-weight:800;box-shadow:0 0 22px #00c7b52c}
+.sc-brand strong{display:block;color:#f1fafb;font-size:1.13rem;letter-spacing:-.02em}
+.sc-brand small{display:block;color:#82bec4;font-size:.58rem;letter-spacing:.15em;font-weight:800;margin-top:2px}
+.sc-side-title{color:#8faebb;font-weight:800;letter-spacing:.15em;font-size:.62rem;margin:1.18rem 0 .6rem}
+.sc-side-rule{height:1px;background:#244655;margin:1.15rem 0 .8rem}
+.sc-nav-active{padding:.67rem .8rem;border:1px solid #287c80;border-radius:9px;
+ background:linear-gradient(90deg,#184850,#173241);color:#ecfffe;font-size:.87rem;font-weight:700;box-shadow:inset 3px 0 #34cfc4}
+.sc-nav-future{display:flex;align-items:center;justify-content:space-between;padding:.63rem .85rem;
+ font-size:.84rem;color:#c9dde2}
+.sc-nav-future span{color:#678794;font-size:.61rem;font-weight:650;letter-spacing:.02em}
+.sc-workspace{border:1px solid #315363;border-radius:10px;padding:.68rem .85rem;color:#e7fafb;background:#15303e}
+.sc-workspace b{display:block;font-size:.83rem}
+.sc-workspace small{display:block;font-size:.69rem;color:#a5c5ce;margin-top:.2rem}
+.sc-service-state{font-size:.75rem;color:#c1dce0;padding:.83rem .3rem}
+.sc-led{display:inline-block;width:7px;height:7px;border-radius:100%;background:#dd9e49;margin-right:.35rem}
+.sc-led.online{background:#44ddbd}
+.sc-small{color:#8aa9b6;font-size:.69rem;margin-left:1rem}
+[data-testid="stSidebar"] [data-testid="stButton"] button{width:100%;min-height:2.3rem;justify-content:flex-start;
+ text-align:left;background:#102b3b;border:1px solid #294657;color:#d5e8ec;border-radius:9px;
+ font-weight:500;font-size:.78rem;padding:.32rem .6rem;margin-bottom:.13rem}
+[data-testid="stSidebar"] [data-testid="stButton"] button:hover{background:#20565a;border-color:#39c4b7;color:#fff}
+[data-testid="stSidebar"] [data-testid="stButton"] button[kind="primary"]{background:#0a8078;border-color:#20b2a3;color:#fff;font-weight:700;justify-content:center}
+[data-testid="stSidebar"] [data-testid="stCaptionContainer"]{color:#7f9ba9!important;font-size:.67rem}
+[data-testid="stSidebar"] [data-testid="stExpander"]{background:#102a39;border-color:#2d5360}
+[data-testid="stSidebar"] [data-testid="stExpander"] summary{color:#d4eef1}
+
+/* Main workspace: subtle techno-wave animation, not decorative KPI walls */
+.sc-hero{position:relative;overflow:hidden;display:flex;align-items:flex-start;gap:1rem;
+ padding:1.25rem 1.4rem 1.38rem;margin-bottom:1.2rem;
+ border:1px solid #d1e2e6;border-radius:18px;
+ background:linear-gradient(115deg,#fff 0%,#fbfefe 65%,#edf9f9 100%);box-shadow:0 8px 24px #0a37500a}
+.sc-hero::before,.sc-hero::after{content:"";position:absolute;pointer-events:none;border-radius:50%;
+ border:1px solid rgba(4,169,166,.19);width:510px;height:170px;right:-95px;top:-73px;
+ transform:rotate(-15deg);animation:sc-float 12s ease-in-out infinite alternate}
+.sc-hero::after{right:-55px;top:-48px;width:480px;height:155px;border-color:rgba(29,152,200,.14);animation-delay:-5s}
+@keyframes sc-float{from{transform:translateY(-4px) rotate(-13deg)}to{transform:translateY(14px) rotate(-18deg)}}
+.sc-orb{color:#078f88;text-shadow:0 0 20px #1fd2be99;font-size:1.75rem;line-height:1.3}
+.sc-hero h1{color:#172f42;margin:0 0 .32rem;font-size:clamp(1.28rem,2vw,1.78rem);letter-spacing:-.04em;font-weight:760;max-width:590px}
+.sc-hero p{color:#637986;font-size:.82rem;margin:0 0 .8rem;max-width:600px}
+.sc-snapshot{color:#09756f;font-size:.64rem;letter-spacing:.12em;font-weight:800;
+ padding:.31rem .52rem;border:1px solid #c5e6e2;border-radius:6px;background:#effaf8}
+.sc-label{font-size:.66rem;font-weight:790;letter-spacing:.12em;color:#496879;margin:.92rem 0 .56rem}
+.sc-label span{font-size:.67rem;font-weight:500;letter-spacing:0;color:#7a929d;margin-left:.5rem}
+.sc-empty{border:1px dashed #a8c1ca;background:#fbfefe;border-radius:13px;padding:1.45rem;
+ color:#66808d;font-size:.83rem;margin-bottom:1.1rem}
+[data-testid="stButton"] button{border-radius:10px;border:1px solid #becfd5;background:#fff;color:#284959;min-height:2.7rem;font-weight:650}
+[data-testid="stButton"] button:hover{border-color:#0a8e87;background:#f0fbf9;color:#076b66}
+button[kind="primary"],[data-testid="stBaseButton-primary"]{background:#087f78!important;border-color:#087f78!important;color:#fff!important;
+ font-weight:750!important;box-shadow:0 5px 13px #0d8a8329}
+button[kind="primary"]:hover{background:#04635e!important;border-color:#04635e!important}
+[data-testid="stFormSubmitButton"] button{border-radius:10px}
+[data-testid="stTextArea"] textarea,[data-testid="stTextInput"] input,[data-testid="stSelectbox"] [data-baseweb="select"]>div,
+[data-testid="stDateInput"] input{border-color:#b9cdd4!important;background:#fff!important;border-radius:9px!important}
+[data-testid="stTextArea"] textarea:focus,[data-testid="stTextInput"] input:focus{border-color:#0a8f86!important}
+[data-testid="stForm"]{border:1px solid #bacfd6;background:#fcfefe;border-radius:13px}
+
+/* Chat and analysis, stronger visual boundaries than initial MVP */
+[data-testid="stChatMessage"]{border:1px solid #c4d6dc;background:#fff;border-radius:14px;
+ padding:1rem 1.02rem;margin-bottom:1rem;box-shadow:0 5px 17px #123d5406}
+[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]){background:#f0f6f8}
+[data-testid="stChatMessage"] [data-testid="stChatMessageAvatarUser"]{background:#a6c1d3}
+[data-testid="stChatMessage"] [data-testid="stChatMessageAvatarAssistant"]{background:#0a8079;color:white}
+.sc-answer-banner{border-radius:11px;padding:.78rem 1rem;margin:0 0 .9rem;
+ border:1px solid #c2d9df;background:#f3f8fb}
+.sc-answer-banner.good{background:#ecf9f5;border-color:#9edccc}
+.sc-answer-banner.caution{background:#fff7ed;border-color:#f0d2aa}
+.sc-answer-banner.neutral{background:#f1f7fa;border-color:#c8dbe3}
+.sc-answer-banner small{display:block;font-size:.58rem;letter-spacing:.12em;font-weight:780;color:#607986;margin-bottom:.2rem}
+.sc-answer-banner strong{display:block;font-size:1.05rem;letter-spacing:-.018em;color:#203c49}
+.sc-mini-label{font-size:.65rem;letter-spacing:.08em;color:#52757f;font-weight:750;margin:.85rem 0 .53rem}
+[data-testid="stMetric"]{background:#fbfefe;border:1px solid #cfdee3;border-radius:10px;
+ padding:.66rem .75rem;min-height:100%;overflow:hidden}
+[data-testid="stMetricLabel"]{color:#657f8a;font-size:.69rem;font-weight:650}
+[data-testid="stMetricValue"]{color:#1b3a49;font-weight:760;letter-spacing:-.03em;font-size:1.22rem}
+.sc-next-step{background:#eef5ff;border:1px solid #d0dff4;color:#335474;border-radius:9px;
+ padding:.73rem .85rem;font-size:.77rem;margin-top:.8rem}
+.sc-footnote{border-top:1px solid #d2e0e4;color:#88a0a9;padding:.92rem 0 0;margin-top:1.4rem;
+ font-size:.58rem;letter-spacing:.12em;font-weight:700}
+[data-testid="stExpander"]{border:1px solid #ccdade!important;border-radius:10px!important;background:#fff}
+[data-testid="stVerticalBlockBorderWrapper"]>div{border-color:#c7d8dd!important;border-radius:13px!important}
+[data-testid="stDataFrame"]{border-radius:9px}
+
+/* Right contextual detail rail */
+.sc-details-title{margin:.26rem 0 .7rem;padding:.58rem .15rem;font-size:.78rem;font-weight:800;letter-spacing:.1em;color:#1e4855;
+ border-bottom:2px solid #0a8b82}
+@media(max-width:1200px){.block-container{padding-left:.75rem;padding-right:.75rem}.sc-hero{padding:1rem}.sc-hero h1{font-size:1.38rem}}
+@media(max-width:750px){.sc-hero{margin-top:.25rem}.sc-label span{display:block;margin-left:0;margin-top:.16rem}}
+@media(prefers-reduced-motion:reduce){.sc-hero::before,.sc-hero::after{animation:none!important}button{transition:none!important}}
+
+/* Updated release: simulated data date must be impossible to miss. */
+.sc-hero{align-items:center;gap:1rem;justify-content:space-between;flex-wrap:wrap;
+ padding:1.15rem 1.28rem;margin-bottom:1.05rem}
+.sc-hero > .sc-orb,.sc-hero > .sc-hero-copy,.sc-hero > .sc-snapshot-card{
+ position:relative;z-index:1}
+.sc-hero-copy{flex:1 1 350px;min-width:0}
+.sc-hero-copy p{margin-bottom:0}
+.sc-snapshot-card{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;
+ min-width:195px;padding:.7rem .98rem;border-radius:12px;
+ background:linear-gradient(135deg,#0e4d55,#096c66);color:#fff;
+ border:1px solid #2a9e96;box-shadow:0 5px 19px #0d766b24}
+.sc-snapshot-heading{font-size:.6rem;line-height:1.4;letter-spacing:.115em;
+ font-weight:850;color:#b6f1e9}
+.sc-snapshot-date{font-size:1.14rem;line-height:1.5;font-weight:850;
+ letter-spacing:.035em;color:#fff;white-space:nowrap}
+.sc-snapshot-disclaimer{font-size:.64rem;letter-spacing:.07em;
+ font-weight:750;color:#dbfcf5}
+
+/* The launcher has a clear hierarchy, and becomes a one-line control after a reply. */
+.sc-workflow-title{margin:.45rem 0 .6rem;color:#234f5b}
+.st-key-expand_workflows button{height:3.05rem!important;text-align:left;
+ justify-content:flex-start!important;padding-left:1rem!important;
+ border:1px solid #9fcbc8!important;background:#eef8f7!important;
+ font-weight:800!important;color:#126d68!important}
+.st-key-expand_workflows button:hover{background:#e0f4f1!important;border-color:#148f85!important}
+.st-key-center_Order_Status button,
+.st-key-center_Production_Health button,
+.st-key-center_Morning_Briefing button,
+.st-key-center_Check_Feasibility button{
+ min-height:3.35rem;border:1px solid #b6cbd2;border-radius:12px;
+ box-shadow:0 3px 12px #183b4b09;white-space:normal}
+.st-key-collapse_workflows button{min-height:2.05rem;font-size:.74rem;
+ padding-left:.35rem;padding-right:.35rem}
+@media(max-width:900px){.sc-hero{align-items:stretch}.sc-snapshot-card{min-width:100%}}
