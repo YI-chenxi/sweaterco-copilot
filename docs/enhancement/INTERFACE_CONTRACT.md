@@ -47,28 +47,118 @@ Responsibilities:
 
 Must not execute business tools or calculate factory metrics.
 
-## 4. Group 2 — Conversation
+## 4. Group 2 — Conversation & Clarification
 
-**Input:** `UnderstandingResult` and previous `ConversationState`.
+**Contract Version:** V1.0
+**Owner:** Person 3
 
-**Proposed output:** Updated conversation state and executable or incomplete task decisions.
+### 4.1 Purpose
 
-`ConversationState` should contain:
+The Conversation module manages multiple independent business tasks within one conversation.
 
-- `pending_tasks`
-- `collected_slots`
-- `missing_slots`
-- `language`
+Each task maintains its own intent, slots, and execution status.
 
-Responsibilities:
+### 4.2 TaskStatus
 
-- Multi-turn slot filling
-- Context retention
-- Parameter corrections
-- Task switching
-- Clarification
+The following task statuses are supported:
 
-Conversation state must be isolated per user session.
+- `PENDING`: The task requires additional information before execution.
+- `READY`: Required information is available; the task can be considered for execution.
+- `COMPLETED`: The task has been executed successfully.
+- `FAILED`: The task execution failed.
+
+### 4.3 TaskState
+
+Each business task is represented by:
+
+- `task_id: str`
+- `decision: IntentDecision`
+- `status: TaskStatus`
+
+Each task stores its own intent and slots through `IntentDecision`.
+
+Task IDs must be unique within a conversation.
+
+### 4.4 ConversationState
+
+The conversation state contains:
+
+- `tasks: list[TaskState]`
+- `language: ResponseLanguage`
+
+Each user conversation must maintain an independent ConversationState instance.
+
+Task-specific slots must not be stored in one shared global dictionary.
+
+### 4.5 Multi-task Rules
+
+1. Multiple independent tasks may exist within one conversation.
+2. Each task must maintain its own parameters.
+3. Slot updates must target an identifiable task.
+4. Missing information must not be invented.
+5. Tasks with complete information may execute independently of incomplete tasks.
+6. Incomplete tasks must report missing information clearly.
+7. Completed tasks must not be automatically re-executed when another task is updated.
+8. Planning and Orchestration remain responsible for business execution.
+
+### 4.6 Responsibilities
+
+**Person 3 — Conversation Memory**
+
+- Maintain conversation state.
+- Apply structured slot updates.
+- Preserve task identity.
+- Manage task status transitions.
+- Prevent task information from leaking between sessions.
+
+**Person 4 — Clarification**
+
+- Identify missing or invalid parameters.
+- Generate clarification requests.
+- Avoid unsupported assumptions.
+- Return clarification results without directly modifying the ConversationState.
+
+### 4.7 Interface Ownership
+
+Person 3 is the sole maintainer of `app/agent/enhancement/contracts.py`.
+
+Other developers must request changes to shared data structures rather than independently modifying the file.
+
+The exact slot-update function interface will be specified separately before Memory implementation.
+
+### 4.8 SlotUpdate Contract
+
+**Owner:** Person 3
+**Version:** V1.0
+
+`SlotUpdate` represents a structured parameter update targeting an existing business task.
+
+Fields:
+
+- `task_id: str`: Unique identifier of the target task within the conversation.
+- `slots: dict[str, Any]`: Parameter values to add or replace.
+
+Example:
+
+```python
+SlotUpdate(
+    task_id="task-002",
+    slots={"requested_delivery_date": "2026-04-25"},
+)
+```
+
+Rules:
+
+1. The target task must exist in the current ConversationState.
+2. The update must not be applied to an unrelated task.
+3. Ambiguous task references must be clarified rather than guessed.
+4. Missing business parameters must not be invented.
+5. Existing slots not included in the update must be preserved.
+6. Updated task readiness must be recalculated after applying the update.
+7. Completed tasks must not be silently modified or re-executed.
+8. The Conversation module owns state updates; the Planning module owns execution.
+
+Person 1 is responsible for interpreting user language into structured task information. Person 3 is responsible for applying validated updates. Person 4 is responsible for missing/invalid parameter clarification.
 
 ## 5. Group 3 — Planning
 
