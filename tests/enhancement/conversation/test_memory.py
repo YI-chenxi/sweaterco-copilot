@@ -12,6 +12,7 @@ from app.agent.enhancement.conversation.memory import (
     add_task,
     apply_slot_update,
     cancel_task,
+    mark_task_result,
     retry_task,
 )
 from app.agent.intents import Intent, IntentDecision
@@ -482,3 +483,94 @@ def test_failed_update_preserves_original_state():
 def test_retry_unknown_task_rejected():
     with pytest.raises(ValueError, match="Unknown task_id"):
         retry_task(ConversationState(), "task-999")
+
+
+
+def test_add_task_records_inferred_missing_slots():
+    state = add_task(
+        ConversationState(),
+        IntentDecision(
+            intent=Intent.ORDER_FEASIBILITY,
+            slots={"category": "TOPS", "pieces": 800},
+        ),
+        "task-001",
+    )
+
+    task = state.tasks[0]
+
+    assert task.status == TaskStatus.PENDING
+    assert task.decision.missing_slots == (
+        "requested_delivery_date",
+    )
+
+
+
+def test_mark_task_completed():
+    state = add_task(
+        ConversationState(),
+        IntentDecision(
+            intent=Intent.ORDER_STATUS,
+            slots={"order_id": "ORD-057"},
+        ),
+        "task-001",
+    )
+
+    updated = mark_task_result(state, "task-001", True)
+
+    assert updated.tasks[0].status == TaskStatus.COMPLETED
+    assert state.tasks[0].status == TaskStatus.READY
+
+
+def test_mark_task_failed():
+    state = add_task(
+        ConversationState(),
+        IntentDecision(
+            intent=Intent.ORDER_STATUS,
+            slots={"order_id": "ORD-057"},
+        ),
+        "task-001",
+    )
+
+    updated = mark_task_result(state, "task-001", False)
+
+    assert updated.tasks[0].status == TaskStatus.FAILED
+
+
+def test_cannot_complete_pending_task():
+    state = add_task(
+        ConversationState(),
+        IntentDecision(
+            intent=Intent.ORDER_FEASIBILITY,
+            slots={"category": "TOPS", "pieces": 800},
+        ),
+        "task-001",
+    )
+
+    with pytest.raises(ValueError, match="Task is not ready"):
+        mark_task_result(state, "task-001", True)
+
+
+def test_cannot_complete_unknown_task():
+    with pytest.raises(ValueError, match="Unknown task_id"):
+        mark_task_result(ConversationState(), "task-999", True)
+
+
+def test_cannot_complete_task_twice():
+    state = add_task(
+        ConversationState(),
+        IntentDecision(
+            intent=Intent.ORDER_STATUS,
+            slots={"order_id": "ORD-057"},
+        ),
+        "task-001",
+    )
+
+    completed = mark_task_result(state, "task-001", True)
+
+    with pytest.raises(ValueError, match="Task is not ready"):
+        mark_task_result(completed, "task-001", True)
+
+
+def test_mark_task_result_rejects_non_boolean():
+    with pytest.raises(TypeError, match="success must be a bool"):
+        mark_task_result(ConversationState(), "task-001", "yes")

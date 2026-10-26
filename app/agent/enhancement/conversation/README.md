@@ -151,3 +151,53 @@ python -m ruff check app/agent/enhancement/conversation/memory.py tests/enhancem
 Conversation Memory V1 is ready for code review and integration after its PR is merged into `integration/intent-enhancement`.
 
 This does not mean end-to-end multi-turn natural-language interaction is already available.
+
+
+## Memory V1 Compatibility Patch
+
+Branch: `fix/conversation-memory-v1`
+
+This patch improves integration readiness without changing Shared Contract V1.0 or existing Memory function signatures.
+
+### Changes
+
+1. `add_task()` now stores inferred missing slots in `TaskState.decision.missing_slots`.
+2. Added `mark_task_result(state, task_id, success)` for execution result tracking.
+
+### mark_task_result()
+
+Input:
+- `state`: Current ConversationState
+- `task_id`: Existing task identifier
+- `success`: Boolean indicating whether tool execution completed successfully
+
+Output:
+- A new ConversationState
+
+Rules:
+- Only READY tasks may be marked.
+- `success=True` sets COMPLETED.
+- `success=False` sets FAILED.
+- PENDING, COMPLETED and FAILED tasks cannot be directly marked.
+- Unknown task IDs are rejected.
+- The original state is not mutated.
+
+Important: COMPLETED means tool execution succeeded, not that the business judgement was favorable. For example, a successful feasibility evaluation returning NOT_SUPPORTED is still COMPLETED.
+
+### Integration
+
+Person 5 may call `mark_task_result()` after executing a READY task.
+
+The Planning layer remains responsible for executing business tools and interpreting execution errors.
+
+### Validation
+
+- 31 Memory tests passed.
+- 149 full regression tests passed.
+- Ruff checks passed for modified Python files.
+
+### Compatibility
+
+- Shared Contract V1.0 unchanged.
+- Existing Memory functions remain backward compatible.
+- AgentService and Streamlit integration remain separate responsibilities.

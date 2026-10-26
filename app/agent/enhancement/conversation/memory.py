@@ -52,16 +52,19 @@ def add_task(
 
 
     decision_copy = replace(
-        decision,
-        slots=deepcopy(decision.slots),
+    decision,
+    slots=deepcopy(decision.slots),
     )
 
     missing = find_missing_slots(decision_copy)
 
+    decision_copy = replace(
+        decision_copy,
+        missing_slots=missing,
+    )
+
     status = (
-        TaskStatus.PENDING
-        if missing
-        else TaskStatus.READY
+        TaskStatus.PENDING if missing else TaskStatus.READY
     )
 
     new_task = TaskState(
@@ -207,6 +210,46 @@ def retry_task(
     )
     target.status = (
         TaskStatus.PENDING if missing else TaskStatus.READY
+    )
+
+    return new_state
+
+
+
+def mark_task_result(
+    state: ConversationState,
+    task_id: str,
+    success: bool,
+) -> ConversationState:
+    """Mark a READY task as completed or failed."""
+
+    if not task_id.strip():
+        raise ValueError("task_id cannot be empty")
+
+    if not isinstance(success, bool):
+        raise TypeError("success must be a bool")
+
+    new_state = deepcopy(state)
+
+    target = next(
+        (
+            task
+            for task in new_state.tasks
+            if task.task_id == task_id
+        ),
+        None,
+    )
+
+    if target is None:
+        raise ValueError(f"Unknown task_id: {task_id}")
+
+    if target.status != TaskStatus.READY:
+        raise ValueError(
+            f"Task is not ready: {target.status.value}"
+        )
+
+    target.status = (
+        TaskStatus.COMPLETED if success else TaskStatus.FAILED
     )
 
     return new_state
