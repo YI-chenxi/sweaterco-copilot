@@ -2,6 +2,8 @@
 
 from app.agent.enhancement.contracts import (
     ConversationState,
+    InterpretationIssue,
+    InterpretationIssueType,
     SlotUpdate,
     TaskPlan,
     TaskState,
@@ -20,6 +22,41 @@ def test_understanding_result():
 
     assert len(result.decisions) == 1
     assert result.decisions[0].intent == Intent.ORDER_STATUS
+
+
+def test_understanding_result_extension_defaults_are_independent():
+    first = UnderstandingResult()
+    second = UnderstandingResult()
+
+    first.issues.append(
+        InterpretationIssue(
+            issue_type=InterpretationIssueType.POSSIBLE_TYPO,
+            field="order_id",
+            original_value="ODR057",
+            suggested_value="ORD-057",
+            decision_index=0,
+        )
+    )
+    first.slot_updates.append(
+        SlotUpdate(task_id="task-001", slots={"order_id": "ORD-057"})
+    )
+
+    assert second.issues == []
+    assert second.slot_updates == []
+
+
+def test_interpretation_issue_preserves_candidate_details():
+    issue = InterpretationIssue(
+        issue_type=InterpretationIssueType.POSSIBLE_TYPO,
+        field="order_id",
+        original_value="ODR057",
+        suggested_value="ORD-057",
+        decision_index=0,
+    )
+
+    assert issue.original_value == "ODR057"
+    assert issue.suggested_value == "ORD-057"
+    assert issue.task_id is None
 
 
 def test_conversation_state_defaults():
@@ -57,6 +94,26 @@ def test_conversation_states_are_independent():
 
     assert len(first.tasks) == 1
     assert second.tasks == []
+
+
+def test_task_state_issue_defaults_are_independent():
+    first = TaskState(
+        task_id="task-001",
+        decision=IntentDecision(intent=Intent.ORDER_STATUS),
+    )
+    second = TaskState(
+        task_id="task-002",
+        decision=IntentDecision(intent=Intent.ORDER_STATUS),
+    )
+
+    first.issues.append(
+        InterpretationIssue(
+            issue_type=InterpretationIssueType.POSSIBLE_TYPO,
+            field="order_id",
+        )
+    )
+
+    assert second.issues == []
 
 
 def test_multiple_tasks_keep_separate_slots():

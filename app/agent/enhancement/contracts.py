@@ -11,6 +11,27 @@ from typing import Any
 from app.agent.intents import IntentDecision, ResponseLanguage
 
 
+class InterpretationIssueType(str, Enum):
+    """Machine-readable reasons that understanding needs clarification."""
+
+    POSSIBLE_TYPO = "possible_typo"
+    INVALID_FORMAT = "invalid_format"
+    AMBIGUOUS_REFERENCE = "ambiguous_reference"
+    TOO_MANY_TASKS = "too_many_tasks"
+
+
+@dataclass(frozen=True)
+class InterpretationIssue:
+    """One structured understanding problem for the clarification module."""
+
+    issue_type: InterpretationIssueType
+    field: str | None = None
+    original_value: Any | None = None
+    suggested_value: Any | None = None
+    decision_index: int | None = None
+    task_id: str | None = None
+
+
 @dataclass
 class UnderstandingResult:
     """Structured interpretation of a user message."""
@@ -18,6 +39,8 @@ class UnderstandingResult:
     decisions: list[IntentDecision] = field(default_factory=list)
     is_ambiguous: bool = False
     language: ResponseLanguage = ResponseLanguage.ENGLISH
+    issues: list[InterpretationIssue] = field(default_factory=list)
+    slot_updates: list["SlotUpdate"] = field(default_factory=list)
 
 
 class TaskStatus(str, Enum):
@@ -36,6 +59,7 @@ class TaskState:
     task_id: str
     decision: IntentDecision
     status: TaskStatus = TaskStatus.PENDING
+    issues: list[InterpretationIssue] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

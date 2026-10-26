@@ -5,6 +5,8 @@ import pytest
 
 from app.agent.enhancement.contracts import (
     ConversationState,
+    InterpretationIssue,
+    InterpretationIssueType,
     SlotUpdate,
     TaskStatus,
 )
@@ -574,3 +576,62 @@ def test_cannot_complete_task_twice():
 def test_mark_task_result_rejects_non_boolean():
     with pytest.raises(TypeError, match="success must be a bool"):
         mark_task_result(ConversationState(), "task-001", "yes")
+
+
+def test_add_task_persists_issue_under_assigned_task_id():
+    issue = InterpretationIssue(
+        issue_type=InterpretationIssueType.POSSIBLE_TYPO,
+        field="order_id",
+        original_value="ODR057",
+        suggested_value="ORD-057",
+        decision_index=0,
+    )
+
+    state = add_task(
+        ConversationState(),
+        IntentDecision(
+            intent=Intent.ORDER_STATUS,
+            missing_slots=("order_id",),
+        ),
+        "task-001",
+        issues=[issue],
+    )
+
+    task = state.tasks[0]
+    assert task.status == TaskStatus.PENDING
+    assert task.issues[0].task_id == "task-001"
+    assert task.issues[0].decision_index is None
+    assert issue.task_id is None
+    assert issue.decision_index == 0
+
+
+def test_slot_update_clears_resolved_field_issue_and_makes_task_ready():
+    state = add_task(
+        ConversationState(),
+        IntentDecision(
+            intent=Intent.ORDER_STATUS,
+            missing_slots=("order_id",),
+        ),
+        "task-001",
+        issues=[
+            InterpretationIssue(
+                issue_type=InterpretationIssueType.POSSIBLE_TYPO,
+                field="order_id",
+                original_value="ODR057",
+                suggested_value="ORD-057",
+                decision_index=0,
+            )
+        ],
+    )
+
+    updated = apply_slot_update(
+        state,
+        SlotUpdate(task_id="task-001", slots={"order_id": "ORD-057"}),
+    )
+
+    assert updated.tasks[0].decision.slots == {"order_id": "ORD-057"}
+    assert updated.tasks[0].decision.missing_slots == ()
+    assert updated.tasks[0].issues == []
+    assert updated.tasks[0].status == TaskStatus.READY
+    assert state.tasks[0].issues
+    assert state.tasks[0].status == TaskStatus.PENDING

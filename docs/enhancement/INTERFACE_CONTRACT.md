@@ -1,8 +1,12 @@
 # SweaterCo — Natural Language Enhancement Interface Contract
 
-**Status:** Draft v0.1  
-**Base branch:** `feat/b-agent-orchestration`  
-**Base commit:** `0aff410`
+**Status:** Approved v1.1
+
+**Approved by:** Person 3 (shared-contract owner), 2026-10-27
+
+**Base branch:** `integration/intent-enhancement`
+
+**Base commit:** `4ed9f2d`
 
 ## 1. Purpose
 
@@ -37,6 +41,18 @@ Existing business intent names and slot names must not be changed without team a
 - `decisions`: One or more `IntentDecision` objects.
 - `is_ambiguous`: Whether the request needs further interpretation.
 - `language`: User response language.
+- `issues`: Structured interpretation problems that require clarification.
+- `slot_updates`: Validated parameter updates targeting existing task IDs.
+
+`InterpretationIssue` contains:
+
+- `issue_type`: `possible_typo`, `invalid_format`, `ambiguous_reference`, or
+  `too_many_tasks`.
+- `field`: Affected slot, when applicable.
+- `original_value`: The user-supplied value.
+- `suggested_value`: A conservative correction candidate, when available.
+- `decision_index`: Index of a newly parsed decision before task IDs are assigned.
+- `task_id`: Existing conversation task ID, when the issue belongs to one.
 
 Responsibilities:
 
@@ -44,6 +60,9 @@ Responsibilities:
 - Slot extraction
 - Natural language variations
 - Ambiguity identification
+- One- or two-task decomposition
+- Safe deterministic normalization
+- Existing-task update extraction
 
 Must not execute business tools or calculate factory metrics.
 
@@ -74,10 +93,15 @@ Each business task is represented by:
 - `task_id: str`
 - `decision: IntentDecision`
 - `status: TaskStatus`
+- `issues: list[InterpretationIssue]`
 
 Each task stores its own intent and slots through `IntentDecision`.
 
 Task IDs must be unique within a conversation.
+
+Unresolved issues keep a task in `PENDING` even when all required slots are
+present. Updating a field clears issues attached to that field, after which
+readiness is recalculated.
 
 ### 4.4 ConversationState
 
@@ -160,6 +184,26 @@ Rules:
 
 Person 1 is responsible for interpreting user language into structured task information. Person 3 is responsible for applying validated updates. Person 4 is responsible for missing/invalid parameter clarification.
 
+### 4.9 Understanding-to-Memory Handoff
+
+For each new decision, the orchestrator assigns a unique task ID and calls
+`add_task(state, decision, task_id, issues=...)`. Issues identified by
+`decision_index` are rebound to the assigned `task_id`.
+
+For an existing task, the Understanding module returns a `SlotUpdate`; the
+Conversation module validates and applies it through `apply_slot_update()`.
+
+Example typo-confirmation flow:
+
+1. The user enters `ODR057`.
+2. Understanding leaves `order_id` missing and returns a `possible_typo` issue
+   suggesting `ORD-057`.
+3. Conversation memory persists that issue under the new task ID.
+4. The user confirms the candidate.
+5. Understanding returns `SlotUpdate(task_id=..., slots={"order_id": "ORD-057"})`.
+6. Conversation memory applies the value, clears the issue, and recalculates
+   readiness.
+
 ## 5. Group 3 — Planning
 
 **Input:** One or more validated `IntentDecision` objects.
@@ -210,9 +254,6 @@ This is a proposed interface and is not yet implemented.
 
 Before implementation, the team must confirm:
 
-- Exact Python dataclass definitions
-- Multi-intent parsing output schema
-- Task-specific slot storage
 - Clarification result format
 - Task interruption and switching behavior
 - Partial execution policy

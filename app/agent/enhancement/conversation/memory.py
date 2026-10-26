@@ -6,6 +6,7 @@ from dataclasses import replace
 
 from app.agent.enhancement.contracts import (
     ConversationState,
+    InterpretationIssue,
     SlotUpdate,
     TaskState,
     TaskStatus,
@@ -31,6 +32,7 @@ def add_task(
     state: ConversationState,
     decision: IntentDecision,
     task_id: str,
+    issues: list[InterpretationIssue] | None = None,
 ) -> ConversationState:
     """Add one independent task without mutating the previous state."""
 
@@ -63,14 +65,22 @@ def add_task(
         missing_slots=missing,
     )
 
-    status = (
-        TaskStatus.PENDING if missing else TaskStatus.READY
-    )
+    task_issues = [
+        replace(
+            deepcopy(issue),
+            decision_index=None,
+            task_id=task_id,
+        )
+        for issue in (issues or [])
+    ]
+
+    status = TaskStatus.PENDING if missing or task_issues else TaskStatus.READY
 
     new_task = TaskState(
         task_id=task_id,
         decision=decision_copy,
         status=status,
+        issues=task_issues,
     )
 
     new_state = deepcopy(state)
@@ -140,8 +150,16 @@ def apply_slot_update(
     )
 
     target.decision = updated_decision
+    updated_fields = set(update.slots)
+    target.issues = [
+        issue
+        for issue in target.issues
+        if issue.field is None or issue.field not in updated_fields
+    ]
     target.status = (
-        TaskStatus.PENDING if missing else TaskStatus.READY
+        TaskStatus.PENDING
+        if missing or target.issues
+        else TaskStatus.READY
     )
 
     return new_state
@@ -209,7 +227,9 @@ def retry_task(
         missing_slots=missing,
     )
     target.status = (
-        TaskStatus.PENDING if missing else TaskStatus.READY
+        TaskStatus.PENDING
+        if missing or target.issues
+        else TaskStatus.READY
     )
 
     return new_state
