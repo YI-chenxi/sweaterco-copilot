@@ -1,6 +1,7 @@
 [
   {
     "id": "standard-01",
+    "expected_issue_types": [],
     "category": "standard",
     "text": "Please check the status of order ORD-057.",
     "expected_language": "en",
@@ -10,6 +11,7 @@
   },
   {
     "id": "standard-02",
+    "expected_issue_types": [],
     "category": "standard",
     "text": "Is the ASSEMBLY production stage operating normally?",
     "expected_language": "en",
@@ -19,6 +21,7 @@
   },
   {
     "id": "standard-03",
+    "expected_issue_types": [],
     "category": "standard",
     "text": "Please provide today's morning briefing.",
     "expected_language": "en",
@@ -28,6 +31,7 @@
   },
   {
     "id": "standard-04",
+    "expected_issue_types": [],
     "category": "standard",
     "text": "Can we accept an order for 800 TOPS pieces with delivery on 2026-04-25?",
     "expected_language": "en",
@@ -37,6 +41,7 @@
   },
   {
     "id": "standard-05",
+    "expected_issue_types": [],
     "category": "standard",
     "text": "请查询订单 ORD-008 的当前状态。",
     "expected_language": "zh",
@@ -46,6 +51,7 @@
   },
   {
     "id": "standard-06",
+    "expected_issue_types": [],
     "category": "standard",
     "text": "请提供今天最需要关注的五项生产情况。",
     "expected_language": "zh",
@@ -56,6 +62,7 @@
 
   {
     "id": "colloquial-01",
+    "expected_issue_types": [],
     "category": "colloquial",
     "text": "How's ORD057 doing?",
     "expected_language": "en",
@@ -65,6 +72,7 @@
   },
   {
     "id": "colloquial-02",
+    "expected_issue_types": [],
     "category": "colloquial",
     "text": "Assembly looking okay today?",
     "expected_language": "en",
@@ -74,6 +82,7 @@
   },
   {
     "id": "colloquial-03",
+    "expected_issue_types": [],
     "category": "colloquial",
     "text": "What's on the factory radar this morning? Give me the top 3.",
     "expected_language": "en",
@@ -83,6 +92,7 @@
   },
   {
     "id": "colloquial-04",
+    "expected_issue_types": [],
     "category": "colloquial",
     "text": "Can we squeeze in 300 TOPS for 2026-05-10?",
     "expected_language": "en",
@@ -92,6 +102,7 @@
   },
   {
     "id": "colloquial-05",
+    "expected_issue_types": [],
     "category": "colloquial",
     "text": "帮我瞅瞅 ORD 8 到哪儿了？",
     "expected_language": "zh",
@@ -101,6 +112,7 @@
   },
   {
     "id": "colloquial-06",
+    "expected_issue_types": [],
     "category": "colloquial",
     "text": "装配那边还稳不稳？",
     "expected_language": "zh",
@@ -111,6 +123,7 @@
 
   {
     "id": "chinese-01",
+    "expected_issue_types": [],
     "category": "chinese",
     "text": "订单 ORD-021 现在是什么状态？",
     "expected_language": "zh",
@@ -120,6 +133,7 @@
   },
   {
     "id": "chinese-02",
+    "expected_issue_types": [],
     "category": "chinese",
     "text": "针织工序最近生产正常吗？",
     "expected_language": "zh",
@@ -129,6 +143,7 @@
   },
   {
     "id": "chinese-03",
+    "expected_issue_types": [],
     "category": "chinese",
     "text": "给我今天的晨间简报。",
     "expected_language": "zh",
@@ -138,6 +153,7 @@
   },
   {
     "id": "chinese-04",
+    "expected_issue_types": [],
     "category": "chinese",
     "text": "我们能接 650 件 ACCESSORIES，要求 2026-06-18 交付吗？",
     "expected_language": "zh",
@@ -147,6 +163,7 @@
   },
   {
     "id": "chinese-05",
+    "expected_issue_types": [],
     "category": "chinese",
     "text": "请看看包装工序是否正常。",
     "expected_language": "zh",
@@ -156,6 +173,7 @@
   },
   {
     "id": "chinese-06",
+    "expected_issue_types": [],
     "category": "chinese",
     "text": "列出今天最重要的 4 项风险。",
     "expected_language": "zh",
@@ -166,6 +184,7 @@
 
   {
     "id": "english-01",
+    "expected_issue_types": [],
     "category": "english",
     "text": "What is the current status of ORD-034?",
     "expected_language": "en",
@@ -175,6 +194,7 @@
   },
   {
     "id": "english-02",
+    "expected_issue_types": [],
     "category": "english",
     "text": "Check whether WASHING is operating normally.",
     "expected_language": "en",
@@ -184,6 +204,7 @@
   },
   {
     "id": "english-03",
+    "expected_issue_types": [],
     "category": "english",
     "text": "Show the top 2 items in the morning briefing.",
     "expected_language": "en",
@@ -193,6 +214,7 @@
   },
   {
     "id": "english-04",
+    "expected_issue_types": [],
     "category": "english",
     "text": "Assess a 1200-piece TOPS order due on 2026-07-01.",
     "expected_language": "en",
@@ -202,6 +224,7 @@
   },
   {
     "id": "english-05",
+    "expected_issue_types": [],
     "category": "english",
     "text": "I need the factory's ranked attention list for today.",
     "expected_language": "en",
@@ -211,6 +234,7 @@
   },
   {
     "id": "english-06",
+    "expected_issue_types": [],
     "category": "english",
     "text": "Is the KNITTING line normal?",
     "expected_language": "en",
@@ -221,6 +245,7 @@
 
   {
     "id": "mixed-01",
+    "expected_issue_types": [],
     "category": "mixed_language",
     "text": "帮我 check 一下 ORD-057 的 status。",
     "expected_language": "zh",
@@ -230,6 +255,7 @@
   },
   {
     "id": "mixed-02",
+    "expected_issue_types": [],
     "category": "mixed_language",
     "text": "Assembly 最近 production 正常吗？",
     "expected_language": "zh",
@@ -239,6 +265,7 @@
   },
   {
     "id": "mixed-03",
+    "expected_issue_types": [],
     "category": "mixed_language",
     "text": "今天的 morning briefing 给我 top 3。",
     "expected_language": "zh",
@@ -248,6 +275,7 @@
   },
   {
     "id": "mixed-04",
+    "expected_issue_types": [],
     "category": "mixed_language",
     "text": "能不能 accept 500 件 TOPS by 2026-05-20？",
     "expected_language": "zh",
@@ -257,6 +285,7 @@
   },
   {
     "id": "mixed-05",
+    "expected_issue_types": [],
     "category": "mixed_language",
     "text": "Check ORD-008，然后看看 PACKING 是否正常。",
     "expected_language": "zh",
@@ -267,6 +296,7 @@
   },
   {
     "id": "mixed-06",
+    "expected_issue_types": [],
     "category": "mixed_language",
     "text": "Give me ORD-021 的状态，再来一份 morning briefing。",
     "expected_language": "zh",
@@ -278,6 +308,7 @@
 
   {
     "id": "unknown-01",
+    "expected_issue_types": [],
     "category": "unknown_intent",
     "text": "Hello, who are you?",
     "expected_language": "en",
@@ -287,6 +318,7 @@
   },
   {
     "id": "unknown-02",
+    "expected_issue_types": [],
     "category": "unknown_intent",
     "text": "What's the weather tomorrow?",
     "expected_language": "en",
@@ -296,6 +328,7 @@
   },
   {
     "id": "unknown-03",
+    "expected_issue_types": [],
     "category": "unknown_intent",
     "text": "Please draft an email to our supplier.",
     "expected_language": "en",
@@ -305,6 +338,7 @@
   },
   {
     "id": "unknown-04",
+    "expected_issue_types": [],
     "category": "unknown_intent",
     "text": "给我讲个笑话。",
     "expected_language": "zh",
@@ -314,6 +348,7 @@
   },
   {
     "id": "unknown-05",
+    "expected_issue_types": [],
     "category": "unknown_intent",
     "text": "帮我批准明天的请假申请。",
     "expected_language": "zh",
@@ -323,6 +358,7 @@
   },
   {
     "id": "unknown-06",
+    "expected_issue_types": [],
     "category": "unknown_intent",
     "text": "把这段文字翻译成英文。",
     "expected_language": "en",
@@ -333,6 +369,7 @@
 
   {
     "id": "missing-01",
+    "expected_issue_types": [],
     "category": "missing_slots",
     "text": "Can we accept 800 pieces by 2026-04-25?",
     "expected_language": "en",
@@ -342,6 +379,7 @@
   },
   {
     "id": "missing-02",
+    "expected_issue_types": [],
     "category": "missing_slots",
     "text": "Can we accept a TOPS order due on 2026-04-25?",
     "expected_language": "en",
@@ -351,6 +389,7 @@
   },
   {
     "id": "missing-03",
+    "expected_issue_types": [],
     "category": "missing_slots",
     "text": "Can we accept 800 TOPS pieces?",
     "expected_language": "en",
@@ -360,6 +399,7 @@
   },
   {
     "id": "missing-04",
+    "expected_issue_types": [],
     "category": "missing_slots",
     "text": "请查询订单状态。",
     "expected_language": "zh",
@@ -369,6 +409,7 @@
   },
   {
     "id": "missing-05",
+    "expected_issue_types": [],
     "category": "missing_slots",
     "text": "Is production operating normally?",
     "expected_language": "en",
@@ -378,6 +419,7 @@
   },
   {
     "id": "missing-06",
+    "expected_issue_types": [],
     "category": "missing_slots",
     "text": "请评估一个新订单能不能接。",
     "expected_language": "zh",
@@ -388,6 +430,7 @@
 
   {
     "id": "dual-01",
+    "expected_issue_types": [],
     "category": "dual_intent",
     "text": "Check ORD-057 and tell me whether ASSEMBLY is normal.",
     "expected_language": "en",
@@ -398,6 +441,7 @@
   },
   {
     "id": "dual-02",
+    "expected_issue_types": [],
     "category": "dual_intent",
     "text": "查询 ORD-008，再给我今天的晨间简报。",
     "expected_language": "zh",
@@ -408,6 +452,7 @@
   },
   {
     "id": "dual-03",
+    "expected_issue_types": [],
     "category": "dual_intent",
     "text": "Assess 500 TOPS pieces due 2026-05-20, and check whether PACKING is normal.",
     "expected_language": "en",
@@ -418,6 +463,7 @@
   },
   {
     "id": "dual-04",
+    "expected_issue_types": [],
     "category": "dual_intent",
     "text": "What are the statuses of ORD-021 and ORD-034?",
     "expected_language": "en",
@@ -428,6 +474,7 @@
   },
   {
     "id": "dual-05",
+    "expected_issue_types": [],
     "category": "dual_intent",
     "text": "Give me the top 3 morning briefing items and assess 200 ACCESSORIES pieces due 2026-06-01.",
     "expected_language": "en",
@@ -438,12 +485,128 @@
   },
   {
     "id": "dual-06",
+    "expected_issue_types": [],
     "category": "dual_intent",
     "text": "分别检查 KNITTING 和 WASHING 工序是否正常。",
     "expected_language": "zh",
     "expected_tasks": [
       {"intent": "production_normality", "slots": {"stage": "KNITTING"}, "missing_slots": []},
       {"intent": "production_normality", "slots": {"stage": "WASHING"}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "eval-049",
+    "category": "colloquial",
+    "text": "How's order ODR057 doing?",
+    "expected_language": "en",
+    "expected_tasks": [
+      {
+        "intent": "order_status",
+        "slots": {},
+        "missing_slots": ["order_id"]
+      }
+    ],
+    "expected_issue_types": ["possible_typo"]
+  },
+  {
+    "id": "eval-050",
+    "category": "standard",
+    "text": "Can we accept 0 TOPS pieces by 2026-04-25?",
+    "expected_language": "en",
+    "expected_tasks": [
+      {
+        "intent": "order_feasibility",
+        "slots": {
+          "category": "TOPS",
+          "requested_delivery_date": "2026-04-25"
+        },
+        "missing_slots": ["pieces"]
+      }
+    ],
+    "expected_issue_types": ["invalid_format"]
+  },
+  {
+    "id": "eval-051",
+    "category": "standard",
+    "text": "Can we accept 800 TOPS pieces due 2026-02-30?",
+    "expected_language": "en",
+    "expected_tasks": [
+      {
+        "intent": "order_feasibility",
+        "slots": {
+          "category": "TOPS",
+          "pieces": 800
+        },
+        "missing_slots": ["requested_delivery_date"]
+      }
+    ],
+    "expected_issue_types": ["invalid_format"]
+  },
+  {
+    "id": "eval-052",
+    "category": "dual_intent",
+    "text": "Check ORD-057, and can we accept 800 TOPS pieces?",
+    "expected_language": "en",
+    "expected_tasks": [
+      {
+        "intent": "order_status",
+        "slots": {
+          "order_id": "ORD-057"
+        },
+        "missing_slots": []
+      },
+      {
+        "intent": "order_feasibility",
+        "slots": {
+          "category": "TOPS",
+          "pieces": 800
+        },
+        "missing_slots": ["requested_delivery_date"]
+      }
+    ],
+    "expected_issue_types": []
+  },
+  {
+    "id": "eval-053",
+    "category": "too_many_tasks",
+    "text": "Check ORD-057, check ORD-008, and tell me whether ASSEMBLY is normal.",
+    "expected_language": "en",
+    "expected_outcome": "issue_only",
+    "expected_tasks": [],
+    "expected_issue_types": ["too_many_tasks"],
+    "expected_is_ambiguous": true,
+    "expected_slot_updates": []
+  },
+  {
+    "id": "eval-054",
+    "category": "slot_update",
+    "text": "The TOPS order is due on 2026-04-25.",
+    "expected_language": "en",
+    "expected_outcome": "updates_only",
+    "context": {
+      "language": "en",
+      "tasks": [
+        {
+          "task_id": "task-101",
+          "decision": {
+            "intent": "order_feasibility",
+            "slots": {"category": "TOPS", "pieces": 800},
+            "missing_slots": ["requested_delivery_date"],
+            "language": "en"
+          },
+          "status": "pending",
+          "issues": []
+        }
+      ]
+    },
+    "expected_tasks": [],
+    "expected_issue_types": [],
+    "expected_is_ambiguous": false,
+    "expected_slot_updates": [
+      {
+        "task_id": "task-101",
+        "slots": {"requested_delivery_date": "2026-04-25"}
+      }
     ]
   }
 ]
