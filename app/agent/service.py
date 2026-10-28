@@ -1,10 +1,12 @@
 """Natural-language entry point that composes parsing and orchestration."""
 
 from app.agent.contracts import AgentReply
+from app.agent.enhancement.understanding.parser import EnhancedIntentParser
 from app.agent.intent_parser import IntentParser
 from app.agent.llm_client import create_llm_client
 from app.agent.orchestrator import AgentOrchestrator
 from app.agent.settings import AgentSettings, LLMSettings
+from app.agent.turn_service import ChatSession, ConversationTurnService, TurnResult
 
 
 class AgentService:
@@ -13,6 +15,9 @@ class AgentService:
     def __init__(self, parser: IntentParser, orchestrator: AgentOrchestrator) -> None:
         self.parser = parser
         self.orchestrator = orchestrator
+        self.turn_service = ConversationTurnService(
+            EnhancedIntentParser(parser.client), orchestrator
+        )
 
     @classmethod
     def from_env(
@@ -37,3 +42,8 @@ class AgentService:
         reply = self.orchestrator.handle(decision)
         reply.metadata.setdefault("language", decision.language.value)
         return reply
+
+    def handle_turn(self, user_text: str, session: ChatSession | None = None) -> TurnResult:
+        """Handle contextual chat. The caller stores the returned per-thread session."""
+
+        return self.turn_service.handle_turn(user_text, session)
