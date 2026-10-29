@@ -150,7 +150,7 @@ class AdapterTests(unittest.TestCase):
             ConversationState(), [], executor, policy=POLICY, issues=[issue]
         )
         self.assertTrue(result.reply.needs_clarification)
-        self.assertIn("at most two", result.reply.suggested_question)
+        self.assertIn("up to two", result.reply.suggested_question)
         self.assertEqual(executor.calls, [])
 
     def test_global_issue_remains_blocking_when_carried_to_next_turn(self):

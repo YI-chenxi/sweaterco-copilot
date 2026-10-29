@@ -6,7 +6,9 @@ import json
 import logging
 import re
 from dataclasses import replace
+from datetime import date, datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from app.agent.enhancement.contracts import (
     ConversationState,
@@ -45,9 +47,7 @@ _ALLOWED_SLOTS: dict[Intent, frozenset[str]] = {
     Intent.ORDER_STATUS: frozenset({"order_id"}),
     Intent.PRODUCTION_NORMALITY: frozenset({"stage"}),
     Intent.MORNING_BRIEFING: frozenset({"top_n"}),
-    Intent.ORDER_FEASIBILITY: frozenset(
-        {"category", "pieces", "requested_delivery_date"}
-    ),
+    Intent.ORDER_FEASIBILITY: frozenset({"category", "pieces", "requested_delivery_date"}),
     Intent.UNKNOWN: frozenset(),
 }
 _AFFIRMATIVE_REPLIES = {
@@ -61,6 +61,52 @@ _AFFIRMATIVE_REPLIES = {
     "对的",
     "没错",
 }
+_ENGLISH_RESPONSE_CUES = (
+    "翻译成英文",
+    "用英文",
+    "英文回答",
+    "in english",
+    "answer in english",
+    "translate to english",
+    "translate into english",
+)
+_CHINESE_RESPONSE_CUES = (
+    "翻译成中文",
+    "用中文",
+    "中文回答",
+    "in chinese",
+    "answer in chinese",
+    "translate to chinese",
+    "translate into chinese",
+)
+
+
+def _fallback_response_language(text: str) -> ResponseLanguage:
+    lowered = text.casefold()
+    if any(cue in lowered for cue in _ENGLISH_RESPONSE_CUES):
+        return ResponseLanguage.ENGLISH
+    if any(cue in lowered for cue in _CHINESE_RESPONSE_CUES):
+        return ResponseLanguage.CHINESE
+    return detect_response_language(text)
+
+
+def _clean_model_text(value: Any, *, limit: int = 1500) -> str | None:
+    if not isinstance(value, str):
+        return None
+    cleaned = value.strip().replace("```", "")
+    return cleaned[:limit] if cleaned else None
+
+
+def _conversation_text(payload: dict[str, Any]) -> str | None:
+    raw = payload.get("conversation_response")
+    if not isinstance(raw, dict):
+        return None
+    conclusion = _clean_model_text(raw.get("conclusion"), limit=500)
+    explanation = _clean_model_text(raw.get("explanation"))
+    if not conclusion:
+        return None
+    conclusion = conclusion.replace("**", "").strip()
+    return f"**{conclusion}**\n\n{explanation}" if explanation else f"**{conclusion}**"
 
 
 def _normalize_affirmative_text(text: str) -> str:
@@ -86,11 +132,7 @@ def _invalid_value_issue(
     decision_index: int | None = None,
     task_id: str | None = None,
 ) -> InterpretationIssue:
-    typo_candidates = (
-        find_order_id_typo_candidates(str(raw_value))
-        if slot == "order_id"
-        else []
-    )
+    typo_candidates = find_order_id_typo_candidates(str(raw_value)) if slot == "order_id" else []
     if len(typo_candidates) == 1:
         original, suggested = typo_candidates[0]
         return InterpretationIssue(
@@ -146,11 +188,7 @@ def _decision_from_payload(
     if not isinstance(declared_missing, list):
         declared_missing = []
     required = required_slots_for(intent)
-    missing = {
-        slot
-        for slot in declared_missing
-        if isinstance(slot, str) and slot in required
-    }
+    missing = {slot for slot in declared_missing if isinstance(slot, str) and slot in required}
     decision = IntentDecision(
         intent=intent,
         slots=slots,
@@ -202,10 +240,7 @@ def _updates_from_payload(
 ) -> tuple[list[SlotUpdate], list[InterpretationIssue]]:
     updates: list[SlotUpdate] = []
     issues: list[InterpretationIssue] = []
-    tasks_by_id = {
-        task.task_id: task
-        for task in (context.tasks if context is not None else [])
-    }
+    tasks_by_id = {task.task_id: task for task in (context.tasks if context is not None else [])}
 
     for payload in payloads:
         if not isinstance(payload, dict):
@@ -289,9 +324,7 @@ def _affirmative_slot_update(
                 or issue.suggested_value is None
             ):
                 continue
-            normalized_value = _normalizer_for(issue.field)(
-                issue.suggested_value
-            )
+            normalized_value = _normalizer_for(issue.field)(issue.suggested_value)
             if normalized_value is not None:
                 candidates.append((task, issue, normalized_value))
     if len(candidates) != 1:
@@ -312,8 +345,65 @@ def _affirmative_slot_update(
 class EnhancedIntentParser:
     """Parse bilingual text into new tasks, slot updates, and issues."""
 
-    def __init__(self, client: StructuredLLMClient) -> None:
+    def __init__(
+        self,
+        client: StructuredLLMClient,
+        *,
+        reference_date: date = date(2026, 4, 1),
+        timezone_name: str = "Asia/Shanghai",
+    ) -> None:
         self.client = client
+        self.reference_date = reference_date
+        self.timezone_name = timezone_name
+
+    def _runtime_context(self) -> dict[str, str]:
+        now = datetime.now(ZoneInfo(self.timezone_name))
+        return {
+            "current_date": now.date().isoformat(),
+            "current_weekday": now.strftime("%A"),
+            "timezone": self.timezone_name,
+            "factory_snapshot_date": self.reference_date.isoformat(),
+            "canonical_order_id_example": "ORD-057",
+        }
+
+    def _issue_still_applies(
+        self,
+        issue: InterpretationIssue,
+        decisions: list[IntentDecision],
+    ) -> bool:
+        if issue.issue_type != InterpretationIssueType.INVALID_FORMAT:
+            return True
+        if issue.field not in _ALLOWED_SLOTS.get(
+            decisions[issue.decision_index].intent
+            if issue.decision_index is not None and 0 <= issue.decision_index < len(decisions)
+            else Intent.UNKNOWN,
+            frozenset(),
+        ) and issue.field not in {
+            "order_id",
+            "stage",
+            "category",
+            "pieces",
+            "requested_delivery_date",
+            "top_n",
+        }:
+            return False
+
+        candidates = [issue.original_value]
+        if issue.decision_index is not None and 0 <= issue.decision_index < len(decisions):
+            candidates.append(decisions[issue.decision_index].slots.get(issue.field))
+        for value in candidates:
+            if value is None or issue.field is None:
+                continue
+            normalized = _normalizer_for(issue.field)(value)
+            if normalized is None:
+                continue
+            if issue.field == "category" and normalized not in {"TOPS", "ACCESSORIES"}:
+                continue
+            if issue.field == "requested_delivery_date":
+                if date.fromisoformat(normalized) <= self.reference_date:
+                    continue
+            return False
+        return True
 
     def parse(
         self,
@@ -323,18 +413,18 @@ class EnhancedIntentParser:
         """Return a validated understanding result without executing tools."""
 
         if not isinstance(user_text, str) or not user_text.strip():
-            return UnderstandingResult(
-                decisions=[IntentDecision(intent=Intent.UNKNOWN)]
-            )
+            return UnderstandingResult(decisions=[IntentDecision(intent=Intent.UNKNOWN)])
 
         affirmative = _affirmative_slot_update(user_text, context)
         if affirmative is not None:
             return affirmative
 
-        fallback_language = detect_response_language(user_text)
+        fallback_language = _fallback_response_language(user_text)
         normalized_text = normalize_order_ids_in_text(user_text.strip())
         user_prompt = (
             f"User message:\n{normalized_text}\n\n"
+            f"Runtime context:\n"
+            f"{json.dumps(self._runtime_context(), ensure_ascii=False, sort_keys=True)}\n\n"
             f"Conversation tasks:\n{_context_as_json(context)}"
         )
         try:
@@ -349,6 +439,7 @@ class EnhancedIntentParser:
                 payload,
                 fallback_language=fallback_language,
                 context=context,
+                original_text=user_text,
             )
         except (LLMClientError, TypeError, ValueError) as exc:
             LOGGER.warning(
@@ -365,6 +456,8 @@ class EnhancedIntentParser:
                 language=fallback_language,
             )
 
+        if result.direct_response is not None:
+            return result
         return self._merge_deterministic_typo_issues(result, user_text)
 
     def _result_from_payload(
@@ -373,20 +466,33 @@ class EnhancedIntentParser:
         *,
         fallback_language: ResponseLanguage,
         context: ConversationState | None,
+        original_text: str,
     ) -> UnderstandingResult:
         try:
-            language = ResponseLanguage(
-                payload.get("language", fallback_language.value)
-            )
+            language = ResponseLanguage(payload.get("language", fallback_language.value))
         except ValueError:
             language = fallback_language
+        if fallback_language == ResponseLanguage.CHINESE:
+            language = ResponseLanguage.CHINESE
+        elif any(cue in original_text.casefold() for cue in _ENGLISH_RESPONSE_CUES):
+            language = ResponseLanguage.ENGLISH
+
+        mode = payload.get("mode", "business")
+        if mode == "conversation":
+            direct_response = _conversation_text(payload)
+            if direct_response is None:
+                raise LLMClientError("Conversation mode requires a response")
+            return UnderstandingResult(
+                decisions=[IntentDecision(intent=Intent.UNKNOWN, language=language)],
+                language=language,
+                direct_response=direct_response,
+            )
 
         task_payloads = payload.get("tasks", [])
         update_payloads = payload.get("slot_updates", [])
         issue_payloads = payload.get("issues", [])
         if not all(
-            isinstance(value, list)
-            for value in (task_payloads, update_payloads, issue_payloads)
+            isinstance(value, list) for value in (task_payloads, update_payloads, issue_payloads)
         ):
             raise LLMClientError("Tasks, slot_updates, and issues must be arrays")
 
@@ -415,6 +521,7 @@ class EnhancedIntentParser:
             decisions.append(decision)
             issues.extend(task_issues)
 
+        model_issues: list[InterpretationIssue] = []
         for issue_payload in issue_payloads:
             if not isinstance(issue_payload, dict):
                 continue
@@ -423,13 +530,44 @@ class EnhancedIntentParser:
                 decision_count=len(decisions),
             )
             if issue is not None:
-                issues.append(issue)
+                model_issues.append(issue)
+
+        applicable_model_issues = [
+            issue for issue in model_issues if self._issue_still_applies(issue, decisions)
+        ]
+        dropped_all_model_issues = bool(model_issues) and not applicable_model_issues
+        issues.extend(applicable_model_issues)
 
         updates, update_issues = _updates_from_payload(
             update_payloads,
             context=context,
         )
         issues.extend(update_issues)
+
+        local_needs_clarification = bool(issues) or any(
+            decision.missing_slots for decision in decisions
+        )
+        model_needs_clarification = bool(payload.get("needs_clarification"))
+        clarification_question = _clean_model_text(payload.get("clarification_question"), limit=500)
+        if clarification_question:
+            clarification_question = clarification_question.replace("**", "").strip()
+        if dropped_all_model_issues and not local_needs_clarification:
+            # If every concrete reason supplied by the model is disproved by the
+            # local validators, do not turn the stale clarification flag into a
+            # generic ambiguity. This keeps valid dates and aliases executable
+            # even when the model is over-cautious.
+            model_needs_clarification = False
+            clarification_question = None
+        if model_needs_clarification and not local_needs_clarification and decisions:
+            issue = InterpretationIssue(
+                issue_type=InterpretationIssueType.AMBIGUOUS_REFERENCE,
+                decision_index=0 if len(decisions) == 1 else None,
+            )
+            issues.append(issue)
+            local_needs_clarification = True
+        needs_clarification = local_needs_clarification or model_needs_clarification
+        if not needs_clarification:
+            clarification_question = None
 
         if not decisions and not updates and not issues:
             decisions.append(IntentDecision(intent=Intent.UNKNOWN, language=language))
@@ -440,6 +578,8 @@ class EnhancedIntentParser:
             language=language,
             issues=issues,
             slot_updates=updates,
+            needs_clarification=needs_clarification,
+            clarification_question=clarification_question,
         )
 
     @staticmethod
@@ -510,8 +650,7 @@ class EnhancedIntentParser:
                     task_id=task_id,
                 )
             )
-        result.slot_updates = [
-            update for update in result.slot_updates if update.slots
-        ]
+        result.slot_updates = [update for update in result.slot_updates if update.slots]
         result.is_ambiguous = True
+        result.needs_clarification = True
         return result

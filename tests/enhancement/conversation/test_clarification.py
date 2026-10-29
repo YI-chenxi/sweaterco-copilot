@@ -149,8 +149,8 @@ class ClarificationTests(unittest.TestCase):
         for kind, fragment in [
             (InterpretationIssueType.POSSIBLE_TYPO, "confirm"),
             (InterpretationIssueType.INVALID_FORMAT, "positive whole-number"),
-            (InterpretationIssueType.AMBIGUOUS_REFERENCE, "Which task"),
-            (InterpretationIssueType.TOO_MANY_TASKS, "at most two"),
+            (InterpretationIssueType.AMBIGUOUS_REFERENCE, "Which request"),
+            (InterpretationIssueType.TOO_MANY_TASKS, "up to two"),
         ]:
             with self.subTest(kind=kind):
                 issue = InterpretationIssue(kind, field="pieces")
@@ -239,7 +239,7 @@ class ClarificationTests(unittest.TestCase):
 
     def test_question_language_is_explicit(self):
         result = check(ready(slots={}), language=ResponseLanguage.CHINESE)
-        self.assertIn("请补充订单号", result.problems[0].question)
+        self.assertIn("你想查询哪个订单", result.problems[0].question)
 
     def test_task_and_result_snapshots_are_independent(self):
         state = make_state(ready(slots={"order_id": "ord057"}))

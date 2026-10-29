@@ -25,30 +25,344 @@ from app.agent.intents import IntentDecision, ResponseLanguage
 _INFORMATION_CODES = frozenset(
     {"pending", "missing_slots", "unresolved_issues", "unsupported_intent"}
 )
-_LABELS = {
+_SLOT_LABELS = {
     ResponseLanguage.ENGLISH: {
-        "completed": "Completed",
-        "failed": "Execution failed",
-        "pending": "Waiting for information or validation",
-        "blocked": "Blocked",
-        "clarification_required": "Clarification required",
-        "no_data": "No data returned",
-        "unclassified": "Result requires integration review",
-        "skipped": "Skipped; not executed in this batch",
-        "not_executed": "Not executed",
+        "category": "product category",
+        "order_id": "order number",
+        "pieces": "order quantity",
+        "requested_delivery_date": "delivery date",
+        "stage": "production stage",
+        "top_n": "number of briefing items",
     },
     ResponseLanguage.CHINESE: {
-        "completed": "已完成",
-        "failed": "执行失败",
-        "pending": "等待补充信息或校验",
-        "blocked": "暂不能执行",
-        "clarification_required": "需要澄清",
-        "no_data": "未返回可用数据",
-        "unclassified": "结果需要集成层确认",
-        "skipped": "已跳过，本批次未执行",
-        "not_executed": "尚未执行",
+        "category": "产品类别",
+        "order_id": "订单号",
+        "pieces": "订单数量",
+        "requested_delivery_date": "期望交付日期",
+        "stage": "生产工序",
+        "top_n": "晨报条数",
     },
 }
+
+
+def _headline(text: str) -> str:
+    return f"**{text}**"
+
+
+def _join_labels(labels: list[str], language: ResponseLanguage) -> str:
+    if language == ResponseLanguage.CHINESE:
+        return "、".join(labels)
+    if len(labels) <= 1:
+        return "".join(labels)
+    return ", ".join(labels[:-1]) + f" and {labels[-1]}"
+
+
+def _request_name(decision: dict[str, Any], language: ResponseLanguage) -> str:
+    """Describe a task using business language, never an internal task ID."""
+
+    intent = decision.get("intent")
+    slots = decision.get("slots") if isinstance(decision.get("slots"), dict) else {}
+    order_id = slots.get("order_id")
+    stage = slots.get("stage")
+    category = slots.get("category")
+    pieces = slots.get("pieces")
+    if intent == "order_status":
+        if language == ResponseLanguage.CHINESE:
+            return f"订单 {order_id}" if order_id else "订单查询"
+        return f"Order {order_id}" if order_id else "Order check"
+    if intent == "production_normality":
+        if language == ResponseLanguage.CHINESE:
+            return f"{stage} 工序" if stage else "生产情况检查"
+        return f"{stage} production" if stage else "Production check"
+    if intent == "order_feasibility":
+        if language == ResponseLanguage.CHINESE:
+            details = " ".join(
+                value
+                for value in (
+                    f"{pieces} 件" if pieces is not None else "",
+                    str(category) if category is not None else "",
+                )
+                if value
+            )
+            return f"新增 {details} 订单" if details else "新增订单评估"
+        details = " ".join(
+            value
+            for value in (
+                f"{pieces}-piece" if pieces is not None else "",
+                str(category) if category is not None else "",
+            )
+            if value
+        )
+        return f"Additional {details} order" if details else "Additional order assessment"
+    if intent == "morning_briefing":
+        return "晨报" if language == ResponseLanguage.CHINESE else "Morning briefing"
+    return "这个请求" if language == ResponseLanguage.CHINESE else "This request"
+
+
+def _fallback_question(
+    decision: IntentDecision, missing: tuple[str, ...], language: ResponseLanguage
+) -> str:
+    """Turn missing fields into one natural, task-aware follow-up question."""
+
+    slots = decision.slots
+    if decision.intent.value == "order_status" and "order_id" in missing:
+        return (
+            "你想查询哪个订单？"
+            if language == ResponseLanguage.CHINESE
+            else "Which order would you like me to check?"
+        )
+    if decision.intent.value == "production_normality" and "stage" in missing:
+        return (
+            "你想检查哪个生产工序？"
+            if language == ResponseLanguage.CHINESE
+            else "Which production stage would you like me to check?"
+        )
+    if decision.intent.value == "order_feasibility":
+        pieces = slots.get("pieces")
+        category = slots.get("category")
+        if missing == ("requested_delivery_date",):
+            if language == ResponseLanguage.CHINESE:
+                details = " ".join(
+                    value
+                    for value in (
+                        f"{pieces} 件" if pieces is not None else "",
+                        str(category) if category is not None else "",
+                    )
+                    if value
+                )
+                subject = f"这笔 {details} 订单" if details else "这笔新增订单"
+                return f"{subject}的期望交付日期是什么时候？"
+            details = " ".join(
+                value
+                for value in (
+                    f"{pieces}-piece" if pieces is not None else "",
+                    str(category) if category is not None else "",
+                )
+                if value
+            )
+            subject = f"the {details} order" if details else "this additional order"
+            return f"What delivery date should I use for {subject}?"
+        if missing == ("category",):
+            if language == ResponseLanguage.CHINESE:
+                return (
+                    f"这笔 {pieces} 件订单属于哪个产品类别？"
+                    if pieces
+                    else "这笔订单属于哪个产品类别？"
+                )
+            return (
+                f"What product category is the {pieces}-piece order for?"
+                if pieces
+                else "What product category is this order for?"
+            )
+        if missing == ("pieces",):
+            if language == ResponseLanguage.CHINESE:
+                return f"这笔 {category or ''} 订单有多少件？".replace("  ", " ")
+            return f"How many pieces are in the {category or 'new'} order?"
+    if decision.intent.value == "morning_briefing" and "top_n" in missing:
+        return (
+            "你希望晨报列出多少项重点？"
+            if language == ResponseLanguage.CHINESE
+            else "How many priority items would you like in the briefing?"
+        )
+    labels = [_SLOT_LABELS[language].get(field, field) for field in missing]
+    if labels:
+        rendered = _join_labels(labels, language)
+        return (
+            f"请告诉我{rendered}。"
+            if language == ResponseLanguage.CHINESE
+            else f"Could you provide the {rendered}?"
+        )
+    return (
+        "请再说明一下你希望我处理的内容。"
+        if language == ResponseLanguage.CHINESE
+        else "Could you clarify what you would like me to check?"
+    )
+
+
+def _safe_status_message(record: dict[str, Any], language: ResponseLanguage) -> str:
+    """Explain a non-result without exposing planner or memory terminology."""
+
+    status = record.get("display_status")
+    task_status = record.get("task_status")
+    if status == "failed":
+        message = (
+            "抱歉，我现在无法完成这个查询。请稍后重试。"
+            if language == ResponseLanguage.CHINESE
+            else "Sorry, I couldn't complete this request right now. Please try again."
+        )
+        return _headline(message)
+    if status == "skipped" and task_status == "completed":
+        message = (
+            "这个请求之前已经完成，因此这次没有重复执行。"
+            if language == ResponseLanguage.CHINESE
+            else "This request was already completed, so I didn't run it again."
+        )
+        return _headline(message)
+    if status == "skipped" and task_status == "failed":
+        message = (
+            "这个请求之前没有成功完成。如果需要重试，请重新描述你的需求。"
+            if language == ResponseLanguage.CHINESE
+            else "This request wasn't completed earlier. Please restate it if you'd like to retry."
+        )
+        return _headline(message)
+    if status == "skipped":
+        message = (
+            "请求内容在处理过程中发生了变化，请重新发送一次。"
+            if language == ResponseLanguage.CHINESE
+            else "The request details changed while I was processing them. Please send it again."
+        )
+        return _headline(message)
+    if status in {"pending", "blocked", "clarification_required"}:
+        message = (
+            "继续处理前，我还需要一点信息。"
+            if language == ResponseLanguage.CHINESE
+            else "I need a little more information before I can continue."
+        )
+        return _headline(message)
+    message = (
+        "这次没有得到可验证的结果，请稍后重试。"
+        if language == ResponseLanguage.CHINESE
+        else "I couldn't produce a verified answer this time. Please try again."
+    )
+    return _headline(message)
+
+
+def render_user_text(metadata: dict[str, Any], language: ResponseLanguage) -> str:
+    """Render public conversation text from structured records.
+
+    Internal task IDs, enum names, planning notices, and exception details remain
+    available in metadata but never enter this user-facing string.
+    """
+
+    task_order = metadata.get("task_order", [])
+    task_records = metadata.get("tasks", {})
+    sections: list[tuple[str, list[str]]] = []
+    has_result = False
+    has_question = False
+    for task_id in task_order:
+        record = task_records.get(task_id)
+        if not isinstance(record, dict):
+            continue
+        parts: list[str] = []
+        source = record.get("reply")
+        if isinstance(source, dict):
+            source_text = source.get("text")
+            if isinstance(source_text, str) and source_text.strip():
+                parts.append(source_text.strip())
+                if not record.get("needs_clarification"):
+                    has_result = True
+        for question in record.get("clarification_questions", []):
+            if isinstance(question, str) and question.strip() and question.strip() not in parts:
+                parts.append(question.strip())
+                has_question = True
+        if not parts:
+            parts.append(_safe_status_message(record, language))
+        decision = record.get("current_decision") or record.get("decision") or {}
+        sections.append((_request_name(decision, language), parts))
+
+    global_questions = [
+        item.get("question", "").strip()
+        for item in metadata.get("clarification_questions", [])
+        if item.get("task_id") is None
+        and item.get("required")
+        and isinstance(item.get("question"), str)
+        and item.get("question", "").strip()
+    ]
+    if not sections:
+        if global_questions:
+            conclusion = (
+                "继续处理前，我需要你先确认一件事。"
+                if language == ResponseLanguage.CHINESE
+                else "I need you to clarify one thing before I can continue."
+            )
+            return _headline(conclusion) + "\n\n" + "\n\n".join(dict.fromkeys(global_questions))
+        message = (
+            "这次没有需要处理的新请求。"
+            if language == ResponseLanguage.CHINESE
+            else "There isn't a new request to handle yet."
+        )
+        return _headline(message)
+    if len(sections) == 1 and not global_questions:
+        only_record = next(
+            (
+                task_records.get(task_id)
+                for task_id in task_order
+                if isinstance(task_records.get(task_id), dict)
+            ),
+            None,
+        )
+        if (
+            isinstance(only_record, dict)
+            and not isinstance(only_record.get("reply"), dict)
+            and only_record.get("clarification_questions")
+        ):
+            conclusion = (
+                "继续处理前，我还需要一点信息。"
+                if language == ResponseLanguage.CHINESE
+                else "I need one more detail before I can continue."
+            )
+            return _headline(conclusion) + "\n\n" + "\n\n".join(sections[0][1])
+        return "\n\n".join(sections[0][1])
+
+    if has_result and has_question:
+        intro = (
+            "我先处理了信息完整的部分，另外还需要补充一点信息："
+            if language == ResponseLanguage.CHINESE
+            else "I completed what I could and need one more detail for the rest:"
+        )
+    elif has_question:
+        intro = (
+            "继续处理前，我还需要这些信息："
+            if language == ResponseLanguage.CHINESE
+            else "I need a couple of details before I can continue:"
+        )
+    else:
+        intro = (
+            "我分别处理了这些内容："
+            if language == ResponseLanguage.CHINESE
+            else "Here's what I found:"
+        )
+    lines = [_headline(intro)]
+    for index, (name, parts) in enumerate(sections, 1):
+        lines.append(
+            f"{index}. {name}：{' '.join(parts)}"
+            if language == ResponseLanguage.CHINESE
+            else f"{index}. {name}: {' '.join(parts)}"
+        )
+    lines.extend(global_questions)
+    return "\n\n".join(lines)
+
+
+def render_suggested_question(metadata: dict[str, Any], language: ResponseLanguage) -> str | None:
+    """Keep task association in metadata while presenting business context to users."""
+
+    required = [
+        item
+        for item in metadata.get("clarification_questions", [])
+        if item.get("required") and isinstance(item.get("question"), str)
+    ]
+    if not required:
+        return None
+    if len(required) == 1:
+        return required[0]["question"]
+    records = metadata.get("tasks", {})
+    rendered = []
+    for item in required:
+        question = item["question"]
+        record = records.get(item.get("task_id"))
+        if isinstance(record, dict):
+            decision = record.get("current_decision") or record.get("decision") or {}
+            name = _request_name(decision, language)
+            line = (
+                f"{name}：{question}"
+                if language == ResponseLanguage.CHINESE
+                else f"{name}: {question}"
+            )
+        else:
+            line = question
+        if line not in rendered:
+            rendered.append(line)
+    return "\n".join(rendered) or None
 
 
 def _index(items: Sequence[Any], name: str) -> dict[str, Any]:
@@ -135,20 +449,7 @@ def _task_questions(
         return False, questions
     if not questions:
         missing = tuple(dict.fromkeys(slot for notice in notices for slot in notice.missing_slots))
-        if missing:
-            fields = ", ".join(missing)
-            question = (
-                f"请补充任务 {task_id} 的以下信息：{fields}。"
-                if language == ResponseLanguage.CHINESE
-                else f"Please provide the following information for task {task_id}: {fields}."
-            )
-        else:
-            question = (
-                f"请确认或补充任务 {task_id} 尚未明确的信息。"
-                if language == ResponseLanguage.CHINESE
-                else f"Please clarify the unresolved information for task {task_id}."
-            )
-        questions.append(question)
+        questions.append(_fallback_question(task.decision, missing, language))
     return True, questions
 
 
@@ -220,8 +521,6 @@ def aggregate_results(
             "unresolved_task_ids": list(execution.unresolved_task_ids),
         },
     )
-    sections = []
-    active_questions = []
     for task_id in requested:
         task = states[task_id]
         result = results.get(task_id)
@@ -250,8 +549,6 @@ def aggregate_results(
                     "required": needs_information,
                 }
             )
-            if needs_information:
-                active_questions.append(f"[{task_id}] {question}")
 
         # Keep every source field in a separate namespace; never flatten metadata.
         aggregated.metadata["tasks"][task_id] = {
@@ -270,32 +567,10 @@ def aggregate_results(
             "needs_clarification": needs_information,
             "clarification_questions": list(questions),
         }
-        task_label = "任务" if language == ResponseLanguage.CHINESE else "Task"
-        lines = [
-            f"{task_label} {task_id} ({decision.intent.value}) — "
-            f"{_LABELS[language][display_status]}"
-        ]
         if result and result.reply:
-            lines.append(result.reply.text)
             aggregated.evidence.extend(deepcopy(result.reply.evidence))
             aggregated.warnings.extend(deepcopy(result.reply.warnings))
             aggregated.assumptions.extend(deepcopy(result.reply.assumptions))
-        elif result and result.message:
-            lines.append(result.message)
-        if result is None or result.outcome == ExecutionOutcome.SKIPPED:
-            lines.extend(notice.message for notice in task_notices)
-        if needs_information:
-            lines.extend(questions)
-        sections.append("\n".join(lines))
-
-    aggregated.text = (
-        "\n\n".join(sections)
-        if sections
-        else (
-            "本次没有请求处理的任务。"
-            if language == ResponseLanguage.CHINESE
-            else "No tasks were requested."
-        )
-    )
-    aggregated.suggested_question = "\n".join(active_questions) or None
+    aggregated.text = render_user_text(aggregated.metadata, language)
+    aggregated.suggested_question = render_suggested_question(aggregated.metadata, language)
     return aggregated

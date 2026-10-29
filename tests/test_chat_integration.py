@@ -30,13 +30,27 @@ def task(intent="order_status", **slots):
     return {"intent": intent, **slots}
 
 
-def payload(*tasks, updates=(), issues=(), language="en", ambiguous=False):
+def payload(
+    *tasks,
+    updates=(),
+    issues=(),
+    language="en",
+    ambiguous=False,
+    mode="business",
+    needs_clarification=False,
+    clarification_question=None,
+    conversation_response=None,
+):
     return {
+        "mode": mode,
         "tasks": list(tasks),
         "slot_updates": list(updates),
         "issues": list(issues),
         "language": language,
         "is_ambiguous": ambiguous,
+        "needs_clarification": needs_clarification,
+        "clarification_question": clarification_question,
+        "conversation_response": conversation_response or {"conclusion": None, "explanation": None},
     }
 
 
@@ -54,6 +68,65 @@ def test_single_workflow_exposes_real_result_and_source_rows():
     assert result.reply.metadata["structured_result"]["order_id"] == "ORD-057"
     assert result.reply.evidence[0].reference == "ORD-057"
     assert len(executor.calls) == 1
+
+
+def test_natural_product_alias_reaches_business_tool_as_canonical_category():
+    agent, _, executor = service(
+        payload(
+            task(
+                "order_feasibility",
+                category="TOPS",
+                pieces=800,
+                requested_delivery_date="2026-04-25",
+            )
+        )
+    )
+
+    result = agent.handle_turn("Can we accept 800 hoodies by 2026-04-25?")
+
+    assert result.session.state.tasks[0].decision.slots["category"] == "TOPS"
+    assert executor.calls[0].slots["category"] == "TOPS"
+
+
+def test_direct_conversation_answer_does_not_create_or_replay_business_tasks():
+    agent, _, executor = service(
+        payload(task("order_feasibility", category="TOPS", pieces=800)),
+        payload(
+            mode="conversation",
+            language="zh",
+            conversation_response={
+                "conclusion": "订单号通常写成 ORD-057。",
+                "explanation": "这是系统使用的标准订单号格式。",
+            },
+        ),
+    )
+    first = agent.handle_turn("Assess 800 TOPS")
+
+    second = agent.handle_turn("订单格式长什么样？", first.session)
+
+    assert "ORD-057" in second.reply.text
+    assert second.reply.metadata["intent"] == "conversation"
+    assert second.session == first.session
+    assert len(second.session.state.tasks) == 1
+    assert executor.calls == []
+
+
+def test_model_clarification_question_is_used_for_incomplete_request():
+    question = "What delivery date should I use for the 800-piece TOPS order?"
+    agent, _, executor = service(
+        payload(
+            task("order_feasibility", category="TOPS", pieces=800),
+            needs_clarification=True,
+            clarification_question=question,
+        )
+    )
+
+    result = agent.handle_turn("Can we accept 800 hoodies?")
+
+    assert result.reply.needs_clarification is True
+    assert result.reply.suggested_question == question
+    assert question in result.reply.text
+    assert executor.calls == []
 
 
 def test_two_workflows_keep_request_order_and_complete_evidence():

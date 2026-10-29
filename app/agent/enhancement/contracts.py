@@ -41,6 +41,9 @@ class UnderstandingResult:
     language: ResponseLanguage = ResponseLanguage.ENGLISH
     issues: list[InterpretationIssue] = field(default_factory=list)
     slot_updates: list["SlotUpdate"] = field(default_factory=list)
+    needs_clarification: bool = False
+    clarification_question: str | None = None
+    direct_response: str | None = None
 
 
 class TaskStatus(str, Enum):

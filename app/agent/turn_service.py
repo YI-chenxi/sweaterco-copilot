@@ -63,6 +63,17 @@ class ConversationTurnService:
     def handle_turn(self, text: str, session: ChatSession | None = None) -> TurnResult:
         current = deepcopy(session) if session is not None else ChatSession()
         understood = self.parser.parse(text, context=deepcopy(current.state))
+        if understood.direct_response is not None:
+            unchanged = deepcopy(session) if session is not None else ChatSession()
+            reply = AgentReply(
+                text=understood.direct_response,
+                metadata={
+                    "intent": "conversation",
+                    "language": understood.language.value,
+                    "conversation_mode": "direct",
+                },
+            )
+            return TurnResult(reply, unchanged)
         current.state.language = understood.language
         new_ids = []
         for decision in understood.decisions:
@@ -165,6 +176,18 @@ class ConversationTurnService:
             if problem.issue is not None:
                 _remember_issue(current, problem.issue)
         reply = result.reply
+        if (
+            understood.needs_clarification
+            and understood.clarification_question
+            and reply.needs_clarification
+        ):
+            previous_question = reply.suggested_question
+            reply.suggested_question = understood.clarification_question
+            if previous_question and previous_question in reply.text:
+                reply.text = reply.text.replace(
+                    previous_question, understood.clarification_question
+                )
+            reply.metadata["model_clarification_question"] = understood.clarification_question
         reply.metadata["language"] = understood.language.value
         reply.metadata["conversation_mode"] = "enhanced"
         reply.metadata["global_blockers"] = bool(current.global_issues)

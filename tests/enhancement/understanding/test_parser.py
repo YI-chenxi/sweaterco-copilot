@@ -30,7 +30,11 @@ def task(intent="unknown", **overrides):
 
 def payload(*tasks, **overrides):
     result = {
+        "mode": "business",
         "language": "en",
+        "needs_clarification": False,
+        "clarification_question": None,
+        "conversation_response": {"conclusion": None, "explanation": None},
         "is_ambiguous": False,
         "tasks": list(tasks),
         "slot_updates": [],
@@ -38,6 +42,17 @@ def payload(*tasks, **overrides):
     }
     result.update(overrides)
     return result
+
+
+def conversation(conclusion, explanation=None, *, language="en"):
+    return payload(
+        mode="conversation",
+        language=language,
+        conversation_response={
+            "conclusion": conclusion,
+            "explanation": explanation,
+        },
+    )
 
 
 def update(task_id, **overrides):
@@ -55,9 +70,7 @@ def update(task_id, **overrides):
 
 
 def test_parser_pre_normalizes_safe_order_id_before_model_call():
-    client = MockLLMClient(
-        [payload(task("order_status", order_id="ORD057"))]
-    )
+    client = MockLLMClient([payload(task("order_status", order_id="ORD057"))])
 
     result = EnhancedIntentParser(client).parse("How is ORD057?")
 
@@ -77,9 +90,7 @@ def test_parser_returns_two_independent_tasks_in_order():
         ]
     )
 
-    result = EnhancedIntentParser(client).parse(
-        "检查ORD-057，再看看Assembly是否正常"
-    )
+    result = EnhancedIntentParser(client).parse("检查ORD-057，再看看Assembly是否正常")
 
     assert [decision.intent for decision in result.decisions] == [
         Intent.ORDER_STATUS,
@@ -99,6 +110,159 @@ def test_parser_maps_packaging_alias_to_canonical_packing_stage():
 
     assert result.decisions[0].slots == {"stage": "PACKING"}
     assert result.issues == []
+
+
+def test_parser_accepts_natural_product_alias_as_canonical_category():
+    client = MockLLMClient(
+        [
+            payload(
+                task(
+                    "order_feasibility",
+                    category="TOPS",
+                    pieces=800,
+                    requested_delivery_date="2026-04-25",
+                )
+            )
+        ]
+    )
+
+    result = EnhancedIntentParser(client).parse("Can we accept 800 hoodies by 2026-04-25?")
+
+    assert result.decisions[0].slots["category"] == "TOPS"
+    assert "hoodie(s)" in client.calls[0]["system_prompt"]
+
+
+def test_parser_returns_direct_conversation_answer_without_business_task():
+    client = MockLLMClient(
+        [
+            conversation(
+                "订单号通常写成 ORD-057。",
+                "ORD057、ORD 057 和 ORD_057 也会被识别为同一个格式。",
+                language="zh",
+            )
+        ]
+    )
+
+    result = EnhancedIntentParser(client).parse("订单格式长什么样？")
+
+    assert result.direct_response == (
+        "**订单号通常写成 ORD-057。**\n\nORD057、ORD 057 和 ORD_057 也会被识别为同一个格式。"
+    )
+    assert result.decisions[0].intent == Intent.UNKNOWN
+    assert result.needs_clarification is False
+
+
+def test_parser_supplies_calendar_and_factory_snapshot_context_to_model():
+    client = MockLLMClient([conversation("Today is Thursday, October 29, 2026.")])
+
+    result = EnhancedIntentParser(client).parse("What day is it today?")
+
+    prompt = client.calls[0]["user_prompt"]
+    assert result.direct_response.startswith("**Today is Thursday")
+    assert '"current_date"' in prompt
+    assert '"current_weekday"' in prompt
+    assert '"timezone": "Asia/Shanghai"' in prompt
+    assert '"factory_snapshot_date": "2026-04-01"' in prompt
+
+
+def test_model_writes_followup_question_for_incomplete_business_request():
+    client = MockLLMClient(
+        [
+            payload(
+                task("order_feasibility", category="TOPS", pieces=800),
+                needs_clarification=True,
+                clarification_question=(
+                    "**Delivery date needed:** What delivery date should I use for "
+                    "the 800-piece TOPS order?"
+                ),
+            )
+        ]
+    )
+
+    result = EnhancedIntentParser(client).parse("Can we accept 800 hoodies?")
+
+    assert result.needs_clarification is True
+    assert result.clarification_question == (
+        "Delivery date needed: What delivery date should I use for the 800-piece TOPS order?"
+    )
+    assert result.decisions[0].missing_slots == ("requested_delivery_date",)
+
+
+def test_local_required_field_guard_overrides_model_no_clarification_decision():
+    client = MockLLMClient([payload(task("order_feasibility", category="TOPS", pieces=800))])
+
+    result = EnhancedIntentParser(client).parse("Can we accept 800 hoodies?")
+
+    assert result.needs_clarification is True
+    assert result.decisions[0].missing_slots == ("requested_delivery_date",)
+
+
+def test_parser_drops_spurious_model_invalid_format_for_locally_valid_value():
+    client = MockLLMClient(
+        [
+            payload(
+                task(
+                    "order_feasibility",
+                    category="TOPS",
+                    pieces=300,
+                    requested_delivery_date="2026-05-10",
+                ),
+                needs_clarification=True,
+                clarification_question="Please confirm the delivery date.",
+                issues=[
+                    {
+                        "issue_type": "invalid_format",
+                        "field": "requested_delivery_date",
+                        "original_value": "2026-05-10",
+                        "suggested_value": None,
+                        "decision_index": 0,
+                        "task_id": None,
+                    }
+                ],
+            )
+        ]
+    )
+
+    result = EnhancedIntentParser(client).parse("Can we squeeze in 300 TOPS for 2026-05-10?")
+
+    assert result.issues == []
+    assert result.needs_clarification is False
+
+
+def test_chinese_mixed_language_defaults_to_chinese_without_explicit_override():
+    client = MockLLMClient(
+        [
+            payload(
+                task("order_status", order_id="ORD-021"),
+                task("morning_briefing"),
+                language="en",
+            )
+        ]
+    )
+
+    result = EnhancedIntentParser(client).parse(
+        "Give me ORD-021 的状态，再来一份 morning briefing。"
+    )
+
+    assert result.language == ResponseLanguage.CHINESE
+    assert all(decision.language == ResponseLanguage.CHINESE for decision in result.decisions)
+
+
+def test_explicit_english_output_request_overrides_chinese_input_fallback():
+    client = MockLLMClient(
+        [
+            payload(
+                mode="conversation",
+                language="zh",
+                conversation_response={"conclusion": None, "explanation": None},
+            )
+        ]
+    )
+
+    result = EnhancedIntentParser(client).parse("把这段文字翻译成英文。")
+
+    assert result.language == ResponseLanguage.ENGLISH
+    assert result.decisions[0].intent == Intent.UNKNOWN
 
 
 def test_parser_drops_slots_that_do_not_belong_to_task():
@@ -134,9 +298,7 @@ def test_parser_recomputes_missing_slots_instead_of_trusting_model():
         ]
     )
 
-    result = EnhancedIntentParser(client).parse(
-        "Can we accept 800 pieces by 2026/4/25?"
-    )
+    result = EnhancedIntentParser(client).parse("Can we accept 800 pieces by 2026/4/25?")
 
     decision = result.decisions[0]
     assert decision.slots == {
@@ -160,9 +322,7 @@ def test_non_positive_quantity_becomes_issue_and_remains_missing():
         ]
     )
 
-    result = EnhancedIntentParser(client).parse(
-        "Can we accept 0 TOPS pieces by 2026-04-25?"
-    )
+    result = EnhancedIntentParser(client).parse("Can we accept 0 TOPS pieces by 2026-04-25?")
 
     assert result.decisions[0].missing_slots == ("pieces",)
     assert result.issues[0].issue_type == InterpretationIssueType.INVALID_FORMAT
@@ -198,9 +358,7 @@ def test_possible_order_id_typo_becomes_issue_not_silent_correction():
 
 
 def test_local_guard_removes_model_silent_typo_correction():
-    client = MockLLMClient(
-        [payload(task("order_status", order_id="ORD-057"), language="zh")]
-    )
+    client = MockLLMClient([payload(task("order_status", order_id="ORD-057"), language="zh")])
 
     result = EnhancedIntentParser(client).parse("请查询ODR057")
 
@@ -231,9 +389,7 @@ def test_local_guard_removes_model_silent_typo_update():
             )
         ]
     )
-    client = MockLLMClient(
-        [payload(slot_updates=[update("task-001", order_id="ORD-057")])]
-    )
+    client = MockLLMClient([payload(slot_updates=[update("task-001", order_id="ORD-057")])])
 
     result = EnhancedIntentParser(client).parse(
         "刚才那单是ODR057",
@@ -307,16 +463,12 @@ def test_slot_update_targets_existing_task_and_normalizes_value():
 
     assert result.decisions == []
     assert result.slot_updates[0].task_id == "task-002"
-    assert result.slot_updates[0].slots == {
-        "requested_delivery_date": "2026-04-25"
-    }
+    assert result.slot_updates[0].slots == {"requested_delivery_date": "2026-04-25"}
     assert "task-002" in client.calls[0]["user_prompt"]
 
 
 def test_unknown_slot_update_target_becomes_ambiguity_issue():
-    client = MockLLMClient(
-        [payload(slot_updates=[update("task-999", order_id="ORD-057")])]
-    )
+    client = MockLLMClient([payload(slot_updates=[update("task-999", order_id="ORD-057")])])
 
     result = EnhancedIntentParser(client).parse(
         "Use ORD-057 for that task",
@@ -325,9 +477,7 @@ def test_unknown_slot_update_target_becomes_ambiguity_issue():
 
     assert result.slot_updates == []
     assert result.is_ambiguous is True
-    assert result.issues[0].issue_type == (
-        InterpretationIssueType.AMBIGUOUS_REFERENCE
-    )
+    assert result.issues[0].issue_type == (InterpretationIssueType.AMBIGUOUS_REFERENCE)
 
 
 def test_affirmative_reply_confirms_one_persisted_typo_without_model_call():
@@ -358,9 +508,7 @@ def test_affirmative_reply_confirms_one_persisted_typo_without_model_call():
 
     result = EnhancedIntentParser(client).parse("是的", context=context)
 
-    assert result.slot_updates == [
-        SlotUpdate(task_id="task-001", slots={"order_id": "ORD-057"})
-    ]
+    assert result.slot_updates == [SlotUpdate(task_id="task-001", slots={"order_id": "ORD-057"})]
     assert client.calls == []
 
 

@@ -28,6 +28,20 @@ def _display(value: Any) -> str:
     return str(value)
 
 
+def _assessment(value: Any) -> str:
+    labels = {
+        "NORMAL": "On track",
+        "AT_RISK": "At risk",
+        "WATCH": "Needs attention",
+        "ABNORMAL": "Outside normal range",
+        "SUPPORTED": "Feasible with internal capacity",
+        "CONDITIONAL": "Conditionally feasible",
+        "NOT_SUPPORTED": "Not currently feasible",
+    }
+    raw = _display(value)
+    return labels.get(raw, raw.replace("_", " ").title())
+
+
 def metrics_for_reply(reply: AgentReply) -> list[ResultMetric]:
     """Render only backend-provided structured results; never invent values."""
     intent = reply.metadata.get("intent")
@@ -38,21 +52,21 @@ def metrics_for_reply(reply: AgentReply) -> list[ResultMetric]:
         derived = raw.get("derived_metrics", {})
         return [
             ResultMetric("Order", _display(raw.get("order_id"))),
-            ResultMetric("Assessment", _display(raw.get("judgement"))),
+            ResultMetric("Assessment", _assessment(raw.get("judgement"))),
             ResultMetric("Days to due", _display(derived.get("days_to_due"))),
             ResultMetric("Days since activity", _display(derived.get("days_since_activity"))),
         ]
     if intent == Intent.PRODUCTION_NORMALITY.value:
         return [
             ResultMetric("Stage", _display(raw.get("stage"))),
-            ResultMetric("Assessment", _display(raw.get("judgement"))),
+            ResultMetric("Assessment", _assessment(raw.get("judgement"))),
             ResultMetric("Baseline / day", _display(raw.get("historical_baseline"))),
             ResultMetric("Recent / day", _display(raw.get("recent_performance"))),
             ResultMetric("Deviation", f"{_display(raw.get('deviation_pct'))}%"),
         ]
     if intent == Intent.ORDER_FEASIBILITY.value:
         return [
-            ResultMetric("Estimate", _display(raw.get("estimate"))),
+            ResultMetric("Estimate", _assessment(raw.get("estimate"))),
             ResultMetric("Production days", _display(raw.get("working_days"))),
         ]
     if intent == Intent.MORNING_BRIEFING.value:
@@ -96,9 +110,7 @@ def evidence_csv(reply: AgentReply) -> str:
     return buf.getvalue()
 
 
-def guided_decision(
-    workflow: str, *, language: str = "en", **values: Any
-) -> IntentDecision:
+def guided_decision(workflow: str, *, language: str = "en", **values: Any) -> IntentDecision:
     """Create an explicit, user-supplied decision for offline A1/A2 workflows.
 
     This is *not* natural-language parsing and does not use the LLM.

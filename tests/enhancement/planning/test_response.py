@@ -60,8 +60,11 @@ def test_two_successful_tasks_preserve_original_requested_order_and_business_con
     planning, batch = run_batch([task(), task("second")], ids, replies)
     reply = aggregate(planning, batch, ids)
     assert isinstance(reply, AgentReply)
-    assert reply.text.index("Task second") < reply.text.index("Task first")
+    assert reply.text.index("Original conclusion second") < reply.text.index(
+        "Original conclusion first"
+    )
     assert all(source.text in reply.text for source in replies)
+    assert "Task second" not in reply.text
     assert reply.metadata["task_order"] == ids
     assert list(reply.metadata["tasks"]) == ids
     assert reply.metadata["tasks"]["second"]["execution_outcome"] == "success"
@@ -75,14 +78,40 @@ def test_pending_before_successful_task_keeps_interleaved_order_and_missing_fiel
     ids = ["waiting", "first"]
     planning, batch = run_batch([task(), pending], ids, [source_reply()])
     reply = aggregate(planning, batch, ids)
-    assert reply.text.index("Task waiting") < reply.text.index("Task first")
+    assert reply.text.index("product category") < reply.text.index("Original conclusion first")
     assert reply.metadata["tasks"]["waiting"]["intent"] == "order_feasibility"
     assert reply.metadata["tasks"]["waiting"]["display_status"] == "pending"
     assert reply.metadata["tasks"]["waiting"]["reply"] is None
     assert reply.needs_clarification is True
-    assert "category" in reply.suggested_question
-    assert "requested_delivery_date" in reply.suggested_question
+    assert "product category" in reply.suggested_question
+    assert "delivery date" in reply.suggested_question
+    assert "requested_delivery_date" not in reply.text
     assert reply.evidence == source_reply().evidence
+
+
+def test_public_clarification_hides_internal_trace_but_metadata_keeps_it():
+    pending = TaskState(
+        "task-001",
+        IntentDecision(Intent.ORDER_FEASIBILITY, {"category": "TOPS", "pieces": 800}),
+    )
+    planning, batch = run_batch([pending], ["task-001"], [])
+
+    reply = aggregate(planning, batch, ["task-001"])
+
+    for internal_term in (
+        "task-001",
+        "PENDING",
+        "READY",
+        "planner",
+        "order_feasibility",
+        "requested_delivery_date",
+        "upstream validation",
+    ):
+        assert internal_term not in reply.text
+        assert internal_term not in (reply.suggested_question or "")
+    record = reply.metadata["tasks"]["task-001"]
+    assert record["task_status"] == "pending"
+    assert any(notice["code"] == "pending" for notice in record["notices"])
 
 
 def test_success_and_technical_failure_preserve_both_results_without_requesting_clarification():
@@ -91,8 +120,8 @@ def test_success_and_technical_failure_preserve_both_results_without_requesting_
         [task(), task("second")], ["first", "second"], [source_reply(), failure]
     )
     reply = aggregate(planning, batch)
-    assert "Execution failed" in reply.text
     assert failure.text in reply.text
+    assert "Execution failed" not in reply.text
     assert reply.metadata["tasks"]["second"]["task_status"] == "failed"
     assert reply.metadata["tasks"]["second"]["reply"] == asdict(failure)
     assert reply.needs_clarification is False
@@ -117,7 +146,7 @@ def test_clarification_required_reply_preserves_original_question_and_state():
     planning, batch = run_batch([task()], ["first"], [original])
     reply = aggregate(planning, batch, ["first"])
     assert reply.needs_clarification is True
-    assert reply.suggested_question == f"[first] {question}"
+    assert reply.suggested_question == question
     assert reply.metadata["tasks"]["first"]["reply"] == asdict(original)
     assert reply.metadata["tasks"]["first"]["task_status"] == "ready"
     assert reply.metadata["unresolved_task_ids"] == ["first"]
@@ -128,8 +157,8 @@ def test_two_clarification_questions_keep_associations_even_when_identical():
     planning, batch = run_batch([task(), task("second")], ["first", "second"], [original, original])
     reply = aggregate(planning, batch)
     assert reply.suggested_question.splitlines() == [
-        "[first] Please confirm.",
-        "[second] Please confirm.",
+        "Order first: Please confirm.",
+        "Order second: Please confirm.",
     ]
     assert reply.metadata["clarification_questions"] == [
         {"task_id": "first", "question": "Please confirm.", "required": True},
@@ -142,7 +171,8 @@ def test_clarification_without_suggested_question_uses_explicit_generic_fallback
     planning, batch = run_batch([task()], ["first"], [original])
     reply = aggregate(planning, batch, ["first"])
     assert reply.needs_clarification is True
-    assert "first" in reply.suggested_question
+    assert reply.suggested_question == "Could you clarify what you would like me to check?"
+    assert "task" not in reply.suggested_question.lower()
     assert original.text in reply.text
     assert reply.metadata["tasks"]["first"]["reply"]["suggested_question"] is None
 
@@ -151,7 +181,8 @@ def test_no_data_is_explicit_and_not_automatically_a_clarification_request():
     original = source_reply(metadata={"intent": "order_status", "status": "empty"})
     planning, batch = run_batch([task()], ["first"], [original])
     reply = aggregate(planning, batch, ["first"])
-    assert "No data returned" in reply.text
+    assert reply.text == original.text
+    assert "No data returned" not in reply.text
     assert reply.needs_clarification is False
     assert reply.suggested_question is None
     assert reply.metadata["tasks"]["first"]["execution_outcome"] == "no_data"
@@ -164,8 +195,8 @@ def test_no_data_does_not_hide_other_tasks_actual_information_need():
     planning, batch = run_batch([task(), pending], ["first", "second"], [empty])
     reply = aggregate(planning, batch)
     assert reply.needs_clarification is True
-    assert "[second]" in reply.suggested_question
-    assert "[first]" not in reply.suggested_question
+    assert reply.suggested_question == "Could you clarify what you would like me to check?"
+    assert "[second]" not in reply.suggested_question
 
 
 def test_inactive_source_question_is_preserved_without_promoting_failure_to_clarification():
@@ -208,7 +239,8 @@ def test_stale_task_skipped_after_planning_retains_original_and_current_decision
     assert entry["execution_outcome"] == "skipped"
     assert entry["decision"]["slots"]["order_id"] == "first"
     assert entry["current_decision"]["slots"]["order_id"] == "changed"
-    assert "changed since planning" in reply.text
+    assert "details changed" in reply.text
+    assert "planning" not in reply.text.lower()
     assert reply.needs_clarification is False
     handler.handle.assert_not_called()
 
@@ -220,7 +252,8 @@ def test_stale_task_with_missing_fields_is_a_genuine_information_need():
     batch = execute_plan(state, planning, Mock(spec=["handle"]))
     reply = aggregate(planning, batch, ["first"])
     assert reply.needs_clarification is True
-    assert "order_id" in reply.suggested_question
+    assert reply.suggested_question == "Which order would you like me to check?"
+    assert "order_id" not in reply.suggested_question
 
 
 def test_all_source_fields_and_duplicate_items_preserve_ownership_and_order():
@@ -266,16 +299,14 @@ def test_aggregation_and_editing_output_cannot_mutate_any_input():
     assert (planning, batch, original, ids) == before
 
 
-@pytest.mark.parametrize(
-    "language, marker",
-    [(ResponseLanguage.CHINESE, "已完成"), (ResponseLanguage.ENGLISH, "Completed")],
-)
-def test_requested_language_localizes_labels_but_preserves_original_content(language, marker):
+@pytest.mark.parametrize("language", [ResponseLanguage.CHINESE, ResponseLanguage.ENGLISH])
+def test_requested_language_preserves_source_content_without_internal_status(language):
     original = source_reply(text="CONDITIONAL：有条件可行，原文不得改写。")
     planning, batch = run_batch([task()], ["first"], [original])
     reply = aggregate(planning, batch, ["first"], language)
-    assert marker in reply.text
     assert original.text in reply.text
+    assert "Completed" not in reply.text
+    assert "已完成" not in reply.text
     assert reply.metadata["language"] == language.value
 
 
@@ -293,7 +324,7 @@ def test_empty_request_with_unrelated_history_produces_empty_reply():
     planning = PlanningResult()
     batch = ExecutionBatch(ConversationState(tasks=[task("unrelated")]))
     reply = aggregate(planning, batch, [])
-    assert reply.text == "No tasks were requested."
+    assert reply.text == "**There isn't a new request to handle yet.**"
     assert reply.metadata["tasks"] == {}
     assert reply.metadata["task_order"] == []
     assert reply.needs_clarification is False
@@ -412,12 +443,16 @@ def test_two_waiting_tasks_get_separate_questions_in_requested_order():
     second = TaskState("second", IntentDecision(Intent.PRODUCTION_NORMALITY))
     planning, batch = run_batch([first, second], ["second", "first"], [])
     reply = aggregate(planning, batch, ["second", "first"], ResponseLanguage.CHINESE)
-    assert "等待补充信息或校验" in reply.text
-    assert reply.suggested_question.index("[second]") < reply.suggested_question.index("[first]")
+    assert "你想检查哪个生产工序" in reply.text
+    assert "你想查询哪个订单" in reply.text
+    assert reply.suggested_question.index("生产情况检查") < reply.suggested_question.index(
+        "订单查询"
+    )
+    assert "[second]" not in reply.suggested_question
     questions = reply.metadata["clarification_questions"]
     assert [question["task_id"] for question in questions] == ["second", "first"]
-    assert "stage" in questions[0]["question"]
-    assert "order_id" in questions[1]["question"]
+    assert "生产工序" in questions[0]["question"]
+    assert "订单" in questions[1]["question"]
     assert reply.evidence == []
 
 
@@ -426,7 +461,9 @@ def test_result_storage_order_does_not_change_requested_display_or_source_item_o
     planning, batch = run_batch([task(), task("second")], ["second", "first"], originals)
     batch = replace(batch, results=tuple(reversed(batch.results)))
     reply = aggregate(planning, batch, ["second", "first"])
-    assert reply.text.index("Task second") < reply.text.index("Task first")
+    assert reply.text.index("Original conclusion second") < reply.text.index(
+        "Original conclusion first"
+    )
     assert reply.evidence == originals[0].evidence + originals[1].evidence
     assert reply.warnings == originals[0].warnings + originals[1].warnings
     assert reply.assumptions == originals[0].assumptions + originals[1].assumptions
