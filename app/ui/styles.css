@@ -9,7 +9,7 @@
 html,body,[class*="css"]{font-family:"Segoe UI",Inter,Arial,sans-serif!important}
 [data-testid="stAppViewContainer"]{background:#f8fbfc;color:var(--sc-ink)}
 [data-testid="stHeader"]{background:rgba(248,251,252,.82);backdrop-filter:blur(10px)}
-.block-container{max-width:1550px;padding:1.35rem 1.6rem 2.5rem}
+.block-container{max-width:1550px;padding:4rem 1.6rem 2.5rem}
 [data-testid="stCaptionContainer"]{color:var(--sc-gray)!important}
 [data-testid="stMarkdownContainer"] p{line-height:1.55}
 
@@ -81,20 +81,11 @@ button[kind="primary"]:hover{background:#04635e!important;border-color:#04635e!i
 [data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]){background:#f0f6f8}
 [data-testid="stChatMessage"] [data-testid="stChatMessageAvatarUser"]{background:#a6c1d3}
 [data-testid="stChatMessage"] [data-testid="stChatMessageAvatarAssistant"]{background:#0a8079;color:white}
-.sc-answer-banner{border-radius:11px;padding:.78rem 1rem;margin:0 0 .9rem;
- border:1px solid #c2d9df;background:#f3f8fb}
-.sc-answer-banner.good{background:#ecf9f5;border-color:#9edccc}
-.sc-answer-banner.caution{background:#fff7ed;border-color:#f0d2aa}
-.sc-answer-banner.neutral{background:#f1f7fa;border-color:#c8dbe3}
-.sc-answer-banner small{display:block;font-size:.58rem;letter-spacing:.12em;font-weight:780;color:#607986;margin-bottom:.2rem}
-.sc-answer-banner strong{display:block;font-size:1.05rem;letter-spacing:-.018em;color:#203c49}
 .sc-mini-label{font-size:.65rem;letter-spacing:.08em;color:#52757f;font-weight:750;margin:.85rem 0 .53rem}
 [data-testid="stMetric"]{background:#fbfefe;border:1px solid #cfdee3;border-radius:10px;
  padding:.66rem .75rem;min-height:100%;overflow:hidden}
 [data-testid="stMetricLabel"]{color:#657f8a;font-size:.69rem;font-weight:650}
 [data-testid="stMetricValue"]{color:#1b3a49;font-weight:760;letter-spacing:-.03em;font-size:1.22rem}
-.sc-next-step{background:#eef5ff;border:1px solid #d0dff4;color:#335474;border-radius:9px;
- padding:.73rem .85rem;font-size:.77rem;margin-top:.8rem}
 .sc-footnote{border-top:1px solid #d2e0e4;color:#88a0a9;padding:.92rem 0 0;margin-top:1.4rem;
  font-size:.58rem;letter-spacing:.12em;font-weight:700}
 [data-testid="stExpander"]{border:1px solid #ccdade!important;border-radius:10px!important;background:#fff}
@@ -102,7 +93,7 @@ button[kind="primary"]:hover{background:#04635e!important;border-color:#04635e!i
 [data-testid="stDataFrame"]{border-radius:9px}
 
 /* Right contextual detail rail */
-.sc-details-title{margin:.26rem 0 .7rem;padding:.58rem .15rem;font-size:.78rem;font-weight:800;letter-spacing:.1em;color:#1e4855;
+.sc-details-title{margin:0 0 .7rem;padding:.58rem .15rem;font-size:.78rem;line-height:1.35;font-weight:800;letter-spacing:.1em;color:#1e4855;
  border-bottom:2px solid #0a8b82}
 @media(max-width:1200px){.block-container{padding-left:.75rem;padding-right:.75rem}.sc-hero{padding:1rem}.sc-hero h1{font-size:1.38rem}}
 @media(max-width:750px){.sc-hero{margin-top:.25rem}.sc-label span{display:block;margin-left:0;margin-top:.16rem}}

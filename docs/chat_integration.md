@@ -3,6 +3,39 @@
 The Streamlit AI Chat now calls `AgentService.handle_turn(text, session)`.
 The existing `handle_text(text)` interface remains unchanged for previous clients.
 
+## Final answer wording
+
+API-backed sessions make one additional structured `gpt-6-luna` call after the
+deterministic business result is complete. The model receives only the public
+draft answer and its language/clarification flags; it does not receive raw
+Evidence rows, task IDs, planning notices, or the full metadata payload.
+
+The editor must lead with a bold conclusion and preserve every number, date,
+order ID, qualification, and requested follow-up. Local checks reject changed
+facts, language changes, missing clarification questions, and internal system
+terms. Any model or validation failure returns the deterministic draft unchanged.
+Offline and explicitly constructed test services do not enable this extra call
+unless an `AnswerPolisher` is injected.
+
+## Flexible understanding
+
+The enhanced parser uses one structured model call with the SweaterCo intent
+catalogue, required fields, category and production-stage aliases, order-ID
+rules, conversation context, current Asia/Shanghai date, and the fixed factory
+snapshot date. Natural terms such as `hoodie`/`卫衣` map to `TOPS`; the returned
+slots still pass through deterministic normalization and validation.
+
+The result has two modes. `business` returns one or two task decisions, optional
+slot updates, issues, and a proposed clarification question. `conversation`
+returns a direct answer for greetings, supported-format questions, capability
+help, light small talk, and calendar questions without creating a task or
+changing task memory. Business facts are never guessed in conversation mode.
+
+The model may decide that a follow-up is useful and word the question naturally.
+Local checks remain authoritative: missing required fields, invalid values, and
+order-ID typo candidates still force clarification, while a model's spurious
+format warning is discarded when a local normalizer proves the value valid.
+
 ## Ownership and data flow
 
 - `app/agent/turn_service.py` is the integration boundary. It reuses EnhancedIntentParser, Memory, validated updates, and Person 4's `run_validated_tasks()`.

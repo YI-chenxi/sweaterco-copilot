@@ -172,15 +172,17 @@ def _issue_problem(
     elif issue.issue_type == InterpretationIssueType.AMBIGUOUS_REFERENCE:
         question = _text(
             language,
-            "你指的是哪个任务？请提供任务编号，或说明订单号／任务内容。",
-            "Which task do you mean? Please specify its task ID, order ID, or description.",
+            "你想继续处理哪一个请求？请说明订单号或要处理的业务内容。",
+            "Which request would you like to continue? Please mention the order number "
+            "or describe what you want to check.",
         )
         reason = _text(language, "无法确定目标任务。", "The target task is unresolved.")
     elif issue.issue_type == InterpretationIssueType.TOO_MANY_TASKS:
         question = _text(
             language,
-            "请将请求拆分为每次最多两个业务任务。",
-            "Please split this request into at most two business tasks per message.",
+            "我一次最多可以处理两个请求。请重新发送你想优先处理的两个。",
+            "I can handle up to two requests at a time. Please resend the two you "
+            "would like me to handle first.",
         )
         reason = _text(
             language, "超过本轮两个任务的上限。", "The request exceeds the two-task limit."
@@ -191,6 +193,75 @@ def _issue_problem(
     return ClarificationProblem(
         issue.task_id, issue.field, issue.issue_type.value, reason, question, deepcopy(issue)
     )
+
+
+def _missing_question(task: TaskState, field: str, language: ResponseLanguage) -> str:
+    """Ask for missing information in the language of the business request."""
+
+    slots = task.decision.slots
+    if task.decision.intent == Intent.ORDER_STATUS and field == "order_id":
+        return _text(language, "你想查询哪个订单？", "Which order would you like me to check?")
+    if task.decision.intent == Intent.PRODUCTION_NORMALITY and field == "stage":
+        return _text(
+            language,
+            "你想检查哪个生产工序？",
+            "Which production stage would you like me to check?",
+        )
+    if task.decision.intent == Intent.MORNING_BRIEFING and field == "top_n":
+        return _text(
+            language,
+            "你希望晨报列出多少项重点？",
+            "How many priority items would you like in the briefing?",
+        )
+    if task.decision.intent == Intent.ORDER_FEASIBILITY:
+        pieces = slots.get("pieces")
+        category = slots.get("category")
+        if field == "requested_delivery_date":
+            zh_details = " ".join(
+                value
+                for value in (
+                    f"{pieces} 件" if pieces is not None else "",
+                    str(category) if category is not None else "",
+                )
+                if value
+            )
+            en_details = " ".join(
+                value
+                for value in (
+                    f"{pieces}-piece" if pieces is not None else "",
+                    str(category) if category is not None else "",
+                )
+                if value
+            )
+            return _text(
+                language,
+                f"这笔 {zh_details} 订单的期望交付日期是什么时候？"
+                if zh_details
+                else "这笔新增订单的期望交付日期是什么时候？",
+                f"What delivery date should I use for the {en_details} order?"
+                if en_details
+                else "What delivery date should I use for this additional order?",
+            )
+        if field == "category":
+            return _text(
+                language,
+                f"这笔 {pieces} 件订单属于哪个产品类别？"
+                if pieces
+                else "这笔订单属于哪个产品类别？",
+                f"What product category is the {pieces}-piece order for?"
+                if pieces
+                else "What product category is this order for?",
+            )
+        if field == "pieces":
+            return _text(
+                language,
+                f"这笔 {category} 订单有多少件？" if category else "这笔订单有多少件？",
+                f"How many pieces are in the {category} order?"
+                if category
+                else "How many pieces are in this order?",
+            )
+    label = _field_label(field, language)
+    return _text(language, f"请告诉我{label}。", f"Could you provide the {label}?")
 
 
 def normalize_slot(field: str, value: Any, policy: ValidationPolicy) -> Any:
@@ -254,7 +325,7 @@ def _validate_task(
                 field,
                 "missing_slot",
                 _text(language, f"缺少{label}。", f"Missing {label}."),
-                _text(language, f"请补充{label}。", f"Please provide the {label}."),
+                _missing_question(task, field, language),
             )
         )
         covered_fields.add(field)

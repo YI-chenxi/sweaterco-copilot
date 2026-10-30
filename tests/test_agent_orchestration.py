@@ -1,19 +1,50 @@
 """Real-data end-to-end tests for the first deterministic B-agent iteration."""
 
-from app.agent.intents import Intent, IntentDecision
+import pytest
+
+from app.agent.intents import Intent, IntentDecision, ResponseLanguage
 from app.agent.orchestrator import AgentOrchestrator
 
 
+@pytest.mark.parametrize(
+    "decision",
+    [
+        IntentDecision(Intent.ORDER_STATUS, {"order_id": "ORD-057"}),
+        IntentDecision(Intent.PRODUCTION_NORMALITY, {"stage": "ASSEMBLY"}),
+        IntentDecision(Intent.MORNING_BRIEFING, {"top_n": 3}),
+        IntentDecision(
+            Intent.ORDER_FEASIBILITY,
+            {
+                "category": "TOPS",
+                "pieces": 800,
+                "requested_delivery_date": "2026-04-25",
+            },
+        ),
+        IntentDecision(Intent.ORDER_FEASIBILITY, {"pieces": 800}),
+        IntentDecision(Intent.UNKNOWN),
+        IntentDecision(
+            Intent.ORDER_STATUS,
+            {"order_id": "ORD-057"},
+            language=ResponseLanguage.CHINESE,
+        ),
+    ],
+)
+def test_every_workflow_leads_with_a_bold_plain_language_conclusion(decision):
+    reply = AgentOrchestrator().handle(decision)
+
+    assert reply.text.startswith("**")
+    assert reply.text.find("**", 2) > 2
+
+
 def test_order_status_pipeline_uses_real_order_and_preserves_evidence():
-    reply = AgentOrchestrator().handle(
-        IntentDecision(Intent.ORDER_STATUS, {"order_id": "ORD-057"})
-    )
+    reply = AgentOrchestrator().handle(IntentDecision(Intent.ORDER_STATUS, {"order_id": "ORD-057"}))
 
     result = reply.metadata["structured_result"]
     assert result["judgement"] == "NORMAL"
     assert result["rule_version"] == "ORDER_RISK_V1"
     assert reply.evidence[0].reference == "ORD-057"
-    assert "NORMAL" in reply.text
+    assert "does not currently show a delivery risk" in reply.text
+    assert "NORMAL" not in reply.text
 
 
 def test_production_normality_pipeline_uses_real_production_data():
@@ -56,14 +87,13 @@ def test_feasibility_pipeline_preserves_conditional_result_and_assumptions():
     assert result["working_days"] == 21
     assert reply.metadata["source_assumptions"] == result["assumptions"]
     assert reply.assumptions[0] == "Sundays are excluded from production days"
-    assert "CONDITIONAL" in reply.text
+    assert "may be feasible" in reply.text
+    assert "CONDITIONAL" not in reply.text
     assert reply.evidence
 
 
 def test_missing_slots_returns_clarification_without_running_pipeline():
-    reply = AgentOrchestrator().handle(
-        IntentDecision(Intent.ORDER_FEASIBILITY, {"pieces": 800})
-    )
+    reply = AgentOrchestrator().handle(IntentDecision(Intent.ORDER_FEASIBILITY, {"pieces": 800}))
 
     assert reply.needs_clarification is True
     assert reply.metadata["missing_slots"] == ["category", "requested_delivery_date"]
@@ -71,9 +101,7 @@ def test_missing_slots_returns_clarification_without_running_pipeline():
 
 
 def test_unknown_order_returns_a_warning_instead_of_guessing():
-    reply = AgentOrchestrator().handle(
-        IntentDecision(Intent.ORDER_STATUS, {"order_id": "ORD-999"})
-    )
+    reply = AgentOrchestrator().handle(IntentDecision(Intent.ORDER_STATUS, {"order_id": "ORD-999"}))
 
     assert reply.metadata["status"] == "empty"
     assert reply.warnings

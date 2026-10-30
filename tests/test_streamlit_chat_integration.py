@@ -40,6 +40,17 @@ def test_ui_missing_date_followup_saves_final_state_and_source_history(monkeypat
     assert app.button(key="reset_chat_request")
     first_reply = app.session_state["threads"][0]["messages"][1]["reply"]
     assert first_reply.needs_clarification
+    for internal_term in (
+        "task-002",
+        "PENDING",
+        "planner",
+        "order_feasibility",
+        "requested_delivery_date",
+    ):
+        assert internal_term not in first_reply.text
+    captions = " ".join(item.value for item in app.caption)
+    assert "task-002" not in captions
+    assert "delivery date" in captions
     send(app, "TOPS is due on 2026-04-25")
     thread = app.session_state["threads"][0]
     assert len(thread["messages"]) == 4
@@ -84,4 +95,20 @@ def test_ui_global_blocker_reset_and_two_task_details(monkeypatch):
     assert len(executor.calls) == 2
     assert len(app.metric) >= 4
     assert len(app.session_state["threads"][0]["messages"]) == 4
+    st.cache_resource.clear()
+
+
+def test_ui_morning_briefing_does_not_repeat_findings_as_a_table(monkeypatch):
+    app, _, executor = screen(
+        monkeypatch,
+        payload(task("morning_briefing", top_n=4)),
+    )
+
+    send(app, "Show me the top four priorities")
+
+    assert len(executor.calls) == 1
+    assert not any(expander.label.startswith("Priority findings") for expander in app.expander)
+    assert not any("sc-answer-banner" in item.value for item in app.markdown)
+    assert not any("sc-next-step" in item.value for item in app.markdown)
+    assert not any("Review evidence before acting" in item.value for item in app.markdown)
     st.cache_resource.clear()

@@ -30,15 +30,13 @@ def service_for(response):
 
 
 def test_english_message_runs_real_order_pipeline_and_replies_in_english():
-    service = service_for(
-        payload(intent="order_status", order_id="ORD-057")
-    )
+    service = service_for(payload(intent="order_status", order_id="ORD-057"))
 
     reply = service.handle_text("How is ORD-057?")
 
     assert reply.metadata["structured_result"]["judgement"] == "NORMAL"
     assert reply.metadata["language"] == "en"
-    assert reply.text.startswith("Order ORD-057")
+    assert reply.text.startswith("**Order ORD-057")
     assert "The due date passed 58 days ago" in reply.text
     assert "the last recorded activity was 66 days ago" in reply.text
     assert reply.evidence[0].reference == "ORD-057"
@@ -57,7 +55,8 @@ def test_chinese_message_runs_real_normality_pipeline_and_replies_in_chinese():
 
     assert reply.metadata["structured_result"]["judgement"] == "ABNORMAL"
     assert reply.metadata["language"] == "zh"
-    assert "当前被判断为 ABNORMAL" in reply.text
+    assert "偏离正常生产水平" in reply.text
+    assert "ABNORMAL" not in reply.text
 
 
 def test_english_missing_slot_returns_english_clarification():
@@ -92,4 +91,5 @@ def test_chinese_feasibility_assumptions_are_preserved_in_chinese():
 
     assert reply.metadata["structured_result"]["estimate"] == "CONDITIONAL"
     assert reply.assumptions[0] == "Sunday（周日）不计生产日"
-    assert "接单评估结果为 CONDITIONAL" in reply.text
+    assert "有条件可行" in reply.text
+    assert "CONDITIONAL" not in reply.text

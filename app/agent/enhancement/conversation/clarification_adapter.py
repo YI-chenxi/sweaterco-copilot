@@ -31,7 +31,11 @@ from app.agent.enhancement.planning.planner import (
     build_plan,
     execute_plan,
 )
-from app.agent.enhancement.planning.response import aggregate_results
+from app.agent.enhancement.planning.response import (
+    aggregate_results,
+    render_suggested_question,
+    render_user_text,
+)
 from app.agent.intents import ResponseLanguage, find_missing_slots
 
 if TYPE_CHECKING:
@@ -127,7 +131,7 @@ def apply_validated_update(
 
 
 def attach_clarification(reply: AgentReply, result: ClarificationResult) -> AgentReply:
-    """Replace generic waiting questions without altering source replies/evidence."""
+    """Attach natural follow-up questions without exposing task internals."""
 
     updated = deepcopy(reply)
     prior_questions = deepcopy(updated.metadata.get("clarification_questions", []))
@@ -139,10 +143,6 @@ def attach_clarification(reply: AgentReply, result: ClarificationResult) -> Agen
         questions = [problem.question for problem in item.problems if problem.question]
         record = task_records.get(task_id)
         if record is not None:
-            # Only replace fallback prose from waiting tasks, never a tool reply.
-            if record.get("reply") is None:
-                for old in record.get("clarification_questions", []):
-                    updated.text = updated.text.replace(old, "")
             record["needs_clarification"] = bool(questions)
             record["clarification_questions"] = questions
         prior_questions = [q for q in prior_questions if q.get("task_id") != task_id]
@@ -162,34 +162,9 @@ def attach_clarification(reply: AgentReply, result: ClarificationResult) -> Agen
         "problems": [asdict(problem) for problem in result.problems],
         "source_questions": deepcopy(reply.metadata.get("clarification_questions", [])),
     }
-    active = []
-    for question in prior_questions:
-        if not question.get("required"):
-            continue
-        label = f"[{question['task_id']}] " if question.get("task_id") else ""
-        rendered = label + question["question"]
-        if rendered not in active:
-            active.append(rendered)
-    updated.needs_clarification = bool(active)
-    updated.suggested_question = "\n".join(active) or None
-    specific = []
-    for problem in result.problems:
-        if not problem.question:
-            continue
-        label = f"[{problem.task_id}] " if problem.task_id else ""
-        rendered = label + problem.question
-        if rendered not in specific:
-            specific.append(rendered)
-    holds = [
-        f"[{problem.task_id}] {problem.reason}"
-        for problem in result.problems
-        if problem.question is None
-    ]
-    if holds:
-        updated.text = updated.text.rstrip() + "\n\n" + "\n".join(holds)
-    if specific:
-        heading = "澄清信息" if result.language == ResponseLanguage.CHINESE else "Clarification"
-        updated.text = updated.text.rstrip() + "\n\n" + heading + "\n" + "\n".join(specific)
+    updated.needs_clarification = any(question.get("required") for question in prior_questions)
+    updated.suggested_question = render_suggested_question(updated.metadata, result.language)
+    updated.text = render_user_text(updated.metadata, result.language)
     return updated
 
 

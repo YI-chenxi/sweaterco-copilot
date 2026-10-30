@@ -30,11 +30,10 @@ from app.ui.chat_state import (  # noqa: E402
     run_chat_turn,
     task_replies,
 )
-from app.ui.context_panels import contextual_sections, reply_headline  # noqa: E402
+from app.ui.context_panels import contextual_sections  # noqa: E402
 from app.ui.view_models import (  # noqa: E402
     evidence_csv,
     evidence_rows,
-    findings_for_reply,
     guided_decision,
     metrics_for_reply,
 )
@@ -383,43 +382,22 @@ def _structured_helper() -> None:
 
 def _reply_view(reply: AgentReply) -> None:
     """Show only backend-grounded values. No invented progress percentages."""
-    heading, tone = reply_headline(reply)
-    with st.container(border=True):
-        st.markdown(
-            f'<div class="sc-answer-banner {tone}"><small>BUSINESS ASSESSMENT</small>'
-            f"<strong>{_safe(heading)}</strong></div>",
-            unsafe_allow_html=True,
+    chinese = reply.metadata.get("language") == "zh"
+    st.markdown(reply.text)
+    metrics = [m for m in metrics_for_reply(reply) if m.value != "—"]
+    if metrics:
+        st.markdown('<div class="sc-mini-label">KEY METRICS</div>', unsafe_allow_html=True)
+        for offset in range(0, len(metrics), 3):
+            group = metrics[offset : offset + 3]
+            for col, met in zip(st.columns(len(group), gap="small"), group, strict=True):
+                with col:
+                    st.metric(met.label, met.value, help=met.detail)
+    if reply.needs_clarification:
+        st.caption(
+            "直接回复缺少的信息即可，我会接着处理。"
+            if chinese
+            else "Reply with the missing detail and I'll continue from here."
         )
-        st.write(reply.text)
-        metrics = [m for m in metrics_for_reply(reply) if m.value != "—"]
-        if metrics:
-            st.markdown('<div class="sc-mini-label">KEY METRICS</div>', unsafe_allow_html=True)
-            for offset in range(0, len(metrics), 3):
-                group = metrics[offset : offset + 3]
-                for col, met in zip(st.columns(len(group), gap="small"), group, strict=True):
-                    with col:
-                        st.metric(met.label, met.value, help=met.detail)
-        findings = findings_for_reply(reply)
-        if findings:
-            with st.expander(f"Priority findings · {len(findings)}", expanded=True):
-                st.dataframe(findings, hide_index=True, use_container_width=True)
-        if reply.needs_clarification:
-            st.info(reply.suggested_question or "Please clarify the request.")
-            st.caption(
-                "Reply below to supply the missing details. Context stays in this conversation."
-            )
-        elif reply.metadata.get("intent") == "order_feasibility":
-            st.markdown(
-                '<div class="sc-next-step">Decision support only · This is an '
-                "estimate, not a delivery guarantee. Review assumptions before "
-                "committing.</div>",
-                unsafe_allow_html=True,
-            )
-        elif reply.metadata.get("status") not in {"failed", "empty"}:
-            st.markdown(
-                '<div class="sc-next-step">Review evidence before acting on this assessment.</div>',
-                unsafe_allow_html=True,
-            )
 
 
 def _conversation() -> None:
@@ -441,15 +419,47 @@ def _request_context() -> None:
     with st.expander("Requests waiting for details", expanded=True):
         if session.global_issues:
             st.info(
-                "The request is ambiguous. Start a fresh request below, then "
-                "restate up to two tasks with explicit details."
+                "I couldn't tell which requests to prioritize. Start fresh below, "
+                "then send the two things you would like me to handle first."
             )
         for task in pending:
-            missing = ", ".join(task.decision.missing_slots)
-            label = task.decision.intent.value.replace("_", " ").title()
+            slots = task.decision.slots
+            intent = task.decision.intent.value
+            labels = {
+                "category": "product category",
+                "order_id": "order number",
+                "pieces": "order quantity",
+                "requested_delivery_date": "delivery date",
+                "stage": "production stage",
+                "top_n": "number of briefing items",
+            }
+            missing = ", ".join(
+                labels.get(field, field.replace("_", " ")) for field in task.decision.missing_slots
+            )
+            if intent == "order_status":
+                label = f"Order {slots.get('order_id')}" if slots.get("order_id") else "Order check"
+            elif intent == "production_normality":
+                label = (
+                    f"{slots.get('stage')} production check"
+                    if slots.get("stage")
+                    else "Production check"
+                )
+            elif intent == "order_feasibility":
+                details = " ".join(
+                    value
+                    for value in (
+                        f"{slots.get('pieces')}-piece" if slots.get("pieces") else "",
+                        str(slots.get("category")) if slots.get("category") else "",
+                    )
+                    if value
+                )
+                label = f"{details} order assessment" if details else "New-order assessment"
+            elif intent == "morning_briefing":
+                label = "Morning briefing"
+            else:
+                label = "Request"
             st.caption(
-                f"{task.task_id}: {label}"
-                + (f" · Missing: {missing}" if missing else " · Needs clarification")
+                label + (f" · Still needed: {missing}" if missing else " · Needs clarification")
             )
         if st.button("Start a fresh request", key="reset_chat_request"):
             clear_chat_request(_thread())
@@ -506,7 +516,14 @@ def _details(reply: AgentReply | None) -> None:
             )
         return
     intent = str(reply.metadata.get("intent", "unknown"))
-    st.caption(f"Latest result · {intent.replace('_', ' ').title()}")
+    intent_name = {
+        "order_status": "Order status",
+        "production_normality": "Production check",
+        "morning_briefing": "Morning briefing",
+        "order_feasibility": "Order assessment",
+        "unknown": "General question",
+    }.get(intent, "Analysis")
+    st.caption(f"Latest result · {intent_name}")
     rows = evidence_rows(reply)
     with st.container(border=True):
         st.markdown(f"**◈ Supporting Evidence**  ·  {len(rows)} records")
@@ -540,9 +557,9 @@ def _details(reply: AgentReply | None) -> None:
 
     parts = task_replies(reply)
     if parts and not isinstance(reply.metadata.get("structured_result"), dict):
-        for task_id, source_reply in parts:
+        for index, (_, source_reply) in enumerate(parts, 1):
             task_name = source_reply.metadata.get("intent", "Result").replace("_", " ").title()
-            with st.expander(f"{task_id} · {task_name}"):
+            with st.expander(f"Request {index} · {task_name}"):
                 for metric in metrics_for_reply(source_reply):
                     st.metric(metric.label, metric.value, help=metric.detail)
                 for section in contextual_sections(source_reply):

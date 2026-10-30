@@ -43,6 +43,9 @@ Existing business intent names and slot names must not be changed without team a
 - `language`: User response language.
 - `issues`: Structured interpretation problems that require clarification.
 - `slot_updates`: Validated parameter updates targeting existing task IDs.
+- `needs_clarification`: The model's clarification decision after extraction.
+- `clarification_question`: A user-facing follow-up question, when needed.
+- `direct_response`: A safe conversational answer that bypasses business planning.
 
 `InterpretationIssue` contains:
 
@@ -63,8 +66,12 @@ Responsibilities:
 - One- or two-task decomposition
 - Safe deterministic normalization
 - Existing-task update extraction
+- In-scope help, format, greeting, and calendar responses
+- A proposed clarification decision and natural follow-up question
 
 Must not execute business tools or calculate factory metrics.
+Local validation remains authoritative for required fields, formats, identifiers,
+and allowed business values. A model response cannot bypass those checks.
 
 ## 4. Group 2 — Conversation & Clarification
 
