@@ -133,3 +133,83 @@ button[kind="primary"]:hover{background:#04635e!important;border-color:#04635e!i
 .st-key-collapse_workflows button{min-height:2.05rem;font-size:.74rem;
  padding-left:.35rem;padding-right:.35rem}
 @media(max-width:900px){.sc-hero{align-items:stretch}.sc-snapshot-card{min-width:100%}}
+
+/* Selected-answer evidence linkage. Labels supplement color for accessibility. */
+.sc-evidence-selected, .sc-answer-reference {font-size: .76rem; font-weight: 700}
+.sc-evidence-selected {color: #086b64; background: #e3f3ef; padding: .2rem .4rem; border-radius: 5px}
+[data-testid="stChatMessage"]:has(.sc-evidence-selected) {border-left: 3px solid #11877c}
+.sc-analysis-context {background: #e9f5f3; color: #17584f; border-radius: 8px;
+  padding: .6rem; margin: .3rem 0 .7rem; font-weight: 650; font-size: .82rem}
+
+/* Independent workspace scroll regions. Only our keyed containers are targeted. */
+:root {--sc-workspace-height: calc(100dvh - 100px)}
+.block-container:has(.st-key-workspace_layout) {padding-bottom: .5rem}
+.st-key-center_workspace, .st-key-analysis_workspace {
+  height: var(--sc-workspace-height) !important; flex: 0 0 auto !important;
+  min-height: 0; gap: .45rem;
+}
+.st-key-center_workspace > *, .st-key-analysis_workspace > * {flex-shrink: 0}
+.st-key-center_workspace > div:has(> .st-key-conversation_scroll),
+.st-key-analysis_workspace > div:has(> [class*="st-key-analysis_scroll_"]) {
+  flex: 1 1 0 !important; min-height: 0 !important; height: 0 !important;
+}
+.st-key-conversation_scroll, [class*="st-key-analysis_scroll_"] {
+  height: 100% !important; min-height: 0 !important;
+  overflow-y: auto; overscroll-behavior-y: contain;
+  scrollbar-width: thin; scrollbar-color: #a6c4cb transparent;
+  padding-right: .35rem;
+}
+.st-key-analysis_workspace {position: sticky; top: 4.2rem; overflow: hidden}
+.st-key-analysis_header {gap: .35rem}
+.st-key-analysis_header .sc-details-title {margin: 0 0 .7rem; padding: .58rem .15rem;
+  border-bottom: 2px solid #0a8b82}
+.st-key-analysis_header .sc-analysis-context {margin: .1rem 0; font-size: .74rem; padding: .5rem}
+.st-key-analysis_header button {min-height: 2rem; font-size: .76rem}
+.st-key-center_workspace .sc-footnote {margin: 0; padding: .1rem 0; border: 0; font-size: .5rem}
+.st-key-center_workspace .sc-hero {margin-bottom: 1.05rem; padding: 1.15rem 1.28rem}
+.st-key-center_workspace .sc-hero-compact {margin-bottom: 0; padding: .85rem 1rem}
+.sc-hero-compact .sc-hero-copy h1 {font-size: 1rem; margin: 0}
+.sc-hero-compact .sc-hero-copy p {display: none}
+.sc-hero-compact .sc-hero-copy {flex-basis: 220px}
+.sc-hero-compact .sc-snapshot-card {min-width: 145px; padding: .35rem .6rem}
+.sc-hero-compact .sc-snapshot-date {font-size: .9rem}
+.sc-hero-compact .sc-snapshot-heading, .sc-hero-compact .sc-snapshot-disclaimer {font-size: .5rem}
+.st-key-center_workspace .sc-workflow-title {margin: .1rem 0}
+.st-key-center_workspace .st-key-expand_workflows button {height: 2.35rem !important; font-size: .74rem}
+.st-key-workflow_parameters {overscroll-behavior-y: contain; scrollbar-width: thin}
+@media (max-width: 1050px) {
+  .st-key-workspace_layout > div > [data-testid="stHorizontalBlock"] {flex-wrap: wrap}
+  .st-key-workspace_layout > div > [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+    width: 100%; min-width: 0; flex: 1 1 100%;
+  }
+  .st-key-analysis_workspace {position: static; margin-top: .75rem}
+}
+@media (max-height: 700px) {
+  .st-key-center_workspace .sc-hero {padding: .45rem .7rem}
+  .sc-hero-compact .sc-snapshot-heading {display: none}
+}
+
+.st-key-conversation_scroll > *, [class*="st-key-analysis_scroll_"] > * {flex-shrink: 0}
+
+/* Unified answer hierarchy, scoped to the conversation only. */
+.sc-assessment {padding: .8rem 1rem; border-radius: 10px; background: #edf4f8;
+  border-left: 3px solid #608597; margin: .3rem 0 .6rem}
+.sc-assessment .sc-mini-label {margin: 0 0 .35rem}
+.sc-assessment strong {font-size: 1.08rem; line-height: 1.45}
+.sc-assessment-normal {background: #eaf7f2; border-color: #198776}
+.sc-assessment-watch {background: #fff5e8; border-color: #bc791f}
+.sc-assessment-risk {background: #fff0ee; border-color: #bb4d43}
+.st-key-conversation_scroll [data-testid="stMetric"] {min-height: 0; background: #f8fbfc; border: 0; padding: .6rem .7rem}
+.st-key-conversation_scroll [data-testid="stMetricValue"] > div {white-space: normal; overflow: visible; text-overflow: clip; font-size: 1.15rem}
+.st-key-conversation_scroll [data-testid="stChatMessage"] {padding: .9rem; margin-bottom: .65rem}
+
+/* The analysis fragment fills the existing rail; only its detail body scrolls. */
+.st-key-analysis_workspace > div:has(.st-key-analysis_header) {
+  flex: 1 1 0; height: 100%; min-height: 0;
+}
+.st-key-analysis_workspace [data-testid="stVerticalBlock"]:has(> div > .st-key-analysis_header) {
+  height: 100%; min-height: 0; gap: .45rem;
+}
+.st-key-analysis_workspace div:has(> [class*="st-key-analysis_scroll_"]) {
+  flex: 1 1 0 !important; min-height: 0 !important; height: 0 !important;
+}

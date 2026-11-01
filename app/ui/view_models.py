@@ -13,6 +13,7 @@ from typing import Any
 
 from app.agent.contracts import AgentReply
 from app.agent.intents import Intent, IntentDecision, ResponseLanguage
+from app.ui.language import translate
 
 
 @dataclass(frozen=True)
@@ -42,7 +43,7 @@ def _assessment(value: Any) -> str:
     return labels.get(raw, raw.replace("_", " ").title())
 
 
-def metrics_for_reply(reply: AgentReply) -> list[ResultMetric]:
+def _metrics_for_reply(reply: AgentReply) -> list[ResultMetric]:
     """Render only backend-provided structured results; never invent values."""
     intent = reply.metadata.get("intent")
     raw = reply.metadata.get("structured_result")
@@ -73,6 +74,13 @@ def metrics_for_reply(reply: AgentReply) -> list[ResultMetric]:
         findings = raw.get("findings", [])
         return [ResultMetric("Priority findings", str(len(findings)))]
     return []
+
+
+def metrics_for_reply(reply: AgentReply, *, language: str = "en") -> list[ResultMetric]:
+    return [
+        ResultMetric(translate(m.label, language), translate(m.value, language), m.detail)
+        for m in _metrics_for_reply(reply)
+    ]
 
 
 def findings_for_reply(reply: AgentReply) -> list[dict[str, Any]]:
