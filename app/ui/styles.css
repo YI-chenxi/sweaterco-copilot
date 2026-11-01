@@ -133,3 +133,86 @@ button[kind="primary"]:hover{background:#04635e!important;border-color:#04635e!i
 .st-key-collapse_workflows button{min-height:2.05rem;font-size:.74rem;
  padding-left:.35rem;padding-right:.35rem}
 @media(max-width:900px){.sc-hero{align-items:stretch}.sc-snapshot-card{min-width:100%}}
+
+/* Recent conversations remain available without pushing Configure off screen. */
+.st-key-sidebar_layout{
+ height:calc(100dvh - 6.5rem)!important;min-height:calc(100dvh - 6.5rem)!important;gap:.35rem;
+}
+.st-key-sidebar_layout .sc-brand{margin-bottom:.6rem}
+.st-key-sidebar_layout .sc-nav-future{padding-top:.4rem;padding-bottom:.4rem}
+.st-key-sidebar_layout .sc-side-title{margin-top:.8rem}
+.st-key-sidebar_layout>[data-testid="stLayoutWrapper"]:has(>.st-key-recent_chats){
+ height:auto!important;min-height:120px!important;flex:1 1 0!important;overflow:hidden;
+}
+.st-key-recent_chats{
+ height:100%!important;min-height:0!important;max-height:none;overflow-y:auto!important;
+ scrollbar-gutter:stable;scrollbar-width:thin;scrollbar-color:#527683 transparent;
+ overscroll-behavior:contain;padding-right:.25rem;
+}
+.st-key-recent_chats::-webkit-scrollbar{width:6px}
+.st-key-recent_chats::-webkit-scrollbar-thumb{background:#527683;border-radius:6px}
+.st-key-recent_chats button{
+ height:auto!important;min-height:2.75rem!important;white-space:normal!important;
+ padding:.55rem .65rem!important;line-height:1.4!important;
+}
+.st-key-recent_chats button [data-testid="stMarkdownContainer"],
+.st-key-recent_chats button p{
+ white-space:normal!important;overflow:visible!important;text-overflow:clip!important;
+ overflow-wrap:anywhere;line-height:1.4!important;-webkit-line-clamp:unset!important;
+}
+.st-key-workspace [data-testid="stButton"] button p{
+ white-space:normal;overflow:visible;text-overflow:clip;
+}
+.st-key-sidebar_footer{margin-top:auto;padding-top:.5rem}
+.st-key-sidebar_layout>[data-testid="stLayoutWrapper"]:has(>.st-key-sidebar_footer){
+ margin-top:auto;flex:0 0 auto;
+}
+.st-key-sidebar_footer .sc-side-rule{margin:.5rem 0 .7rem}
+.st-key-sidebar_footer .sc-side-title{margin:.3rem 0 .6rem}
+@media(min-width:768px){
+ [data-testid="stSidebar"][aria-expanded="true"]{min-width:280px;max-width:430px}
+}
+
+/* User messages sit on the right; assistant answers retain the left edge. */
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]),
+[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]){
+ flex-direction:row-reverse;width:fit-content!important;max-width:88%;
+ margin-left:auto;margin-right:0;background:#e7f4f1;border-color:#b4d8d1;
+ border-radius:16px 16px 4px 16px;
+}
+[data-testid="stChatMessage"] [data-testid="stChatMessageContent"]{min-width:0;overflow-wrap:anywhere}
+[data-testid="stChatMessage"] [data-testid="stChatMessageAvatarUser"]{background:#087f78;color:#fff}
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]){
+ margin-left:0;margin-right:auto;border-radius:4px 16px 16px 16px;
+}
+
+/* A root-level native chat input stays pinned in empty and populated chats.
+   Align its width with the conversation column, keeping the evidence rail free. */
+.block-container{padding-bottom:8.5rem}
+[data-testid="stBottom"]{background:linear-gradient(0deg,#f8fbfc 82%,#f8fbfc00);border-top:0}
+[data-testid="stBottomBlockContainer"]{max-width:1550px;padding:.75rem 1.6rem 1rem}
+.st-key-chat_prompt{width:calc((100% - 2rem)*.67708333)!important;max-width:100%}
+[data-testid="stChatInput"]{
+ border:1px solid #9cbfbf!important;border-radius:18px!important;
+ background:#fff!important;box-shadow:0 5px 22px #123d5410;
+}
+[data-testid="stChatInput"]:focus-within{border-color:#087f78!important;box-shadow:0 0 0 2px #087f7818}
+[data-testid="stChatInputTextArea"]{background:transparent!important;min-height:2.3rem}
+[data-testid="stChatInputSubmitButton"]{color:#087f78!important;border-radius:10px}
+@media(max-width:1200px){
+ [data-testid="stBottomBlockContainer"]{padding-left:.75rem;padding-right:.75rem}
+}
+@media(max-width:1100px){
+ .st-key-workspace>[data-testid="stLayoutWrapper"]>[data-testid="stHorizontalBlock"]{
+  flex-direction:column;gap:1.5rem;
+ }
+ .st-key-workspace>[data-testid="stLayoutWrapper"]>[data-testid="stHorizontalBlock"]>[data-testid="stColumn"]{
+  width:100%!important;flex:1 1 100%!important;min-width:0!important;
+ }
+ .st-key-chat_prompt{width:100%!important}
+}
+@media(max-width:600px){
+ [data-testid="stChatMessage"]{padding:.8rem;gap:.5rem}
+ [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]){max-width:94%}
+ [data-testid="stBottomBlockContainer"]{padding-bottom:.6rem}
+}

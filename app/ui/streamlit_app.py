@@ -30,6 +30,7 @@ from app.ui.chat_state import (  # noqa: E402
     run_chat_turn,
     task_replies,
 )
+from app.ui.chat_titles import conversation_title  # noqa: E402
 from app.ui.context_panels import contextual_sections  # noqa: E402
 from app.ui.view_models import (  # noqa: E402
     evidence_csv,
@@ -83,10 +84,10 @@ def _init_session() -> None:
         state["threads"] = [{"id": 1, "title": "New conversation", "messages": []}]
     for thread in state["threads"]:
         ensure_chat_session(thread)
+        thread["title"] = conversation_title(thread["messages"])
     state.setdefault("active_thread", 1)
     state.setdefault("next_thread", 2)
     state.setdefault("workflow", None)
-    state.setdefault("draft_text", "")
     state.setdefault("reply_language", "English")
     # Launchpad is prominent for a new chat and becomes a compact, expandable
     # single row after the first successful assistant result.
@@ -107,13 +108,14 @@ def _new_thread() -> None:
     ensure_chat_session(st.session_state["threads"][0])
     st.session_state["active_thread"] = n
     st.session_state["workflow"] = None
-    st.session_state["draft_text"] = ""
+    st.session_state["chat_prompt"] = ""
     st.session_state["workflow_panel_expanded"] = True
 
 
 def _select_thread(thread_id: int) -> None:
     st.session_state["active_thread"] = thread_id
     st.session_state["workflow"] = None
+    st.session_state["chat_prompt"] = ""
     st.session_state["workflow_panel_expanded"] = not bool(_thread()["messages"])
 
 
@@ -136,12 +138,13 @@ def _chat_ready() -> bool:
 def _append_user(text: str) -> None:
     thread = _thread()
     thread["messages"].append({"role": "user", "content": text})
-    if thread["title"] == "New conversation":
-        thread["title"] = text[:36].rstrip() + ("…" if len(text) > 36 else "")
+    thread["title"] = conversation_title(thread["messages"])
 
 
 def _append_reply(reply: AgentReply, origin: str) -> None:
-    _thread()["messages"].append({"role": "assistant", "reply": reply, "origin": origin})
+    thread = _thread()
+    thread["messages"].append({"role": "assistant", "reply": reply, "origin": origin})
+    thread["title"] = conversation_title(thread["messages"])
 
 
 def _last_reply() -> AgentReply | None:
@@ -179,12 +182,11 @@ def _send_text(prompt: str) -> None:
             metadata={"status": "failed", "intent": "unknown"},
         )
     _append_reply(reply, "AI Chat · contextual tasks")
-    st.session_state["clear_draft_on_rerun"] = True
     collapse_after_response(st.session_state)
 
 
 def _nav_sidebar(chat_ready: bool) -> None:
-    with st.sidebar:
+    with st.sidebar, st.container(key="sidebar_layout"):
         st.markdown(
             '<div class="sc-brand"><span class="sc-mark">SC</span>'
             "<div><strong>SweaterCo</strong><small>OPERATIONS CO-PILOT</small></div></div>",
@@ -213,46 +215,34 @@ def _nav_sidebar(chat_ready: bool) -> None:
             '<div class="sc-side-rule"></div><div class="sc-side-title">RECENT CHATS</div>',
             unsafe_allow_html=True,
         )
-        threads = st.session_state["threads"]
-        for thread in threads[:8]:
-            title = str(thread["title"])
-            active = "● " if thread["id"] == st.session_state["active_thread"] else "◦ "
-            st.button(
-                active + title,
-                key=f"thread_{thread['id']}",
-                use_container_width=True,
-                on_click=_select_thread,
-                args=(thread["id"],),
-                help=title,
+        with st.container(height=300, border=False, key="recent_chats"):
+            for thread in st.session_state["threads"]:
+                title = str(thread["title"])
+                active = "● " if thread["id"] == st.session_state["active_thread"] else "◦ "
+                first_question = next(
+                    (m["content"] for m in thread["messages"] if m["role"] == "user"),
+                    title,
+                )
+                st.button(
+                    active + title,
+                    key=f"thread_{thread['id']}",
+                    use_container_width=True,
+                    on_click=_select_thread,
+                    args=(thread["id"],),
+                    help=str(first_question),
+                )
+        with st.container(key="sidebar_footer"):
+            st.markdown(
+                '<div class="sc-side-rule"></div><div class="sc-side-title">WORKSPACE</div>',
+                unsafe_allow_html=True,
             )
-        st.caption("Conversations stay in this browser session; not saved to GitHub.")
-
-        st.markdown(
-            '<div class="sc-side-rule"></div><div class="sc-side-title">WORKSPACE</div>',
-            unsafe_allow_html=True,
-        )
-        st.markdown(
-            '<div class="sc-workspace"><b>SweaterCo</b><small>Factory snapshot: '
-            + _safe(SNAPSHOT.strftime("%d %b %Y"))
-            + "</small><small>Simulated CSV data</small></div>",
-            unsafe_allow_html=True,
-        )
-        st.markdown(
-            '<div class="sc-service-state">'
-            + (
-                '<span class="sc-led online"></span> AI Chat configured'
-                if chat_ready
-                else '<span class="sc-led"></span> AI Chat needs model key'
-            )
-            + '<br><span class="sc-small">Structured workflows available</span></div>',
-            unsafe_allow_html=True,
-        )
-        with st.expander("AI Chat setup", expanded=False):
-            st.caption(
-                "Copy .env.example to .env at the project root. Set "
-                "MODEL_PROVIDER=openai, a working OPENAI_MODEL and OPENAI_API_KEY."
-                " Restart the app. Never commit secrets."
-            )
+            with st.expander("⚙ Configure", expanded=False):
+                st.caption("AI Chat is configured." if chat_ready else "AI Chat needs a model key.")
+                st.caption(
+                    "The app owner manages model settings in Streamlit Settings → Secrets. "
+                    "For local runs, use the project's .env file. Never share your API key."
+                )
+                st.caption("Chat history lasts for this browser session.")
 
 
 def _header() -> None:
@@ -467,39 +457,21 @@ def _request_context() -> None:
 
 
 def _composer(chat_ready: bool) -> None:
-    st.markdown('<div class="sc-label">ASK THE CO-PILOT</div>', unsafe_allow_html=True)
-    if st.session_state.pop("clear_draft_on_rerun", False):
-        st.session_state["draft_text"] = ""
-    with st.container(border=True):
-        st.text_area(
-            "One natural-language chat input",
-            key="draft_text",
-            label_visibility="collapsed",
-            placeholder="Ask about orders, production, risks or feasibility...",
-            height=80,
-        )
-        hint, send = st.columns([3, 1], gap="small")
-        with hint:
-            st.caption(
-                "✦ Natural-language AI uses the model. Quick Workflows run without an API key."
-            )
-        with send:
-            clicked = st.button(
-                "Send →", key="send_message", type="primary", use_container_width=True
-            )
-        if clicked:
-            prompt = st.session_state["draft_text"].strip()
-            if not prompt:
-                st.warning("Enter a question first.")
-            elif not chat_ready:
-                st.warning(
-                    "Natural-language mode requires a valid model key. You can still "
-                    "use Quick Workflows above without an API key."
-                )
-            else:
-                with st.spinner("Agent is checking factory tools..."):
-                    _send_text(prompt)
-                st.rerun()
+    """Use the native bottom-pinned input, including its built-in send control.
+
+    This must be called outside columns/containers so new and empty chats keep
+    the same bottom position without JavaScript or viewport-offset guesses.
+    """
+    prompt = st.chat_input(
+        "Ask about orders, production, risks or feasibility...", key="chat_prompt"
+    )
+    if prompt and prompt.strip():
+        if not chat_ready:
+            st.warning("AI Chat needs a model key. Open Configure or use Quick Workflows.")
+        else:
+            with st.spinner("Checking your request..."):
+                _send_text(prompt.strip())
+            st.rerun()
     notice = st.session_state.pop("chat_notice", None)
     if notice:
         st.warning(notice)
@@ -605,22 +577,23 @@ def main() -> None:
     _init_session()
     ready = _chat_ready()
     _nav_sidebar(ready)
-    center, right = st.columns([3.25, 1.55], gap="large", vertical_alignment="top")
-    with center:
-        _header()
-        _workflow_launchpad()
-        _structured_helper()
-        _conversation()
-        _request_context()
-        _composer(ready)
-        st.markdown(
-            '<div class="sc-footnote">FACTORY SNAPSHOT · '
-            + _safe(SNAPSHOT.strftime("%d %b %Y").upper())
-            + " · DECISION SUPPORT ONLY · NOT LIVE FACTORY TELEMETRY</div>",
-            unsafe_allow_html=True,
-        )
-    with right:
-        _details(_last_reply())
+    with st.container(key="workspace"):
+        center, right = st.columns([3.25, 1.55], gap="medium", vertical_alignment="top")
+        with center:
+            _header()
+            _workflow_launchpad()
+            _structured_helper()
+            _conversation()
+            _request_context()
+            st.markdown(
+                '<div class="sc-footnote">FACTORY SNAPSHOT · '
+                + _safe(SNAPSHOT.strftime("%d %b %Y").upper())
+                + " · DECISION SUPPORT ONLY · NOT LIVE FACTORY TELEMETRY</div>",
+                unsafe_allow_html=True,
+            )
+        with right:
+            _details(_last_reply())
+    _composer(ready)
 
 
 if __name__ == "__main__":
