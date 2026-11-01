@@ -1,10 +1,12 @@
 """Exercise the real Streamlit screen with offline queued model responses."""
 
+from copy import deepcopy
 from pathlib import Path
 
 import streamlit as st
 from streamlit.testing.v1 import AppTest
 
+from app.agent.contracts import AgentReply
 from app.agent.enhancement.contracts import TaskStatus
 from app.agent.service import AgentService
 from app.agent.settings import LLMSettings
@@ -25,8 +27,7 @@ def screen(monkeypatch, *responses):
 
 
 def send(app, message):
-    app.text_area(key="draft_text").set_value(message)
-    app.button(key="send_message").click().run(timeout=20)
+    app.chat_input(key="chat_prompt").set_value(message).run(timeout=20)
     assert not app.exception
 
 
@@ -111,4 +112,76 @@ def test_ui_morning_briefing_does_not_repeat_findings_as_a_table(monkeypatch):
     assert not any("sc-answer-banner" in item.value for item in app.markdown)
     assert not any("sc-next-step" in item.value for item in app.markdown)
     assert not any("Review evidence before acting" in item.value for item in app.markdown)
+    st.cache_resource.clear()
+
+
+def test_ui_oldest_of_twelve_conversations_can_be_reopened_and_resumed(monkeypatch):
+    app, _, executor = screen(
+        monkeypatch,
+        payload(task("order_feasibility", category="TOPS", pieces=800)),
+        payload(updates=[{"task_id": "task-001", "requested_delivery_date": "2026-04-25"}]),
+    )
+    send(app, "Please assess an order for 800 TOPS and explain whether we can accept it")
+    oldest = app.session_state["threads"][0]
+    newer = [
+        {
+            "id": index,
+            "title": "A previously truncated title…",
+            "messages": [
+                {"role": "user", "content": f"Check order ORD-{index:03d}"},
+                {
+                    "role": "assistant",
+                    "reply": AgentReply(
+                        text="Stored response.",
+                        metadata={
+                            "intent": "order_status",
+                            "structured_result": {"order_id": f"ORD-{index:03d}"},
+                        },
+                    ),
+                },
+            ],
+        }
+        for index in range(12, 1, -1)
+    ]
+    app.session_state["threads"] = [*newer, oldest]
+    app.session_state["active_thread"] = 12
+    app.session_state["next_thread"] = 13
+    app.run(timeout=20)
+    assert not app.exception
+    assert all(app.button(key=f"thread_{index}") for index in range(1, 13))
+    assert app.button(key="thread_1").label == "◦ 800 TOPS feasibility"
+    untouched = deepcopy(app.session_state["threads"][:-1])
+    app.button(key="thread_1").click().run(timeout=20)
+    assert not app.exception
+    assert app.session_state["active_thread"] == 1
+    assert (
+        app.session_state["threads"][-1]["agent_session"].state.tasks[0].status
+        == TaskStatus.PENDING
+    )
+    send(app, "The delivery date is 2026-04-25")
+    assert app.session_state["threads"][:-1] == untouched
+    assert (
+        app.session_state["threads"][-1]["agent_session"].state.tasks[0].status
+        == TaskStatus.COMPLETED
+    )
+    assert len(executor.calls) == 1
+    st.cache_resource.clear()
+
+
+def test_ui_uses_one_native_composer_and_only_configure_in_workspace(monkeypatch):
+    app, _, _ = screen(monkeypatch)
+    assert len(app.chat_input) == 1
+    assert app.chat_input[0].key == "chat_prompt"
+    assert not app.text_area
+    assert not any(button.label == "Send →" for button in app.button)
+    assert any(expander.label == "⚙ Configure" for expander in app.expander)
+    markdown = " ".join(item.value for item in app.markdown)
+    captions = " ".join(item.value for item in app.caption)
+    assert 'class="sc-workspace"' not in markdown
+    assert 'class="sc-service-state"' not in markdown
+    assert "Natural-language AI uses the model" not in captions
+    app.button(key="new_chat").click().run(timeout=20)
+    assert not app.exception
+    assert len(app.chat_input) == 1
+    assert app.session_state["threads"][0]["messages"] == []
     st.cache_resource.clear()
