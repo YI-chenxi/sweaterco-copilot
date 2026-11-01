@@ -1,15 +1,16 @@
 """SweaterCo Operations Co-Pilot — chat-first Streamlit web app.
 
-UI-only integration. A1/A2 tools, AgentService, AgentOrchestrator, and the
-AgentReply contract are untouched. Structured Quick Workflows run without an
-LLM; free-text conversation requires the existing model configuration.
+Structured Quick Workflows run without an LLM. Free-text chat uses the enhanced
+turn service and stores separate task state in each Streamlit conversation.
+Business calculations remain in the existing deterministic A1/A2 tools.
 """
+
 from __future__ import annotations
 
 import html
 import logging
 import sys
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -23,10 +24,24 @@ from app.agent.contracts import AgentReply  # noqa: E402
 from app.agent.orchestrator import AgentOrchestrator  # noqa: E402
 from app.agent.service import AgentService  # noqa: E402
 from app.agent.settings import AgentSettings, LLMSettings  # noqa: E402
-from app.ui.view_models import evidence_csv, evidence_rows, findings_for_reply, guided_decision, metrics_for_reply  # noqa: E402
-from app.ui.context_panels import contextual_sections, reply_headline  # noqa: E402
+from app.ui.chat_state import (  # noqa: E402
+    clear_chat_request,
+    ensure_chat_session,
+    run_chat_turn,
+    task_replies,
+)
+from app.ui.context_panels import contextual_sections  # noqa: E402
+from app.ui.view_models import (  # noqa: E402
+    evidence_csv,
+    evidence_rows,
+    guided_decision,
+    metrics_for_reply,
+)
 from app.ui.workflow_controls import (  # noqa: E402
-    workflow_title, select_workflow, toggle_workflow_panel, collapse_after_response,
+    collapse_after_response,
+    select_workflow,
+    toggle_workflow_panel,
+    workflow_title,
 )
 
 st.set_page_config(
@@ -66,6 +81,8 @@ def _init_session() -> None:
     state = st.session_state
     if "threads" not in state:
         state["threads"] = [{"id": 1, "title": "New conversation", "messages": []}]
+    for thread in state["threads"]:
+        ensure_chat_session(thread)
     state.setdefault("active_thread", 1)
     state.setdefault("next_thread", 2)
     state.setdefault("workflow", None)
@@ -87,6 +104,7 @@ def _new_thread() -> None:
     n = st.session_state["next_thread"]
     st.session_state["next_thread"] = n + 1
     st.session_state["threads"].insert(0, {"id": n, "title": "New conversation", "messages": []})
+    ensure_chat_session(st.session_state["threads"][0])
     st.session_state["active_thread"] = n
     st.session_state["workflow"] = None
     st.session_state["draft_text"] = ""
@@ -143,7 +161,7 @@ def _run_guided(workflow: str, language: str, values: dict[str, Any]) -> None:
 
 
 def _send_text(prompt: str) -> None:
-    """Free-text uses the existing B agent; never fake LLM results."""
+    """Run contextual chat and retain its final thread-local task state."""
     if not _chat_ready():
         st.session_state["chat_notice"] = (
             "AI Chat is not connected to an LLM yet. Configure a model key, "
@@ -152,7 +170,7 @@ def _send_text(prompt: str) -> None:
         return
     _append_user(prompt)
     try:
-        reply = agent_service().handle_text(prompt)
+        reply = run_chat_turn(_thread(), prompt, agent_service())
     except Exception:
         # Keep server credentials and tracebacks out of the UI.
         reply = AgentReply(
@@ -160,7 +178,7 @@ def _send_text(prompt: str) -> None:
             warnings=["Model call or tool execution failed; no business result was produced."],
             metadata={"status": "failed", "intent": "unknown"},
         )
-    _append_reply(reply, "AI Chat · model routed")
+    _append_reply(reply, "AI Chat · contextual tasks")
     st.session_state["clear_draft_on_rerun"] = True
     collapse_after_response(st.session_state)
 
@@ -169,10 +187,16 @@ def _nav_sidebar(chat_ready: bool) -> None:
     with st.sidebar:
         st.markdown(
             '<div class="sc-brand"><span class="sc-mark">SC</span>'
-            '<div><strong>SweaterCo</strong><small>OPERATIONS CO-PILOT</small></div></div>',
+            "<div><strong>SweaterCo</strong><small>OPERATIONS CO-PILOT</small></div></div>",
             unsafe_allow_html=True,
         )
-        st.button("＋  New conversation", key="new_chat", use_container_width=True, type="primary", on_click=_new_thread)
+        st.button(
+            "＋  New conversation",
+            key="new_chat",
+            use_container_width=True,
+            type="primary",
+            on_click=_new_thread,
+        )
 
         # Sidebar now contains main navigation and recent chats only.
         # All four Quick Workflows live in the central workspace.
@@ -185,7 +209,10 @@ def _nav_sidebar(chat_ready: bool) -> None:
             '<div class="sc-nav-future">⚙ &nbsp; Integrations <span>Planned</span></div>',
             unsafe_allow_html=True,
         )
-        st.markdown('<div class="sc-side-rule"></div><div class="sc-side-title">RECENT CHATS</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="sc-side-rule"></div><div class="sc-side-title">RECENT CHATS</div>',
+            unsafe_allow_html=True,
+        )
         threads = st.session_state["threads"]
         for thread in threads[:8]:
             title = str(thread["title"])
@@ -200,7 +227,10 @@ def _nav_sidebar(chat_ready: bool) -> None:
             )
         st.caption("Conversations stay in this browser session; not saved to GitHub.")
 
-        st.markdown('<div class="sc-side-rule"></div><div class="sc-side-title">WORKSPACE</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="sc-side-rule"></div><div class="sc-side-title">WORKSPACE</div>',
+            unsafe_allow_html=True,
+        )
         st.markdown(
             '<div class="sc-workspace"><b>SweaterCo</b><small>Factory snapshot: '
             + _safe(SNAPSHOT.strftime("%d %b %Y"))
@@ -209,24 +239,32 @@ def _nav_sidebar(chat_ready: bool) -> None:
         )
         st.markdown(
             '<div class="sc-service-state">'
-            + ('<span class="sc-led online"></span> AI Chat configured' if chat_ready else '<span class="sc-led"></span> AI Chat needs model key')
+            + (
+                '<span class="sc-led online"></span> AI Chat configured'
+                if chat_ready
+                else '<span class="sc-led"></span> AI Chat needs model key'
+            )
             + '<br><span class="sc-small">Structured workflows available</span></div>',
             unsafe_allow_html=True,
         )
         with st.expander("AI Chat setup", expanded=False):
-            st.caption("Copy .env.example to .env at the project root. Set MODEL_PROVIDER=openai, a working OPENAI_MODEL and OPENAI_API_KEY. Restart the app. Never commit secrets.")
+            st.caption(
+                "Copy .env.example to .env at the project root. Set "
+                "MODEL_PROVIDER=openai, a working OPENAI_MODEL and OPENAI_API_KEY."
+                " Restart the app. Never commit secrets."
+            )
 
 
 def _header() -> None:
     st.markdown(
         '<div class="sc-hero"><div class="sc-orb">✦</div>'
         '<div class="sc-hero-copy"><h1>How can I help with your factory today?</h1>'
-        '<p>Ask naturally, or launch a guided workflow. Clear answers, backed by factory data.</p>'
+        "<p>Ask naturally, or launch a guided workflow. Clear answers, backed by factory data.</p>"
         '</div><div class="sc-snapshot-card" aria-label="Simulated factory data date">'
         '<div class="sc-snapshot-heading">FACTORY DATA SNAPSHOT</div>'
-        '<div class="sc-snapshot-date">' + _safe(SNAPSHOT.strftime("%d %b %Y").upper()) + '</div>'
+        '<div class="sc-snapshot-date">' + _safe(SNAPSHOT.strftime("%d %b %Y").upper()) + "</div>"
         '<div class="sc-snapshot-disclaimer">SIMULATED · NOT LIVE</div>'
-        '</div></div>',
+        "</div></div>",
         unsafe_allow_html=True,
     )
 
@@ -249,9 +287,18 @@ def _workflow_launchpad() -> None:
         return
     title_col, toggle_col = st.columns([5, 1], gap="small", vertical_alignment="center")
     with title_col:
-        st.markdown('<div class="sc-label sc-workflow-title">QUICK WORKFLOWS <span>Choose a task to fill its parameters below</span></div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="sc-label sc-workflow-title">QUICK WORKFLOWS '
+            "<span>Choose a task to fill its parameters below</span></div>",
+            unsafe_allow_html=True,
+        )
     with toggle_col:
-        st.button("▴ Collapse", key="collapse_workflows", use_container_width=True, on_click=_toggle_workflow_panel)
+        st.button(
+            "▴ Collapse",
+            key="collapse_workflows",
+            use_container_width=True,
+            on_click=_toggle_workflow_panel,
+        )
     cols = st.columns(4, gap="small")
     icons = ("▣", "▥", "☀", "✧")
     for col, label, icon in zip(cols, WORKFLOWS, icons, strict=True):
@@ -271,17 +318,29 @@ def _structured_helper() -> None:
     flow = st.session_state["workflow"]
     if flow not in WORKFLOWS:
         return
-    st.markdown('<div class="sc-label">INTERPRETED REQUEST <span>Review explicit fields before running</span></div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="sc-label">INTERPRETED REQUEST <span>Review explicit '
+        "fields before running</span></div>",
+        unsafe_allow_html=True,
+    )
     with st.container(border=True):
         st.markdown(f"**✧ {flow}**  ·  Structured task helper")
-        st.caption("This mode uses deterministic A1/A2 business tools; it does not claim to understand free text. Results appear in the same conversation.")
+        st.caption(
+            "This mode uses deterministic A1/A2 business tools; it does not "
+            "claim to understand free text. Results appear in the same "
+            "conversation."
+        )
         with st.form(key="workflow_form", clear_on_submit=False):
-            lang_choice = st.selectbox("Response language", ["English", "中文"], key="reply_language")
+            lang_choice = st.selectbox(
+                "Response language", ["English", "中文"], key="reply_language"
+            )
             values: dict[str, Any] = {}
             if flow == "Order Status":
                 values["order_id"] = st.text_input("Order ID", value="ORD-057").strip().upper()
             elif flow == "Production Health":
-                values["stage"] = st.selectbox("Production stage", ["KNITTING", "ASSEMBLY", "WASHING", "PACKING"], index=1)
+                values["stage"] = st.selectbox(
+                    "Production stage", ["KNITTING", "ASSEMBLY", "WASHING", "PACKING"], index=1
+                )
             elif flow == "Morning Briefing":
                 values["top_n"] = int(st.number_input("Priority findings", 1, 20, 3, step=1))
             elif flow == "Check Feasibility":
@@ -292,11 +351,15 @@ def _structured_helper() -> None:
                     values["pieces"] = int(st.number_input("Quantity (pieces)", 1, 100000, 800))
                 with cc[2]:
                     values["requested_delivery_date"] = st.date_input(
-                        "Required delivery date", value=date(2026, 4, 25), min_value=date(2026, 4, 2)
+                        "Required delivery date",
+                        value=date(2026, 4, 25),
+                        min_value=date(2026, 4, 2),
                     ).isoformat()
             b1, b2 = st.columns([3, 1], gap="small")
             with b2:
-                submitted = st.form_submit_button("Run analysis →", type="primary", use_container_width=True)
+                submitted = st.form_submit_button(
+                    "Run analysis →", type="primary", use_container_width=True
+                )
         if submitted:
             succeeded = False
             try:
@@ -319,33 +382,22 @@ def _structured_helper() -> None:
 
 def _reply_view(reply: AgentReply) -> None:
     """Show only backend-grounded values. No invented progress percentages."""
-    heading, tone = reply_headline(reply)
-    with st.container(border=True):
-        st.markdown(
-            f'<div class="sc-answer-banner {tone}"><small>BUSINESS ASSESSMENT</small>'
-            f'<strong>{_safe(heading)}</strong></div>',
-            unsafe_allow_html=True,
+    chinese = reply.metadata.get("language") == "zh"
+    st.markdown(reply.text)
+    metrics = [m for m in metrics_for_reply(reply) if m.value != "—"]
+    if metrics:
+        st.markdown('<div class="sc-mini-label">KEY METRICS</div>', unsafe_allow_html=True)
+        for offset in range(0, len(metrics), 3):
+            group = metrics[offset : offset + 3]
+            for col, met in zip(st.columns(len(group), gap="small"), group, strict=True):
+                with col:
+                    st.metric(met.label, met.value, help=met.detail)
+    if reply.needs_clarification:
+        st.caption(
+            "直接回复缺少的信息即可，我会接着处理。"
+            if chinese
+            else "Reply with the missing detail and I'll continue from here."
         )
-        st.write(reply.text)
-        metrics = [m for m in metrics_for_reply(reply) if m.value != "—"]
-        if metrics:
-            st.markdown('<div class="sc-mini-label">KEY METRICS</div>', unsafe_allow_html=True)
-            for offset in range(0, len(metrics), 3):
-                group = metrics[offset:offset + 3]
-                for col, met in zip(st.columns(len(group), gap="small"), group, strict=True):
-                    with col:
-                        st.metric(met.label, met.value, help=met.detail)
-        findings = findings_for_reply(reply)
-        if findings:
-            with st.expander(f"Priority findings · {len(findings)}", expanded=True):
-                st.dataframe(findings, hide_index=True, use_container_width=True)
-        if reply.needs_clarification:
-            st.info(reply.suggested_question or "Please clarify the request.")
-            st.caption("Current B-agent requests are handled independently; a follow-up does not automatically fill earlier missing parameters.")
-        elif reply.metadata.get("intent") == "order_feasibility":
-            st.markdown('<div class="sc-next-step">Decision support only · This is an estimate, not a delivery guarantee. Review assumptions before committing.</div>', unsafe_allow_html=True)
-        elif reply.metadata.get("status") not in {"failed", "empty"}:
-            st.markdown('<div class="sc-next-step">Review evidence before acting on this assessment.</div>', unsafe_allow_html=True)
 
 
 def _conversation() -> None:
@@ -357,6 +409,61 @@ def _conversation() -> None:
             else:
                 st.caption(message.get("origin", "Business analysis"))
                 _reply_view(message["reply"])
+
+
+def _request_context() -> None:
+    session = ensure_chat_session(_thread())
+    pending = [task for task in session.state.tasks if task.status.value == "pending"]
+    if not pending and not session.global_issues:
+        return
+    with st.expander("Requests waiting for details", expanded=True):
+        if session.global_issues:
+            st.info(
+                "I couldn't tell which requests to prioritize. Start fresh below, "
+                "then send the two things you would like me to handle first."
+            )
+        for task in pending:
+            slots = task.decision.slots
+            intent = task.decision.intent.value
+            labels = {
+                "category": "product category",
+                "order_id": "order number",
+                "pieces": "order quantity",
+                "requested_delivery_date": "delivery date",
+                "stage": "production stage",
+                "top_n": "number of briefing items",
+            }
+            missing = ", ".join(
+                labels.get(field, field.replace("_", " ")) for field in task.decision.missing_slots
+            )
+            if intent == "order_status":
+                label = f"Order {slots.get('order_id')}" if slots.get("order_id") else "Order check"
+            elif intent == "production_normality":
+                label = (
+                    f"{slots.get('stage')} production check"
+                    if slots.get("stage")
+                    else "Production check"
+                )
+            elif intent == "order_feasibility":
+                details = " ".join(
+                    value
+                    for value in (
+                        f"{slots.get('pieces')}-piece" if slots.get("pieces") else "",
+                        str(slots.get("category")) if slots.get("category") else "",
+                    )
+                    if value
+                )
+                label = f"{details} order assessment" if details else "New-order assessment"
+            elif intent == "morning_briefing":
+                label = "Morning briefing"
+            else:
+                label = "Request"
+            st.caption(
+                label + (f" · Still needed: {missing}" if missing else " · Needs clarification")
+            )
+        if st.button("Start a fresh request", key="reset_chat_request"):
+            clear_chat_request(_thread())
+            st.rerun()
 
 
 def _composer(chat_ready: bool) -> None:
@@ -373,15 +480,22 @@ def _composer(chat_ready: bool) -> None:
         )
         hint, send = st.columns([3, 1], gap="small")
         with hint:
-            st.caption("✦ Natural-language AI uses the model. Quick Workflows run without an API key.")
+            st.caption(
+                "✦ Natural-language AI uses the model. Quick Workflows run without an API key."
+            )
         with send:
-            clicked = st.button("Send →", key="send_message", type="primary", use_container_width=True)
+            clicked = st.button(
+                "Send →", key="send_message", type="primary", use_container_width=True
+            )
         if clicked:
             prompt = st.session_state["draft_text"].strip()
             if not prompt:
                 st.warning("Enter a question first.")
             elif not chat_ready:
-                st.warning("Natural-language mode requires a valid model key. You can still use Quick Workflows above without an API key.")
+                st.warning(
+                    "Natural-language mode requires a valid model key. You can still "
+                    "use Quick Workflows above without an API key."
+                )
             else:
                 with st.spinner("Agent is checking factory tools..."):
                     _send_text(prompt)
@@ -396,10 +510,20 @@ def _details(reply: AgentReply | None) -> None:
     if reply is None:
         with st.container(border=True):
             st.markdown("**Evidence & context**")
-            st.caption("Once you run a real analysis, source records, warnings, assumptions and relevant business details will appear here.")
+            st.caption(
+                "Once you run a real analysis, source records, warnings, "
+                "assumptions and relevant business details will appear here."
+            )
         return
     intent = str(reply.metadata.get("intent", "unknown"))
-    st.caption(f"Latest result · {intent.replace('_', ' ').title()}")
+    intent_name = {
+        "order_status": "Order status",
+        "production_normality": "Production check",
+        "morning_briefing": "Morning briefing",
+        "order_feasibility": "Order assessment",
+        "unknown": "General question",
+    }.get(intent, "Analysis")
+    st.caption(f"Latest result · {intent_name}")
     rows = evidence_rows(reply)
     with st.container(border=True):
         st.markdown(f"**◈ Supporting Evidence**  ·  {len(rows)} records")
@@ -413,7 +537,8 @@ def _details(reply: AgentReply | None) -> None:
                 st.download_button(
                     "Export full evidence CSV",
                     data=evidence_csv(reply).encode("utf-8-sig"),
-                    mime="text/csv", file_name="sweaterco_evidence.csv",
+                    mime="text/csv",
+                    file_name="sweaterco_evidence.csv",
                     key="export_" + str(len(_thread()["messages"])),
                 )
         else:
@@ -429,6 +554,22 @@ def _details(reply: AgentReply | None) -> None:
             st.markdown(f"**◇ Key Assumptions**  ·  {len(reply.assumptions)}")
             for text in reply.assumptions:
                 st.markdown("• " + _safe(text))
+
+    parts = task_replies(reply)
+    if parts and not isinstance(reply.metadata.get("structured_result"), dict):
+        for index, (_, source_reply) in enumerate(parts, 1):
+            task_name = source_reply.metadata.get("intent", "Result").replace("_", " ").title()
+            with st.expander(f"Request {index} · {task_name}"):
+                for metric in metrics_for_reply(source_reply):
+                    st.metric(metric.label, metric.value, help=metric.detail)
+                for section in contextual_sections(source_reply):
+                    st.markdown(f"**{section['title']}**")
+                    if section.get("description"):
+                        st.caption(section["description"])
+                    if section.get("rows"):
+                        st.dataframe(section["rows"], hide_index=True, use_container_width=True)
+                    for label, value in section.get("facts", []):
+                        st.write(f"{label}: {value}")
 
     # Optional contextual modules are strictly derived from existing A2 results.
     # In particular, the current CSV snapshot does NOT support inventory or
@@ -449,13 +590,15 @@ def _details(reply: AgentReply | None) -> None:
                     st.write(value)
 
     with st.expander("Technical trace", expanded=False):
-        st.json({
-            "intent": intent,
-            "status": reply.metadata.get("status", "not specified"),
-            "rule_version": reply.metadata.get("rule_version"),
-            "language": reply.metadata.get("language"),
-            "source_records": len(reply.evidence),
-        })
+        st.json(
+            {
+                "intent": intent,
+                "status": reply.metadata.get("status", "not specified"),
+                "rule_version": reply.metadata.get("rule_version"),
+                "language": reply.metadata.get("language"),
+                "source_records": len(reply.evidence),
+            }
+        )
 
 
 def main() -> None:
@@ -468,8 +611,14 @@ def main() -> None:
         _workflow_launchpad()
         _structured_helper()
         _conversation()
+        _request_context()
         _composer(ready)
-        st.markdown('<div class="sc-footnote">FACTORY SNAPSHOT · ' + _safe(SNAPSHOT.strftime("%d %b %Y").upper()) + ' · DECISION SUPPORT ONLY · NOT LIVE FACTORY TELEMETRY</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="sc-footnote">FACTORY SNAPSHOT · '
+            + _safe(SNAPSHOT.strftime("%d %b %Y").upper())
+            + " · DECISION SUPPORT ONLY · NOT LIVE FACTORY TELEMETRY</div>",
+            unsafe_allow_html=True,
+        )
     with right:
         _details(_last_reply())
 
