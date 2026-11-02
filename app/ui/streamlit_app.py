@@ -30,7 +30,7 @@ from app.ui.chat_state import (  # noqa: E402
     run_chat_turn,
     task_replies,
 )
-from app.ui.chat_titles import conversation_title  # noqa: E402
+from app.ui.chat_titles import clean_request_text, conversation_title  # noqa: E402
 from app.ui.context_panels import contextual_sections  # noqa: E402
 from app.ui.view_models import (  # noqa: E402
     evidence_csv,
@@ -158,22 +158,46 @@ def _run_guided(workflow: str, language: str, values: dict[str, Any]) -> None:
     display = workflow_title(workflow, values)
     decision = guided_decision(GUIDED_NAMES[workflow], language=language, **values)
     reply = guided_orchestrator().handle(decision)
-    _append_user(display + "  ·  Structured workflow")
-    _append_reply(reply, "Structured workflow · deterministic tools")
+    _append_user(display)
+    _append_reply(reply, "Quick Workflows")
     collapse_after_response(st.session_state)
 
 
-def _send_text(prompt: str) -> None:
-    """Run contextual chat and retain its final thread-local task state."""
+def _queue_chat_prompt() -> None:
+    """Show the user's question on the next render before starting model work."""
+    prompt = str(st.session_state.get("chat_prompt", "")).strip()
+    if not prompt or st.session_state.get("pending_chat"):
+        return
     if not _chat_ready():
         st.session_state["chat_notice"] = (
-            "AI Chat is not connected to an LLM yet. Configure a model key, "
-            "or use Quick Workflows in the main workspace to run the same real business tools."
+            "AI Chat needs a model key. Check AI Configure or use Quick Workflows."
         )
         return
     _append_user(prompt)
+    st.session_state["pending_chat"] = {"thread_id": _thread()["id"], "prompt": prompt}
+
+
+def _process_pending_chat() -> None:
+    """Run only after the conversation, including the new user bubble, renders."""
+    pending = st.session_state.pop("pending_chat", None)
+    if not pending:
+        return
+    thread = next(
+        (item for item in st.session_state["threads"] if item["id"] == pending["thread_id"]),
+        None,
+    )
+    if thread is None:
+        return
+    indicator = st.empty()
+    with indicator.container(), st.chat_message("assistant"):
+        st.markdown(
+            '<div class="sc-thinking" role="status" aria-live="polite">'
+            '<span class="sc-thinking-ring" aria-hidden="true"></span>'
+            "<span>I’m thinking…</span></div>",
+            unsafe_allow_html=True,
+        )
     try:
-        reply = run_chat_turn(_thread(), prompt, agent_service())
+        reply = run_chat_turn(thread, pending["prompt"], agent_service())
     except Exception:
         # Keep server credentials and tracebacks out of the UI.
         reply = AgentReply(
@@ -181,8 +205,14 @@ def _send_text(prompt: str) -> None:
             warnings=["Model call or tool execution failed; no business result was produced."],
             metadata={"status": "failed", "intent": "unknown"},
         )
-    _append_reply(reply, "AI Chat · contextual tasks")
+    finally:
+        indicator.empty()
+    thread["messages"].append(
+        {"role": "assistant", "reply": reply, "origin": "AI Chat · contextual tasks"}
+    )
+    thread["title"] = conversation_title(thread["messages"])
     collapse_after_response(st.session_state)
+    st.rerun()
 
 
 def _nav_sidebar(chat_ready: bool) -> None:
@@ -229,27 +259,36 @@ def _nav_sidebar(chat_ready: bool) -> None:
                     use_container_width=True,
                     on_click=_select_thread,
                     args=(thread["id"],),
-                    help=str(first_question),
+                    help=clean_request_text(str(first_question)),
                 )
         with st.container(key="sidebar_footer"):
             st.markdown(
                 '<div class="sc-side-rule"></div><div class="sc-side-title">WORKSPACE</div>',
                 unsafe_allow_html=True,
             )
-            with st.expander("⚙ Configure", expanded=False):
-                st.caption("AI Chat is configured." if chat_ready else "AI Chat needs a model key.")
-                st.caption(
-                    "The app owner manages model settings in Streamlit Settings → Secrets. "
-                    "For local runs, use the project's .env file. Never share your API key."
-                )
-                st.caption("Chat history lasts for this browser session.")
+            state_class = "online" if chat_ready else "offline"
+            state_label = "Configured" if chat_ready else "Not configured"
+            st.markdown(
+                '<div class="sc-ai-config" role="status" aria-label="AI Configure: '
+                + state_label
+                + '"><span class="sc-ai-config-label">AI Configure</span>'
+                + '<span class="sc-ai-config-state '
+                + state_class
+                + '">'
+                + '<span class="sc-led '
+                + state_class
+                + '" aria-hidden="true"></span>'
+                + state_label
+                + "</span></div>",
+                unsafe_allow_html=True,
+            )
 
 
 def _header() -> None:
     st.markdown(
         '<div class="sc-hero"><div class="sc-orb">✦</div>'
         '<div class="sc-hero-copy"><h1>How can I help with your factory today?</h1>'
-        "<p>Ask naturally, or launch a guided workflow. Clear answers, backed by factory data.</p>"
+        "<p>Your factory, at a glance.</p>"
         '</div><div class="sc-snapshot-card" aria-label="Simulated factory data date">'
         '<div class="sc-snapshot-heading">FACTORY DATA SNAPSHOT</div>'
         '<div class="sc-snapshot-date">' + _safe(SNAPSHOT.strftime("%d %b %Y").upper()) + "</div>"
@@ -395,9 +434,8 @@ def _conversation() -> None:
     for message in _thread()["messages"]:
         with st.chat_message(message["role"]):
             if message["role"] == "user":
-                st.write(message["content"])
+                st.write(clean_request_text(str(message["content"])))
             else:
-                st.caption(message.get("origin", "Business analysis"))
                 _reply_view(message["reply"])
 
 
@@ -456,22 +494,17 @@ def _request_context() -> None:
             st.rerun()
 
 
-def _composer(chat_ready: bool) -> None:
-    """Use the native bottom-pinned input, including its built-in send control.
+def _composer() -> None:
+    """Render the native input as the fixed center surface's inline footer.
 
-    This must be called outside columns/containers so new and empty chats keep
-    the same bottom position without JavaScript or viewport-offset guesses.
+    The sibling scroll container owns long conversations, so this input stays
+    at the bottom of the surface in new, empty and populated conversations.
     """
-    prompt = st.chat_input(
-        "Ask about orders, production, risks or feasibility...", key="chat_prompt"
+    st.chat_input(
+        "Ask about orders, production, risks or feasibility...",
+        key="chat_prompt",
+        on_submit=_queue_chat_prompt,
     )
-    if prompt and prompt.strip():
-        if not chat_ready:
-            st.warning("AI Chat needs a model key. Open Configure or use Quick Workflows.")
-        else:
-            with st.spinner("Checking your request..."):
-                _send_text(prompt.strip())
-            st.rerun()
     notice = st.session_state.pop("chat_notice", None)
     if notice:
         st.warning(notice)
@@ -480,7 +513,7 @@ def _composer(chat_ready: bool) -> None:
 def _details(reply: AgentReply | None) -> None:
     st.markdown('<div class="sc-details-title">ANALYSIS DETAILS</div>', unsafe_allow_html=True)
     if reply is None:
-        with st.container(border=True):
+        with st.container(border=True, key="detail_empty"):
             st.markdown("**Evidence & context**")
             st.caption(
                 "Once you run a real analysis, source records, warnings, "
@@ -497,7 +530,7 @@ def _details(reply: AgentReply | None) -> None:
     }.get(intent, "Analysis")
     st.caption(f"Latest result · {intent_name}")
     rows = evidence_rows(reply)
-    with st.container(border=True):
+    with st.container(border=True, key="detail_evidence"):
         st.markdown(f"**◈ Supporting Evidence**  ·  {len(rows)} records")
         if rows:
             sources = sorted({r["Source"] for r in rows})
@@ -517,12 +550,12 @@ def _details(reply: AgentReply | None) -> None:
             st.caption("No source rows returned for this response.")
 
     if reply.warnings:
-        with st.container(border=True):
+        with st.container(border=True, key="detail_warnings"):
             st.markdown(f"**⚠ Risk Warnings**  ·  {len(reply.warnings)}")
             for w in reply.warnings[:5]:
                 st.warning(w)
     if reply.assumptions:
-        with st.container(border=True):
+        with st.container(border=True, key="detail_assumptions"):
             st.markdown(f"**◇ Key Assumptions**  ·  {len(reply.assumptions)}")
             for text in reply.assumptions:
                 st.markdown("• " + _safe(text))
@@ -546,8 +579,8 @@ def _details(reply: AgentReply | None) -> None:
     # Optional contextual modules are strictly derived from existing A2 results.
     # In particular, the current CSV snapshot does NOT support inventory or
     # shipping-document cards from the concept image.
-    for section in contextual_sections(reply):
-        with st.container(border=True):
+    for index, section in enumerate(contextual_sections(reply)):
+        with st.container(border=True, key=f"detail_context_{index}"):
             st.markdown(f"**{section['title']}**")
             if section.get("description"):
                 st.caption(section["description"])
@@ -580,20 +613,18 @@ def main() -> None:
     with st.container(key="workspace"):
         center, right = st.columns([3.25, 1.55], gap="medium", vertical_alignment="top")
         with center:
-            _header()
-            _workflow_launchpad()
-            _structured_helper()
-            _conversation()
-            _request_context()
-            st.markdown(
-                '<div class="sc-footnote">FACTORY SNAPSHOT · '
-                + _safe(SNAPSHOT.strftime("%d %b %Y").upper())
-                + " · DECISION SUPPORT ONLY · NOT LIVE FACTORY TELEMETRY</div>",
-                unsafe_allow_html=True,
-            )
+            with st.container(key="conversation_surface"):
+                with st.container(height=500, border=False, key="conversation_scroll"):
+                    _header()
+                    _workflow_launchpad()
+                    _structured_helper()
+                    _conversation()
+                    _process_pending_chat()
+                    _request_context()
+                _composer()
         with right:
-            _details(_last_reply())
-    _composer(ready)
+            with st.container(height=500, border=False, key="analysis_rail"):
+                _details(_last_reply())
 
 
 if __name__ == "__main__":

@@ -16,10 +16,15 @@ from app.agent.contracts import AgentReply
 TITLE_WIDTH = 48
 
 
+def clean_request_text(text: str) -> str:
+    """Remove the legacy UI origin suffix while preserving the full request."""
+    return re.sub(r"\s*·\s*Structured workflow$", "", text, flags=re.IGNORECASE).strip()
+
+
 def compact_title(text: str, limit: int = TITLE_WIDTH) -> str:
     """Limit visual length, counting wide Chinese characters as two cells."""
     text = re.sub(r"\s+", " ", text).strip()
-    text = re.sub(r"\s*·\s*Structured workflow$", "", text, flags=re.IGNORECASE)
+    text = clean_request_text(text)
     text = re.sub(r"[\x00-\x1f\x7f]", "", text)
     width = 0
     for index, char in enumerate(text):
@@ -85,8 +90,24 @@ def conversation_title(messages: Sequence[Mapping[str, Any]]) -> str:
     first_user = next((m for m in messages if m.get("role") == "user"), None)
     if first_user is None:
         return "New conversation"
-    request = str(first_user.get("content", "")).strip()
+    request = clean_request_text(str(first_user.get("content", "")))
     chinese = bool(re.search(r"[\u3400-\u9fff]", request))
+    # Guided feasibility results contain capacity estimates, not request slots.
+    # Recover the explicit quantity/category from the stored guided request;
+    # keep its date in the unabridged hover text rather than the short label.
+    guided = re.fullmatch(
+        r"Feasibility\s*·\s*(\d[\d,]*)\s+(.+?)\s+by\s+\d{4}-\d{2}-\d{2}",
+        request,
+        flags=re.IGNORECASE,
+    )
+    if guided:
+        return compact_title(
+            _task_label(
+                "order_feasibility",
+                {"pieces": guided[1], "category": guided[2]},
+                chinese,
+            )
+        )
     first_reply = next((m.get("reply") for m in messages if m.get("role") == "assistant"), None)
     if isinstance(first_reply, AgentReply):
         labels = _reply_labels(first_reply, chinese)

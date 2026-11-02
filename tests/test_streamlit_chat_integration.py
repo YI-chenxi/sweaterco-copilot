@@ -174,14 +174,54 @@ def test_ui_uses_one_native_composer_and_only_configure_in_workspace(monkeypatch
     assert app.chat_input[0].key == "chat_prompt"
     assert not app.text_area
     assert not any(button.label == "Send →" for button in app.button)
-    assert any(expander.label == "⚙ Configure" for expander in app.expander)
+    assert not any("Configure" in expander.label for expander in app.expander)
     markdown = " ".join(item.value for item in app.markdown)
     captions = " ".join(item.value for item in app.caption)
     assert 'class="sc-workspace"' not in markdown
     assert 'class="sc-service-state"' not in markdown
+    assert "AI Configure" in markdown
+    assert 'class="sc-ai-config-state online"' in markdown
     assert "Natural-language AI uses the model" not in captions
     app.button(key="new_chat").click().run(timeout=20)
     assert not app.exception
     assert len(app.chat_input) == 1
     assert app.session_state["threads"][0]["messages"] == []
+    st.cache_resource.clear()
+
+
+def test_ui_unconfigured_chat_keeps_workflows_without_queuing_a_question(monkeypatch):
+    app, _, executor = screen(monkeypatch)
+    monkeypatch.setattr(
+        LLMSettings, "from_env", classmethod(lambda cls: LLMSettings(provider="openai", api_key=""))
+    )
+    app.run(timeout=20)
+    markdown = " ".join(item.value for item in app.markdown)
+    assert 'class="sc-ai-config-state offline"' in markdown
+    assert "Not configured" in markdown
+    send(app, "Check ORD-057")
+    assert not executor.calls
+    assert not app.session_state["threads"][0]["messages"]
+    assert any("needs a model key" in warning.value for warning in app.warning)
+    st.cache_resource.clear()
+
+
+def test_ui_failed_request_keeps_one_user_message_and_allows_the_next_turn(monkeypatch):
+    import app.ui.chat_state as chat_state
+
+    app, _, executor = screen(monkeypatch, payload(task(order_id="ORD-057")))
+    original = chat_state.run_chat_turn
+
+    def fail_once(*args, **kwargs):
+        monkeypatch.setattr(chat_state, "run_chat_turn", original)
+        raise RuntimeError("offline simulated failure")
+
+    monkeypatch.setattr(chat_state, "run_chat_turn", fail_once)
+    send(app, "Check ORD-057")
+    messages = app.session_state["threads"][0]["messages"]
+    assert [message["role"] for message in messages] == ["user", "assistant"]
+    assert messages[-1]["reply"].metadata["status"] == "failed"
+    assert "pending_chat" not in app.session_state
+    send(app, "Check ORD-057 again")
+    assert len(executor.calls) == 1
+    assert len(app.session_state["threads"][0]["messages"]) == 4
     st.cache_resource.clear()

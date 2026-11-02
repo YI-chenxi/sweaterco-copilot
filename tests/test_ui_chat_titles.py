@@ -4,7 +4,7 @@ import unicodedata
 from copy import deepcopy
 
 from app.agent.contracts import AgentReply
-from app.ui.chat_titles import TITLE_WIDTH, compact_title, conversation_title
+from app.ui.chat_titles import TITLE_WIDTH, clean_request_text, compact_title, conversation_title
 
 
 def exchange(question, intent="order_status", **data):
@@ -99,4 +99,22 @@ def test_categories_and_stages_are_preserved_without_inventing_outcomes():
             exchange("Assess 800 TOPS", "order_feasibility", pieces=800, category="TOPS")
         )
         == "800 TOPS feasibility"
+    )
+
+
+def test_guided_feasibility_preserves_quantity_when_result_has_no_request_slots():
+    messages = exchange(
+        "Feasibility · 800 TOPS by 2026-04-25 · Structured workflow",
+        "order_feasibility",
+        estimate="SUPPORTED",
+        working_days=21,
+    )
+    assert conversation_title(messages) == "800 TOPS feasibility"
+    assert clean_request_text(messages[0]["content"]) == "Feasibility · 800 TOPS by 2026-04-25"
+
+
+def test_origin_cleanup_keeps_dates_and_user_written_structured_workflow_questions():
+    assert clean_request_text("What is a structured workflow?") == "What is a structured workflow?"
+    assert clean_request_text("Feasibility · 900 TOPS by 2026-05-01") == (
+        "Feasibility · 900 TOPS by 2026-05-01"
     )
