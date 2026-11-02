@@ -26,7 +26,7 @@ This UI branch includes the integration baseline at
 - Sidebar width remains resizable within 280-430 px on desktop. Navigation and
   the AI Configure status line remain fixed while only Recent Chats scrolls.
   Configure shows configured/missing-key states directly. Reduced brand spacing
-  and 52 px below Configure reserve room for a future action, without adding it.
+  and the global English/Chinese control sits below Configure in the reserved area.
   Collapse/reopen controls share their top edge; collapse stays inside the sidebar.
 - The right rail combines white evidence cards, pale-green context/assumption
   cards and warm warning cards. Expanders have one outer rounded border.
@@ -36,18 +36,20 @@ This UI branch includes the integration baseline at
 
 ## Compatibility and scope
 
-Keyed containers and generated `st-key-` classes require Streamlit >=1.39;
-validation used Streamlit 1.66.1. This change does not alter business rules,
-backend contracts, model configuration logic or the global language switch.
+The combined UI requires Streamlit >=1.66.1 (the validated runtime), including
+its dialog, fragment, native chat and component APIs. Business rules, backend
+contracts and model configuration logic remain unchanged. The shared
+`ui_language` control updates presentation without rewriting saved results.
 
 History remains session-local and does not survive a full browser refresh or
 server restart. Mock-model tests do not measure live-model accuracy.
 
 ## Verification
 
-- 449 automated tests passed, including chat submission, missing configuration,
+- 532 automated tests passed, including chat submission, missing configuration,
   recovery after failure, conversation isolation, reopening/resuming old chats,
-  first-exchange title stability and guided feasibility labels with dates.
+  first-exchange title stability, bilingual workflow labels, stable evidence
+  selection and guided feasibility labels with hover dates.
 - Ruff checks, Python formatting checks and `git diff --check` passed.
 - Browser checks covered the real 800 TOPS guided workflow, hover date text,
   single expander borders, fixed desktop frames/internal scrolling, sidebar
@@ -59,3 +61,18 @@ Run from the repository root:
 python -m streamlit run app/ui/streamlit_app.py
 python -m pytest -q
 ```
+
+## Combined UI behavior
+
+The global language control, saved workflow parameter dialogs, summary/full
+analysis controls, copying and per-answer evidence selection come from personB.
+They share A's approved three-panel material, native footer composer and complete
+history list. Evidence follows the answer being read; users can turn following
+off or select an answer explicitly. Original replies, evidence exports and task
+memory are preserved. The language view cache is separate from business data.
+Only the visible first 15 evidence descriptions are prepared for display
+translation; full CSV exports retain all original source records.
+
+Browser verification additionally covered an unsent native-input draft across
+language and panel-visibility changes, and scroll-driven switching between the
+ORD-013 and ORD-057 evidence payloads without rerunning the whole conversation.

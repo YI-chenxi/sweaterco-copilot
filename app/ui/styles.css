@@ -241,7 +241,7 @@ button[kind="primary"]:hover{background:#04635e!important;border-color:#04635e!i
  white-space:normal;overflow:visible;text-overflow:clip;
 }
 /* Reserve one future action row below AI Configure, without adding a fake control. */
-.st-key-sidebar_footer{margin-top:auto;padding-top:.5rem;padding-bottom:3.25rem}
+.st-key-sidebar_footer{margin-top:auto;padding-top:.5rem;padding-bottom:.5rem}
 .st-key-sidebar_layout>[data-testid="stLayoutWrapper"]:has(>.st-key-sidebar_footer){
  margin-top:auto;flex:0 0 auto;
 }
@@ -315,4 +315,32 @@ button[kind="primary"]:hover{background:#04635e!important;border-color:#04635e!i
  .st-key-conversation_surface{padding:.85rem .8rem;border-radius:22px}
  [data-testid="stChatMessage"]{padding:.8rem;gap:.5rem}
  [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]){max-width:94%}
+}
+
+/* Combined UI: evidence ownership and controls use the approved mint material. */
+.sc-evidence-selected,.sc-answer-reference{display:block;height:0;line-height:0}
+.sc-analysis-context{background:#e3f1e9;color:#235c4a;border-radius:12px;
+ padding:.6rem .7rem;margin:.2rem 0;font-size:.78rem;font-weight:600}
+.st-key-analysis_workspace{height:calc(100dvh - 2rem)!important;min-height:0;
+ flex:0 0 auto!important;overflow:hidden;gap:.6rem;padding:.1rem .2rem .4rem}
+.st-key-analysis_workspace>div:has(.st-key-analysis_header){flex:1 1 0;height:100%;min-height:0}
+.st-key-analysis_workspace [data-testid="stVerticalBlock"]:has(>div>.st-key-analysis_header){
+ height:100%;min-height:0;gap:.6rem}
+.st-key-analysis_workspace div:has(>[class*="st-key-analysis_scroll_"]){
+ flex:1 1 0!important;min-height:0!important;height:0!important;overflow:hidden}
+[class*="st-key-analysis_scroll_"]{height:100%!important;min-height:0!important;
+ overflow-y:auto!important;overflow-x:hidden;overscroll-behavior:contain;
+ scrollbar-width:thin;scrollbar-color:#bdd7c9 transparent;padding-right:.2rem}
+.st-key-conversation_scroll>*,[class*="st-key-analysis_scroll_"]>*{flex-shrink:0}
+.st-key-analysis_header{gap:.4rem}
+.st-key-analysis_header .sc-details-title{margin:0;padding:.5rem .1rem}
+.st-key-analysis_header button{min-height:2rem;font-size:.76rem}
+.sc-assessment{padding:.2rem 0 .6rem;margin:.2rem 0;background:transparent}
+.sc-assessment strong{font-size:1.03rem;line-height:1.55;color:var(--sc-ink)}
+@media(max-width:900px){.st-key-analysis_workspace{height:60dvh!important}}
+
+[data-testid="stDialog"] [role="dialog"]{
+ border:1px solid #d5e6dc;border-radius:22px;
+ background:linear-gradient(140deg,#fff 0%,#f4faf6 100%);
+ box-shadow:inset 0 1px 1px #fff,0 16px 48px #163c4322;
 }

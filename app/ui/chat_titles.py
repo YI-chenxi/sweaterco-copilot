@@ -18,7 +18,9 @@ TITLE_WIDTH = 48
 
 def clean_request_text(text: str) -> str:
     """Remove the legacy UI origin suffix while preserving the full request."""
-    return re.sub(r"\s*·\s*Structured workflow$", "", text, flags=re.IGNORECASE).strip()
+    return re.sub(
+        r"\s*·\s*(?:Structured workflow|快捷工作流)$", "", text, flags=re.IGNORECASE
+    ).strip()
 
 
 def compact_title(text: str, limit: int = TITLE_WIDTH) -> str:
@@ -81,7 +83,9 @@ def _reply_labels(reply: AgentReply, chinese: bool) -> list[str]:
     return [label] if label else []
 
 
-def conversation_title(messages: Sequence[Mapping[str, Any]]) -> str:
+def conversation_title(
+    messages: Sequence[Mapping[str, Any]], *, language: str | None = None
+) -> str:
     """Summarize the first user request and its first available assistant reply.
 
     Later follow-ups never rename an existing conversation. Existing sessions
@@ -91,12 +95,22 @@ def conversation_title(messages: Sequence[Mapping[str, Any]]) -> str:
     if first_user is None:
         return "New conversation"
     request = clean_request_text(str(first_user.get("content", "")))
-    chinese = bool(re.search(r"[\u3400-\u9fff]", request))
+    chinese = language == "zh" if language else bool(re.search(r"[\u3400-\u9fff]", request))
+    guided_request = first_user.get("ui_workflow_request")
+    if isinstance(guided_request, Mapping):
+        intent = {
+            "Order Status": "order_status",
+            "Production Health": "production_normality",
+            "Morning Briefing": "morning_briefing",
+            "Check Feasibility": "order_feasibility",
+        }.get(guided_request.get("workflow"))
+        if intent:
+            return compact_title(_task_label(intent, guided_request.get("values", {}), chinese))
     # Guided feasibility results contain capacity estimates, not request slots.
     # Recover the explicit quantity/category from the stored guided request;
     # keep its date in the unabridged hover text rather than the short label.
     guided = re.fullmatch(
-        r"Feasibility\s*·\s*(\d[\d,]*)\s+(.+?)\s+by\s+\d{4}-\d{2}-\d{2}",
+        r"(?:Feasibility|接单评估)\s*·\s*(\d[\d,]*)\s+(.+?)\s+(?:by|交期)\s+\d{4}-\d{2}-\d{2}",
         request,
         flags=re.IGNORECASE,
     )
