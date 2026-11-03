@@ -1,0 +1,2191 @@
+{
+  "metadata": {
+    "generated_at": "2026-10-27T00:37:13+08:00",
+    "model": "gpt-6-luna",
+    "case_count": 48,
+    "category_counts": {
+      "chinese": 6,
+      "colloquial": 6,
+      "dual_intent": 6,
+      "english": 6,
+      "missing_slots": 6,
+      "mixed_language": 6,
+      "standard": 6,
+      "unknown_intent": 6
+    }
+  },
+  "summary": {
+    "passed": 48,
+    "failed": 0,
+    "exact_match_accuracy": 1.0,
+    "component_accuracy": {
+      "intent_sequence": 1.0,
+      "language": 1.0,
+      "slots": 1.0,
+      "missing_slots": 1.0,
+      "issue_types": 1.0
+    },
+    "category_exact_match_accuracy": {
+      "chinese": 1.0,
+      "colloquial": 1.0,
+      "dual_intent": 1.0,
+      "english": 1.0,
+      "missing_slots": 1.0,
+      "mixed_language": 1.0,
+      "standard": 1.0,
+      "unknown_intent": 1.0
+    }
+  },
+  "results": [
+    {
+      "id": "standard-01",
+      "category": "standard",
+      "text": "Please check the status of order ORD-057.",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "en",
+        "intents": [
+          "order_status"
+        ],
+        "slots": [
+          {
+            "order_id": "ORD-057"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "en",
+        "intents": [
+          "order_status"
+        ],
+        "slots": [
+          {
+            "order_id": "ORD-057"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "standard-02",
+      "category": "standard",
+      "text": "Is the ASSEMBLY production stage operating normally?",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "en",
+        "intents": [
+          "production_normality"
+        ],
+        "slots": [
+          {
+            "stage": "ASSEMBLY"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "en",
+        "intents": [
+          "production_normality"
+        ],
+        "slots": [
+          {
+            "stage": "ASSEMBLY"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "standard-03",
+      "category": "standard",
+      "text": "Please provide today's morning briefing.",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "en",
+        "intents": [
+          "morning_briefing"
+        ],
+        "slots": [
+          {}
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "en",
+        "intents": [
+          "morning_briefing"
+        ],
+        "slots": [
+          {}
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "standard-04",
+      "category": "standard",
+      "text": "Can we accept an order for 800 TOPS pieces with delivery on 2026-04-25?",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "en",
+        "intents": [
+          "order_feasibility"
+        ],
+        "slots": [
+          {
+            "category": "TOPS",
+            "pieces": 800,
+            "requested_delivery_date": "2026-04-25"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "en",
+        "intents": [
+          "order_feasibility"
+        ],
+        "slots": [
+          {
+            "category": "TOPS",
+            "requested_delivery_date": "2026-04-25",
+            "pieces": 800
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "standard-05",
+      "category": "standard",
+      "text": "请查询订单 ORD-008 的当前状态。",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "zh",
+        "intents": [
+          "order_status"
+        ],
+        "slots": [
+          {
+            "order_id": "ORD-008"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "zh",
+        "intents": [
+          "order_status"
+        ],
+        "slots": [
+          {
+            "order_id": "ORD-008"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "standard-06",
+      "category": "standard",
+      "text": "请提供今天最需要关注的五项生产情况。",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "zh",
+        "intents": [
+          "morning_briefing"
+        ],
+        "slots": [
+          {
+            "top_n": 5
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "zh",
+        "intents": [
+          "morning_briefing"
+        ],
+        "slots": [
+          {
+            "top_n": 5
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "colloquial-01",
+      "category": "colloquial",
+      "text": "How's ORD057 doing?",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "en",
+        "intents": [
+          "order_status"
+        ],
+        "slots": [
+          {
+            "order_id": "ORD-057"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "en",
+        "intents": [
+          "order_status"
+        ],
+        "slots": [
+          {
+            "order_id": "ORD-057"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "colloquial-02",
+      "category": "colloquial",
+      "text": "Assembly looking okay today?",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "en",
+        "intents": [
+          "production_normality"
+        ],
+        "slots": [
+          {
+            "stage": "ASSEMBLY"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "en",
+        "intents": [
+          "production_normality"
+        ],
+        "slots": [
+          {
+            "stage": "ASSEMBLY"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "colloquial-03",
+      "category": "colloquial",
+      "text": "What's on the factory radar this morning? Give me the top 3.",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "en",
+        "intents": [
+          "morning_briefing"
+        ],
+        "slots": [
+          {
+            "top_n": 3
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "en",
+        "intents": [
+          "morning_briefing"
+        ],
+        "slots": [
+          {
+            "top_n": 3
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "colloquial-04",
+      "category": "colloquial",
+      "text": "Can we squeeze in 300 TOPS for 2026-05-10?",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "en",
+        "intents": [
+          "order_feasibility"
+        ],
+        "slots": [
+          {
+            "category": "TOPS",
+            "pieces": 300,
+            "requested_delivery_date": "2026-05-10"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "en",
+        "intents": [
+          "order_feasibility"
+        ],
+        "slots": [
+          {
+            "category": "TOPS",
+            "requested_delivery_date": "2026-05-10",
+            "pieces": 300
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "colloquial-05",
+      "category": "colloquial",
+      "text": "帮我瞅瞅 ORD 8 到哪儿了？",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "zh",
+        "intents": [
+          "order_status"
+        ],
+        "slots": [
+          {
+            "order_id": "ORD-008"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "zh",
+        "intents": [
+          "order_status"
+        ],
+        "slots": [
+          {
+            "order_id": "ORD-008"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "colloquial-06",
+      "category": "colloquial",
+      "text": "装配那边还稳不稳？",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "zh",
+        "intents": [
+          "production_normality"
+        ],
+        "slots": [
+          {
+            "stage": "ASSEMBLY"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "zh",
+        "intents": [
+          "production_normality"
+        ],
+        "slots": [
+          {
+            "stage": "ASSEMBLY"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "chinese-01",
+      "category": "chinese",
+      "text": "订单 ORD-021 现在是什么状态？",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "zh",
+        "intents": [
+          "order_status"
+        ],
+        "slots": [
+          {
+            "order_id": "ORD-021"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "zh",
+        "intents": [
+          "order_status"
+        ],
+        "slots": [
+          {
+            "order_id": "ORD-021"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "chinese-02",
+      "category": "chinese",
+      "text": "针织工序最近生产正常吗？",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "zh",
+        "intents": [
+          "production_normality"
+        ],
+        "slots": [
+          {
+            "stage": "KNITTING"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "zh",
+        "intents": [
+          "production_normality"
+        ],
+        "slots": [
+          {
+            "stage": "KNITTING"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "chinese-03",
+      "category": "chinese",
+      "text": "给我今天的晨间简报。",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "zh",
+        "intents": [
+          "morning_briefing"
+        ],
+        "slots": [
+          {}
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "zh",
+        "intents": [
+          "morning_briefing"
+        ],
+        "slots": [
+          {}
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "chinese-04",
+      "category": "chinese",
+      "text": "我们能接 650 件 ACCESSORIES，要求 2026-06-18 交付吗？",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "zh",
+        "intents": [
+          "order_feasibility"
+        ],
+        "slots": [
+          {
+            "category": "ACCESSORIES",
+            "pieces": 650,
+            "requested_delivery_date": "2026-06-18"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "zh",
+        "intents": [
+          "order_feasibility"
+        ],
+        "slots": [
+          {
+            "category": "ACCESSORIES",
+            "requested_delivery_date": "2026-06-18",
+            "pieces": 650
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "chinese-05",
+      "category": "chinese",
+      "text": "请看看包装工序是否正常。",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "zh",
+        "intents": [
+          "production_normality"
+        ],
+        "slots": [
+          {
+            "stage": "PACKING"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "zh",
+        "intents": [
+          "production_normality"
+        ],
+        "slots": [
+          {
+            "stage": "PACKING"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "chinese-06",
+      "category": "chinese",
+      "text": "列出今天最重要的 4 项风险。",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "zh",
+        "intents": [
+          "morning_briefing"
+        ],
+        "slots": [
+          {
+            "top_n": 4
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "zh",
+        "intents": [
+          "morning_briefing"
+        ],
+        "slots": [
+          {
+            "top_n": 4
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "english-01",
+      "category": "english",
+      "text": "What is the current status of ORD-034?",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "en",
+        "intents": [
+          "order_status"
+        ],
+        "slots": [
+          {
+            "order_id": "ORD-034"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "en",
+        "intents": [
+          "order_status"
+        ],
+        "slots": [
+          {
+            "order_id": "ORD-034"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "english-02",
+      "category": "english",
+      "text": "Check whether WASHING is operating normally.",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "en",
+        "intents": [
+          "production_normality"
+        ],
+        "slots": [
+          {
+            "stage": "WASHING"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "en",
+        "intents": [
+          "production_normality"
+        ],
+        "slots": [
+          {
+            "stage": "WASHING"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "english-03",
+      "category": "english",
+      "text": "Show the top 2 items in the morning briefing.",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "en",
+        "intents": [
+          "morning_briefing"
+        ],
+        "slots": [
+          {
+            "top_n": 2
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "en",
+        "intents": [
+          "morning_briefing"
+        ],
+        "slots": [
+          {
+            "top_n": 2
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "english-04",
+      "category": "english",
+      "text": "Assess a 1200-piece TOPS order due on 2026-07-01.",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "en",
+        "intents": [
+          "order_feasibility"
+        ],
+        "slots": [
+          {
+            "category": "TOPS",
+            "pieces": 1200,
+            "requested_delivery_date": "2026-07-01"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "en",
+        "intents": [
+          "order_feasibility"
+        ],
+        "slots": [
+          {
+            "category": "TOPS",
+            "requested_delivery_date": "2026-07-01",
+            "pieces": 1200
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "english-05",
+      "category": "english",
+      "text": "I need the factory's ranked attention list for today.",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "en",
+        "intents": [
+          "morning_briefing"
+        ],
+        "slots": [
+          {}
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "en",
+        "intents": [
+          "morning_briefing"
+        ],
+        "slots": [
+          {}
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "english-06",
+      "category": "english",
+      "text": "Is the KNITTING line normal?",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "en",
+        "intents": [
+          "production_normality"
+        ],
+        "slots": [
+          {
+            "stage": "KNITTING"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "en",
+        "intents": [
+          "production_normality"
+        ],
+        "slots": [
+          {
+            "stage": "KNITTING"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "mixed-01",
+      "category": "mixed_language",
+      "text": "帮我 check 一下 ORD-057 的 status。",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "zh",
+        "intents": [
+          "order_status"
+        ],
+        "slots": [
+          {
+            "order_id": "ORD-057"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "zh",
+        "intents": [
+          "order_status"
+        ],
+        "slots": [
+          {
+            "order_id": "ORD-057"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "mixed-02",
+      "category": "mixed_language",
+      "text": "Assembly 最近 production 正常吗？",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "zh",
+        "intents": [
+          "production_normality"
+        ],
+        "slots": [
+          {
+            "stage": "ASSEMBLY"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "zh",
+        "intents": [
+          "production_normality"
+        ],
+        "slots": [
+          {
+            "stage": "ASSEMBLY"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "mixed-03",
+      "category": "mixed_language",
+      "text": "今天的 morning briefing 给我 top 3。",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "zh",
+        "intents": [
+          "morning_briefing"
+        ],
+        "slots": [
+          {
+            "top_n": 3
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "zh",
+        "intents": [
+          "morning_briefing"
+        ],
+        "slots": [
+          {
+            "top_n": 3
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "mixed-04",
+      "category": "mixed_language",
+      "text": "能不能 accept 500 件 TOPS by 2026-05-20？",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "zh",
+        "intents": [
+          "order_feasibility"
+        ],
+        "slots": [
+          {
+            "category": "TOPS",
+            "pieces": 500,
+            "requested_delivery_date": "2026-05-20"
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "zh",
+        "intents": [
+          "order_feasibility"
+        ],
+        "slots": [
+          {
+            "category": "TOPS",
+            "requested_delivery_date": "2026-05-20",
+            "pieces": 500
+          }
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "mixed-05",
+      "category": "mixed_language",
+      "text": "Check ORD-008，然后看看 PACKING 是否正常。",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "zh",
+        "intents": [
+          "order_status",
+          "production_normality"
+        ],
+        "slots": [
+          {
+            "order_id": "ORD-008"
+          },
+          {
+            "stage": "PACKING"
+          }
+        ],
+        "missing_slots": [
+          [],
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "zh",
+        "intents": [
+          "order_status",
+          "production_normality"
+        ],
+        "slots": [
+          {
+            "order_id": "ORD-008"
+          },
+          {
+            "stage": "PACKING"
+          }
+        ],
+        "missing_slots": [
+          [],
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "mixed-06",
+      "category": "mixed_language",
+      "text": "Give me ORD-021 的状态，再来一份 morning briefing。",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "zh",
+        "intents": [
+          "order_status",
+          "morning_briefing"
+        ],
+        "slots": [
+          {
+            "order_id": "ORD-021"
+          },
+          {}
+        ],
+        "missing_slots": [
+          [],
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "zh",
+        "intents": [
+          "order_status",
+          "morning_briefing"
+        ],
+        "slots": [
+          {
+            "order_id": "ORD-021"
+          },
+          {}
+        ],
+        "missing_slots": [
+          [],
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "unknown-01",
+      "category": "unknown_intent",
+      "text": "Hello, who are you?",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "en",
+        "intents": [
+          "unknown"
+        ],
+        "slots": [
+          {}
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "en",
+        "intents": [
+          "unknown"
+        ],
+        "slots": [
+          {}
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "unknown-02",
+      "category": "unknown_intent",
+      "text": "What's the weather tomorrow?",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "en",
+        "intents": [
+          "unknown"
+        ],
+        "slots": [
+          {}
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "en",
+        "intents": [
+          "unknown"
+        ],
+        "slots": [
+          {}
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "unknown-03",
+      "category": "unknown_intent",
+      "text": "Please draft an email to our supplier.",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "en",
+        "intents": [
+          "unknown"
+        ],
+        "slots": [
+          {}
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "en",
+        "intents": [
+          "unknown"
+        ],
+        "slots": [
+          {}
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "unknown-04",
+      "category": "unknown_intent",
+      "text": "给我讲个笑话。",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "zh",
+        "intents": [
+          "unknown"
+        ],
+        "slots": [
+          {}
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "zh",
+        "intents": [
+          "unknown"
+        ],
+        "slots": [
+          {}
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "unknown-05",
+      "category": "unknown_intent",
+      "text": "帮我批准明天的请假申请。",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "zh",
+        "intents": [
+          "unknown"
+        ],
+        "slots": [
+          {}
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "zh",
+        "intents": [
+          "unknown"
+        ],
+        "slots": [
+          {}
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "unknown-06",
+      "category": "unknown_intent",
+      "text": "把这段文字翻译成英文。",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "en",
+        "intents": [
+          "unknown"
+        ],
+        "slots": [
+          {}
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "en",
+        "intents": [
+          "unknown"
+        ],
+        "slots": [
+          {}
+        ],
+        "missing_slots": [
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "missing-01",
+      "category": "missing_slots",
+      "text": "Can we accept 800 pieces by 2026-04-25?",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "en",
+        "intents": [
+          "order_feasibility"
+        ],
+        "slots": [
+          {
+            "pieces": 800,
+            "requested_delivery_date": "2026-04-25"
+          }
+        ],
+        "missing_slots": [
+          [
+            "category"
+          ]
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "en",
+        "intents": [
+          "order_feasibility"
+        ],
+        "slots": [
+          {
+            "requested_delivery_date": "2026-04-25",
+            "pieces": 800
+          }
+        ],
+        "missing_slots": [
+          [
+            "category"
+          ]
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "missing-02",
+      "category": "missing_slots",
+      "text": "Can we accept a TOPS order due on 2026-04-25?",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "en",
+        "intents": [
+          "order_feasibility"
+        ],
+        "slots": [
+          {
+            "category": "TOPS",
+            "requested_delivery_date": "2026-04-25"
+          }
+        ],
+        "missing_slots": [
+          [
+            "pieces"
+          ]
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "en",
+        "intents": [
+          "order_feasibility"
+        ],
+        "slots": [
+          {
+            "category": "TOPS",
+            "requested_delivery_date": "2026-04-25"
+          }
+        ],
+        "missing_slots": [
+          [
+            "pieces"
+          ]
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "missing-03",
+      "category": "missing_slots",
+      "text": "Can we accept 800 TOPS pieces?",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "en",
+        "intents": [
+          "order_feasibility"
+        ],
+        "slots": [
+          {
+            "category": "TOPS",
+            "pieces": 800
+          }
+        ],
+        "missing_slots": [
+          [
+            "requested_delivery_date"
+          ]
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "en",
+        "intents": [
+          "order_feasibility"
+        ],
+        "slots": [
+          {
+            "category": "TOPS",
+            "pieces": 800
+          }
+        ],
+        "missing_slots": [
+          [
+            "requested_delivery_date"
+          ]
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "missing-04",
+      "category": "missing_slots",
+      "text": "请查询订单状态。",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "zh",
+        "intents": [
+          "order_status"
+        ],
+        "slots": [
+          {}
+        ],
+        "missing_slots": [
+          [
+            "order_id"
+          ]
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "zh",
+        "intents": [
+          "order_status"
+        ],
+        "slots": [
+          {}
+        ],
+        "missing_slots": [
+          [
+            "order_id"
+          ]
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "missing-05",
+      "category": "missing_slots",
+      "text": "Is production operating normally?",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "en",
+        "intents": [
+          "production_normality"
+        ],
+        "slots": [
+          {}
+        ],
+        "missing_slots": [
+          [
+            "stage"
+          ]
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "en",
+        "intents": [
+          "production_normality"
+        ],
+        "slots": [
+          {}
+        ],
+        "missing_slots": [
+          [
+            "stage"
+          ]
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "missing-06",
+      "category": "missing_slots",
+      "text": "请评估一个新订单能不能接。",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "zh",
+        "intents": [
+          "order_feasibility"
+        ],
+        "slots": [
+          {}
+        ],
+        "missing_slots": [
+          [
+            "category",
+            "pieces",
+            "requested_delivery_date"
+          ]
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "zh",
+        "intents": [
+          "order_feasibility"
+        ],
+        "slots": [
+          {}
+        ],
+        "missing_slots": [
+          [
+            "category",
+            "pieces",
+            "requested_delivery_date"
+          ]
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "dual-01",
+      "category": "dual_intent",
+      "text": "Check ORD-057 and tell me whether ASSEMBLY is normal.",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "en",
+        "intents": [
+          "order_status",
+          "production_normality"
+        ],
+        "slots": [
+          {
+            "order_id": "ORD-057"
+          },
+          {
+            "stage": "ASSEMBLY"
+          }
+        ],
+        "missing_slots": [
+          [],
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "en",
+        "intents": [
+          "order_status",
+          "production_normality"
+        ],
+        "slots": [
+          {
+            "order_id": "ORD-057"
+          },
+          {
+            "stage": "ASSEMBLY"
+          }
+        ],
+        "missing_slots": [
+          [],
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "dual-02",
+      "category": "dual_intent",
+      "text": "查询 ORD-008，再给我今天的晨间简报。",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "zh",
+        "intents": [
+          "order_status",
+          "morning_briefing"
+        ],
+        "slots": [
+          {
+            "order_id": "ORD-008"
+          },
+          {}
+        ],
+        "missing_slots": [
+          [],
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "zh",
+        "intents": [
+          "order_status",
+          "morning_briefing"
+        ],
+        "slots": [
+          {
+            "order_id": "ORD-008"
+          },
+          {}
+        ],
+        "missing_slots": [
+          [],
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "dual-03",
+      "category": "dual_intent",
+      "text": "Assess 500 TOPS pieces due 2026-05-20, and check whether PACKING is normal.",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "en",
+        "intents": [
+          "order_feasibility",
+          "production_normality"
+        ],
+        "slots": [
+          {
+            "category": "TOPS",
+            "pieces": 500,
+            "requested_delivery_date": "2026-05-20"
+          },
+          {
+            "stage": "PACKING"
+          }
+        ],
+        "missing_slots": [
+          [],
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "en",
+        "intents": [
+          "order_feasibility",
+          "production_normality"
+        ],
+        "slots": [
+          {
+            "category": "TOPS",
+            "requested_delivery_date": "2026-05-20",
+            "pieces": 500
+          },
+          {
+            "stage": "PACKING"
+          }
+        ],
+        "missing_slots": [
+          [],
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "dual-04",
+      "category": "dual_intent",
+      "text": "What are the statuses of ORD-021 and ORD-034?",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "en",
+        "intents": [
+          "order_status",
+          "order_status"
+        ],
+        "slots": [
+          {
+            "order_id": "ORD-021"
+          },
+          {
+            "order_id": "ORD-034"
+          }
+        ],
+        "missing_slots": [
+          [],
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "en",
+        "intents": [
+          "order_status",
+          "order_status"
+        ],
+        "slots": [
+          {
+            "order_id": "ORD-021"
+          },
+          {
+            "order_id": "ORD-034"
+          }
+        ],
+        "missing_slots": [
+          [],
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "dual-05",
+      "category": "dual_intent",
+      "text": "Give me the top 3 morning briefing items and assess 200 ACCESSORIES pieces due 2026-06-01.",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "en",
+        "intents": [
+          "morning_briefing",
+          "order_feasibility"
+        ],
+        "slots": [
+          {
+            "top_n": 3
+          },
+          {
+            "category": "ACCESSORIES",
+            "pieces": 200,
+            "requested_delivery_date": "2026-06-01"
+          }
+        ],
+        "missing_slots": [
+          [],
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "en",
+        "intents": [
+          "morning_briefing",
+          "order_feasibility"
+        ],
+        "slots": [
+          {
+            "top_n": 3
+          },
+          {
+            "category": "ACCESSORIES",
+            "requested_delivery_date": "2026-06-01",
+            "pieces": 200
+          }
+        ],
+        "missing_slots": [
+          [],
+          []
+        ],
+        "issue_types": []
+      }
+    },
+    {
+      "id": "dual-06",
+      "category": "dual_intent",
+      "text": "分别检查 KNITTING 和 WASHING 工序是否正常。",
+      "passed": true,
+      "checks": {
+        "intent_sequence": true,
+        "language": true,
+        "slots": true,
+        "missing_slots": true,
+        "issue_types": true
+      },
+      "expected": {
+        "language": "zh",
+        "intents": [
+          "production_normality",
+          "production_normality"
+        ],
+        "slots": [
+          {
+            "stage": "KNITTING"
+          },
+          {
+            "stage": "WASHING"
+          }
+        ],
+        "missing_slots": [
+          [],
+          []
+        ],
+        "issue_types": []
+      },
+      "actual": {
+        "language": "zh",
+        "intents": [
+          "production_normality",
+          "production_normality"
+        ],
+        "slots": [
+          {
+            "stage": "KNITTING"
+          },
+          {
+            "stage": "WASHING"
+          }
+        ],
+        "missing_slots": [
+          [],
+          []
+        ],
+        "issue_types": []
+      }
+    }
+  ]
+}

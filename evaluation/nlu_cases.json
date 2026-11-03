@@ -1,0 +1,449 @@
+[
+  {
+    "id": "standard-01",
+    "category": "standard",
+    "text": "Please check the status of order ORD-057.",
+    "expected_language": "en",
+    "expected_tasks": [
+      {"intent": "order_status", "slots": {"order_id": "ORD-057"}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "standard-02",
+    "category": "standard",
+    "text": "Is the ASSEMBLY production stage operating normally?",
+    "expected_language": "en",
+    "expected_tasks": [
+      {"intent": "production_normality", "slots": {"stage": "ASSEMBLY"}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "standard-03",
+    "category": "standard",
+    "text": "Please provide today's morning briefing.",
+    "expected_language": "en",
+    "expected_tasks": [
+      {"intent": "morning_briefing", "slots": {}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "standard-04",
+    "category": "standard",
+    "text": "Can we accept an order for 800 TOPS pieces with delivery on 2026-04-25?",
+    "expected_language": "en",
+    "expected_tasks": [
+      {"intent": "order_feasibility", "slots": {"category": "TOPS", "pieces": 800, "requested_delivery_date": "2026-04-25"}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "standard-05",
+    "category": "standard",
+    "text": "请查询订单 ORD-008 的当前状态。",
+    "expected_language": "zh",
+    "expected_tasks": [
+      {"intent": "order_status", "slots": {"order_id": "ORD-008"}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "standard-06",
+    "category": "standard",
+    "text": "请提供今天最需要关注的五项生产情况。",
+    "expected_language": "zh",
+    "expected_tasks": [
+      {"intent": "morning_briefing", "slots": {"top_n": 5}, "missing_slots": []}
+    ]
+  },
+
+  {
+    "id": "colloquial-01",
+    "category": "colloquial",
+    "text": "How's ORD057 doing?",
+    "expected_language": "en",
+    "expected_tasks": [
+      {"intent": "order_status", "slots": {"order_id": "ORD-057"}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "colloquial-02",
+    "category": "colloquial",
+    "text": "Assembly looking okay today?",
+    "expected_language": "en",
+    "expected_tasks": [
+      {"intent": "production_normality", "slots": {"stage": "ASSEMBLY"}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "colloquial-03",
+    "category": "colloquial",
+    "text": "What's on the factory radar this morning? Give me the top 3.",
+    "expected_language": "en",
+    "expected_tasks": [
+      {"intent": "morning_briefing", "slots": {"top_n": 3}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "colloquial-04",
+    "category": "colloquial",
+    "text": "Can we squeeze in 300 TOPS for 2026-05-10?",
+    "expected_language": "en",
+    "expected_tasks": [
+      {"intent": "order_feasibility", "slots": {"category": "TOPS", "pieces": 300, "requested_delivery_date": "2026-05-10"}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "colloquial-05",
+    "category": "colloquial",
+    "text": "帮我瞅瞅 ORD 8 到哪儿了？",
+    "expected_language": "zh",
+    "expected_tasks": [
+      {"intent": "order_status", "slots": {"order_id": "ORD-008"}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "colloquial-06",
+    "category": "colloquial",
+    "text": "装配那边还稳不稳？",
+    "expected_language": "zh",
+    "expected_tasks": [
+      {"intent": "production_normality", "slots": {"stage": "ASSEMBLY"}, "missing_slots": []}
+    ]
+  },
+
+  {
+    "id": "chinese-01",
+    "category": "chinese",
+    "text": "订单 ORD-021 现在是什么状态？",
+    "expected_language": "zh",
+    "expected_tasks": [
+      {"intent": "order_status", "slots": {"order_id": "ORD-021"}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "chinese-02",
+    "category": "chinese",
+    "text": "针织工序最近生产正常吗？",
+    "expected_language": "zh",
+    "expected_tasks": [
+      {"intent": "production_normality", "slots": {"stage": "KNITTING"}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "chinese-03",
+    "category": "chinese",
+    "text": "给我今天的晨间简报。",
+    "expected_language": "zh",
+    "expected_tasks": [
+      {"intent": "morning_briefing", "slots": {}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "chinese-04",
+    "category": "chinese",
+    "text": "我们能接 650 件 ACCESSORIES，要求 2026-06-18 交付吗？",
+    "expected_language": "zh",
+    "expected_tasks": [
+      {"intent": "order_feasibility", "slots": {"category": "ACCESSORIES", "pieces": 650, "requested_delivery_date": "2026-06-18"}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "chinese-05",
+    "category": "chinese",
+    "text": "请看看包装工序是否正常。",
+    "expected_language": "zh",
+    "expected_tasks": [
+      {"intent": "production_normality", "slots": {"stage": "PACKING"}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "chinese-06",
+    "category": "chinese",
+    "text": "列出今天最重要的 4 项风险。",
+    "expected_language": "zh",
+    "expected_tasks": [
+      {"intent": "morning_briefing", "slots": {"top_n": 4}, "missing_slots": []}
+    ]
+  },
+
+  {
+    "id": "english-01",
+    "category": "english",
+    "text": "What is the current status of ORD-034?",
+    "expected_language": "en",
+    "expected_tasks": [
+      {"intent": "order_status", "slots": {"order_id": "ORD-034"}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "english-02",
+    "category": "english",
+    "text": "Check whether WASHING is operating normally.",
+    "expected_language": "en",
+    "expected_tasks": [
+      {"intent": "production_normality", "slots": {"stage": "WASHING"}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "english-03",
+    "category": "english",
+    "text": "Show the top 2 items in the morning briefing.",
+    "expected_language": "en",
+    "expected_tasks": [
+      {"intent": "morning_briefing", "slots": {"top_n": 2}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "english-04",
+    "category": "english",
+    "text": "Assess a 1200-piece TOPS order due on 2026-07-01.",
+    "expected_language": "en",
+    "expected_tasks": [
+      {"intent": "order_feasibility", "slots": {"category": "TOPS", "pieces": 1200, "requested_delivery_date": "2026-07-01"}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "english-05",
+    "category": "english",
+    "text": "I need the factory's ranked attention list for today.",
+    "expected_language": "en",
+    "expected_tasks": [
+      {"intent": "morning_briefing", "slots": {}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "english-06",
+    "category": "english",
+    "text": "Is the KNITTING line normal?",
+    "expected_language": "en",
+    "expected_tasks": [
+      {"intent": "production_normality", "slots": {"stage": "KNITTING"}, "missing_slots": []}
+    ]
+  },
+
+  {
+    "id": "mixed-01",
+    "category": "mixed_language",
+    "text": "帮我 check 一下 ORD-057 的 status。",
+    "expected_language": "zh",
+    "expected_tasks": [
+      {"intent": "order_status", "slots": {"order_id": "ORD-057"}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "mixed-02",
+    "category": "mixed_language",
+    "text": "Assembly 最近 production 正常吗？",
+    "expected_language": "zh",
+    "expected_tasks": [
+      {"intent": "production_normality", "slots": {"stage": "ASSEMBLY"}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "mixed-03",
+    "category": "mixed_language",
+    "text": "今天的 morning briefing 给我 top 3。",
+    "expected_language": "zh",
+    "expected_tasks": [
+      {"intent": "morning_briefing", "slots": {"top_n": 3}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "mixed-04",
+    "category": "mixed_language",
+    "text": "能不能 accept 500 件 TOPS by 2026-05-20？",
+    "expected_language": "zh",
+    "expected_tasks": [
+      {"intent": "order_feasibility", "slots": {"category": "TOPS", "pieces": 500, "requested_delivery_date": "2026-05-20"}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "mixed-05",
+    "category": "mixed_language",
+    "text": "Check ORD-008，然后看看 PACKING 是否正常。",
+    "expected_language": "zh",
+    "expected_tasks": [
+      {"intent": "order_status", "slots": {"order_id": "ORD-008"}, "missing_slots": []},
+      {"intent": "production_normality", "slots": {"stage": "PACKING"}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "mixed-06",
+    "category": "mixed_language",
+    "text": "Give me ORD-021 的状态，再来一份 morning briefing。",
+    "expected_language": "zh",
+    "expected_tasks": [
+      {"intent": "order_status", "slots": {"order_id": "ORD-021"}, "missing_slots": []},
+      {"intent": "morning_briefing", "slots": {}, "missing_slots": []}
+    ]
+  },
+
+  {
+    "id": "unknown-01",
+    "category": "unknown_intent",
+    "text": "Hello, who are you?",
+    "expected_language": "en",
+    "expected_tasks": [
+      {"intent": "unknown", "slots": {}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "unknown-02",
+    "category": "unknown_intent",
+    "text": "What's the weather tomorrow?",
+    "expected_language": "en",
+    "expected_tasks": [
+      {"intent": "unknown", "slots": {}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "unknown-03",
+    "category": "unknown_intent",
+    "text": "Please draft an email to our supplier.",
+    "expected_language": "en",
+    "expected_tasks": [
+      {"intent": "unknown", "slots": {}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "unknown-04",
+    "category": "unknown_intent",
+    "text": "给我讲个笑话。",
+    "expected_language": "zh",
+    "expected_tasks": [
+      {"intent": "unknown", "slots": {}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "unknown-05",
+    "category": "unknown_intent",
+    "text": "帮我批准明天的请假申请。",
+    "expected_language": "zh",
+    "expected_tasks": [
+      {"intent": "unknown", "slots": {}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "unknown-06",
+    "category": "unknown_intent",
+    "text": "把这段文字翻译成英文。",
+    "expected_language": "en",
+    "expected_tasks": [
+      {"intent": "unknown", "slots": {}, "missing_slots": []}
+    ]
+  },
+
+  {
+    "id": "missing-01",
+    "category": "missing_slots",
+    "text": "Can we accept 800 pieces by 2026-04-25?",
+    "expected_language": "en",
+    "expected_tasks": [
+      {"intent": "order_feasibility", "slots": {"pieces": 800, "requested_delivery_date": "2026-04-25"}, "missing_slots": ["category"]}
+    ]
+  },
+  {
+    "id": "missing-02",
+    "category": "missing_slots",
+    "text": "Can we accept a TOPS order due on 2026-04-25?",
+    "expected_language": "en",
+    "expected_tasks": [
+      {"intent": "order_feasibility", "slots": {"category": "TOPS", "requested_delivery_date": "2026-04-25"}, "missing_slots": ["pieces"]}
+    ]
+  },
+  {
+    "id": "missing-03",
+    "category": "missing_slots",
+    "text": "Can we accept 800 TOPS pieces?",
+    "expected_language": "en",
+    "expected_tasks": [
+      {"intent": "order_feasibility", "slots": {"category": "TOPS", "pieces": 800}, "missing_slots": ["requested_delivery_date"]}
+    ]
+  },
+  {
+    "id": "missing-04",
+    "category": "missing_slots",
+    "text": "请查询订单状态。",
+    "expected_language": "zh",
+    "expected_tasks": [
+      {"intent": "order_status", "slots": {}, "missing_slots": ["order_id"]}
+    ]
+  },
+  {
+    "id": "missing-05",
+    "category": "missing_slots",
+    "text": "Is production operating normally?",
+    "expected_language": "en",
+    "expected_tasks": [
+      {"intent": "production_normality", "slots": {}, "missing_slots": ["stage"]}
+    ]
+  },
+  {
+    "id": "missing-06",
+    "category": "missing_slots",
+    "text": "请评估一个新订单能不能接。",
+    "expected_language": "zh",
+    "expected_tasks": [
+      {"intent": "order_feasibility", "slots": {}, "missing_slots": ["category", "pieces", "requested_delivery_date"]}
+    ]
+  },
+
+  {
+    "id": "dual-01",
+    "category": "dual_intent",
+    "text": "Check ORD-057 and tell me whether ASSEMBLY is normal.",
+    "expected_language": "en",
+    "expected_tasks": [
+      {"intent": "order_status", "slots": {"order_id": "ORD-057"}, "missing_slots": []},
+      {"intent": "production_normality", "slots": {"stage": "ASSEMBLY"}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "dual-02",
+    "category": "dual_intent",
+    "text": "查询 ORD-008，再给我今天的晨间简报。",
+    "expected_language": "zh",
+    "expected_tasks": [
+      {"intent": "order_status", "slots": {"order_id": "ORD-008"}, "missing_slots": []},
+      {"intent": "morning_briefing", "slots": {}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "dual-03",
+    "category": "dual_intent",
+    "text": "Assess 500 TOPS pieces due 2026-05-20, and check whether PACKING is normal.",
+    "expected_language": "en",
+    "expected_tasks": [
+      {"intent": "order_feasibility", "slots": {"category": "TOPS", "pieces": 500, "requested_delivery_date": "2026-05-20"}, "missing_slots": []},
+      {"intent": "production_normality", "slots": {"stage": "PACKING"}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "dual-04",
+    "category": "dual_intent",
+    "text": "What are the statuses of ORD-021 and ORD-034?",
+    "expected_language": "en",
+    "expected_tasks": [
+      {"intent": "order_status", "slots": {"order_id": "ORD-021"}, "missing_slots": []},
+      {"intent": "order_status", "slots": {"order_id": "ORD-034"}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "dual-05",
+    "category": "dual_intent",
+    "text": "Give me the top 3 morning briefing items and assess 200 ACCESSORIES pieces due 2026-06-01.",
+    "expected_language": "en",
+    "expected_tasks": [
+      {"intent": "morning_briefing", "slots": {"top_n": 3}, "missing_slots": []},
+      {"intent": "order_feasibility", "slots": {"category": "ACCESSORIES", "pieces": 200, "requested_delivery_date": "2026-06-01"}, "missing_slots": []}
+    ]
+  },
+  {
+    "id": "dual-06",
+    "category": "dual_intent",
+    "text": "分别检查 KNITTING 和 WASHING 工序是否正常。",
+    "expected_language": "zh",
+    "expected_tasks": [
+      {"intent": "production_normality", "slots": {"stage": "KNITTING"}, "missing_slots": []},
+      {"intent": "production_normality", "slots": {"stage": "WASHING"}, "missing_slots": []}
+    ]
+  }
+]

@@ -102,7 +102,13 @@ class OpenAILLMClient:
                 },
             )
         except Exception as exc:
-            raise LLMClientError(f"OpenAI request failed: {exc}") from exc
+            root_cause = exc
+            while root_cause.__cause__ is not None:
+                root_cause = root_cause.__cause__
+            detail = f"{type(exc).__name__}: {exc}"
+            if root_cause is not exc:
+                detail += f" ({type(root_cause).__name__}: {root_cause})"
+            raise LLMClientError(f"OpenAI request failed: {detail}") from exc
 
         status = getattr(response, "status", None)
         if status not in (None, "completed"):
