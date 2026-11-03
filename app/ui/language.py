@@ -10,6 +10,9 @@ from typing import Any
 HISTORICAL_COMPARISON = "Recorded production performance versus the established baseline."
 
 ZH = {
+    "Daily mode": "日常模式",
+    "Eye comfort mode": "护眼模式",
+    "Night mode": "黑夜模式",
     "Review the details, then run the analysis.": "确认参数后，即可运行分析。",
     "Your factory, at a glance.": "工厂情况，一目了然。",
     "AI Configure": "AI 配置",
@@ -147,6 +150,7 @@ ZH = {
     "View Evidence": "查看证据",
     "No evidence was provided for this answer.": "此回答未提供证据。",
     "Hide analysis panel": "收起分析面板",
+    "Hide": "收起",
     "Show analysis panel": "展开分析面板",
     "Show only this answer's evidence, warnings and assumptions": (
         "查看这条回答自己的证据、风险提醒和假设"

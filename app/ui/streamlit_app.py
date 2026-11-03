@@ -30,6 +30,7 @@ from app.ui import evidence_follow as follow_presentation  # noqa: E402
 from app.ui import language as language_catalog  # noqa: E402
 from app.ui import localized_reply as reply_presentation  # noqa: E402
 from app.ui import result_cards as card_presentation  # noqa: E402
+from app.ui import themes as theme_presentation  # noqa: E402
 from app.ui import workflow_controls as workflow_presentation  # noqa: E402
 from app.ui.analysis_selection import ensure_reply_ids, selected_answer  # noqa: E402
 from app.ui.chat_state import (  # noqa: E402
@@ -47,6 +48,7 @@ reload(language_catalog)
 reload(reply_presentation)
 reload(workflow_presentation)
 reload(card_presentation)
+reload(theme_presentation)
 reload(follow_presentation)
 from app.ui.language import shared_language, translate  # noqa: E402
 from app.ui.localized_reply import (  # noqa: E402
@@ -73,6 +75,12 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 css = Path(__file__).with_name("styles.css").read_text(encoding="utf-8")
+mode = theme_presentation.mode_name(st.session_state.get("ui_theme", "green"))
+css = theme_presentation.theme_styles(css, mode) + theme_presentation.native_styles(mode)
+css += Path(__file__).with_name("theme_controls.css").read_text(encoding="utf-8")
+css += (
+    f".st-key-theme_{mode} button{{outline:1px solid var(--sc-teal)!important;outline-offset:3px}}"
+)
 st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
 WORKFLOWS = ("Order Status", "Production Health", "Morning Briefing", "Check Feasibility")
@@ -115,6 +123,7 @@ def _init_session() -> None:
     state.setdefault("next_thread", 2)
     state.setdefault("workflow", None)
     state.setdefault("ui_language", shared_language(state))
+    state.setdefault("ui_theme", "green")
     state.setdefault("analysis_open", True)
     state.setdefault("follow_evidence", True)
     state["follow_epoch"] = state.get("follow_epoch", 0) + 1
@@ -351,6 +360,10 @@ def _process_pending_chat() -> None:
     st.rerun()
 
 
+def _set_theme(mode: str) -> None:
+    st.session_state["ui_theme"] = theme_presentation.mode_name(mode)
+
+
 def _nav_sidebar(chat_ready: bool) -> None:
     with st.sidebar, st.container(key="sidebar_layout"):
         st.markdown(
@@ -409,12 +422,23 @@ def _nav_sidebar(chat_ready: bool) -> None:
                     help=_display_text(hover),
                 )
         with st.container(key="sidebar_footer"):
-            st.markdown(
-                '<div class="sc-side-rule"></div><div class="sc-side-title">'
-                + _t("WORKSPACE")
-                + "</div>",
-                unsafe_allow_html=True,
-            )
+            st.markdown('<div class="sc-side-rule"></div>', unsafe_allow_html=True)
+            with st.container(key="workspace_heading"):
+                st.markdown(
+                    '<div class="sc-side-title">' + _t("WORKSPACE") + "</div>",
+                    unsafe_allow_html=True,
+                )
+                with st.container(key="theme_controls", horizontal=True, gap=None):
+                    for theme in theme_presentation.MODES:
+                        label = _t(theme_presentation.MODE_LABELS[theme])
+                        st.button(
+                            label,
+                            key="theme_" + theme,
+                            help=label,
+                            on_click=_set_theme,
+                            args=(theme,),
+                            width=24,
+                        )
             state_class = "online" if chat_ready else "offline"
             state_label = _t("Configured" if chat_ready else "Not configured")
             st.markdown(
@@ -527,6 +551,11 @@ def _workflow_dialog() -> None:
     if flow not in WORKFLOWS:
         return
 
+    from app.ui.dialog_layout import mount_dialog_layout
+
+    # Keep the invisible geometry bridge out of the dialog's form layout.
+    mount_dialog_layout(shared_language(st.session_state))
+
     @st.dialog(_t(flow), width="medium", on_dismiss=_dismiss_workflow)
     def parameters() -> None:
         _structured_helper()
@@ -635,9 +664,6 @@ def _structured_helper() -> None:
                 )
             if succeeded:
                 st.rerun()
-        if st.button(_t("Close helper"), key="close_structured", type="secondary"):
-            st.session_state["workflow"] = None
-            st.rerun()
 
 
 def _toggle_analysis(identity: str) -> None:
@@ -651,11 +677,20 @@ def _reply_view(reply: AgentReply, identity: str) -> None:
     _, _, tone, conclusion, metrics = card_summary(
         reply, shared_language(st.session_state), text=_reply_text(reply)
     )
-    st.markdown(
-        f'<div class="sc-assessment sc-assessment-{tone}">'
-        f"<strong>{_safe(conclusion)}</strong></div>",
-        unsafe_allow_html=True,
-    )
+    with st.container(key="answer_summary_" + identity):
+        st.markdown(
+            f'<div class="sc-assessment sc-assessment-{tone}">'
+            f"<strong>{_safe(conclusion)}</strong></div>",
+            unsafe_allow_html=True,
+        )
+        st.button(
+            _t("View Evidence"),
+            icon=":material/manage_search:",
+            key="evidence_" + identity,
+            on_click=_view_evidence,
+            args=(identity,),
+            help=_t("Show only this answer's evidence, warnings and assumptions"),
+        )
     if metrics:
         st.markdown(
             '<div class="sc-mini-label">' + _t("KEY METRICS") + "</div>", unsafe_allow_html=True
@@ -677,7 +712,12 @@ def _reply_view(reply: AgentReply, identity: str) -> None:
         use_container_width=True,
     )
     if expanded:
-        st.markdown(_reply_text(reply))
+        from app.ui.copy_button import copy_analysis
+
+        with st.container(key="full_analysis_" + identity):
+            with st.container(key="analysis_copy_" + identity):
+                copy_analysis(_reply_text(reply), shared_language(st.session_state), identity)
+            st.markdown(_reply_text(reply))
 
 
 def _conversation() -> None:
@@ -709,24 +749,6 @@ def _conversation() -> None:
                     unsafe_allow_html=True,
                 )
                 _reply_view(message["reply"], identity)
-                copy, evidence = st.columns(2, gap="small")
-                with copy:
-                    with st.popover(_t("Copy"), use_container_width=True):
-                        st.caption(
-                            "点击复制图标复制完整分析。"
-                            if shared_language(st.session_state) == "zh"
-                            else "Use the copy icon to copy the full analysis."
-                        )
-                        st.code(_reply_text(message["reply"]), language=None, wrap_lines=True)
-                with evidence:
-                    st.button(
-                        _t("View Evidence"),
-                        key="evidence_" + identity,
-                        on_click=_view_evidence,
-                        args=(identity,),
-                        use_container_width=True,
-                        help=_t("Show only this answer's evidence, warnings and assumptions"),
-                    )
                 st.markdown(
                     f'<span id="sc-answer-end-{_safe(identity)}" aria-hidden="true"></span>',
                     unsafe_allow_html=True,
@@ -827,17 +849,19 @@ def _details(
     reply: AgentReply | None, answer_number: int | None = None, reply_id: str | None = None
 ) -> None:
     with st.container(key="analysis_header"):
-        st.markdown(
-            '<div class="sc-details-title">' + _t("ANALYSIS DETAILS") + "</div>",
-            unsafe_allow_html=True,
-        )
-        st.button(
-            _t("Hide analysis panel"),
-            key="hide_analysis",
-            on_click=_set_analysis_open,
-            args=(False,),
-            use_container_width=True,
-        )
+        with st.container(key="analysis_heading"):
+            st.markdown(
+                '<div class="sc-details-title">' + _t("ANALYSIS DETAILS") + "</div>",
+                unsafe_allow_html=True,
+            )
+            st.button(
+                _t("Hide"),
+                icon=":material/chevron_right:",
+                key="hide_analysis",
+                help=_t("Hide analysis panel"),
+                on_click=_set_analysis_open,
+                args=(False,),
+            )
         from app.ui.evidence_follow import follow_supported
 
         st.toggle(
@@ -897,6 +921,13 @@ def _analysis_fragment() -> None:
     )
 
 
+def _themed_dataframe(data, **options) -> None:
+    st.dataframe(
+        theme_presentation.table_for_mode(data, st.session_state.get("ui_theme", "green")),
+        **options,
+    )
+
+
 def _analysis_body(reply: AgentReply | None, reply_id: str | None) -> None:
     if reply is None:
         with st.container(border=True, key="detail_empty"):
@@ -916,7 +947,7 @@ def _analysis_body(reply: AgentReply | None, reply_id: str | None) -> None:
             sources = sorted({r["Source"] for r in rows})
             st.caption(_t("Sources: ") + ", ".join(sources[:5]))
             with st.expander(_t("View source rows"), expanded=False):
-                st.dataframe(
+                _themed_dataframe(
                     [
                         {_t(k): _display_text(v) if k == "Detail" else v for k, v in row.items()}
                         for row in rows[:15]
@@ -971,7 +1002,7 @@ def _analysis_body(reply: AgentReply | None, reply_id: str | None) -> None:
                     if section.get("description"):
                         st.caption(section["description"])
                     if section.get("rows"):
-                        st.dataframe(
+                        _themed_dataframe(
                             section["rows"],
                             hide_index=True,
                             use_container_width=True,
@@ -992,7 +1023,7 @@ def _analysis_body(reply: AgentReply | None, reply_id: str | None) -> None:
                 st.caption(section["description"])
             if section.get("rows"):
                 with st.expander(_t("View details"), expanded=bool(section.get("expanded", False))):
-                    st.dataframe(
+                    _themed_dataframe(
                         section["rows"],
                         hide_index=True,
                         use_container_width=True,
@@ -1033,6 +1064,7 @@ def main() -> None:
                 if not st.session_state["analysis_open"]:
                     st.button(
                         _t("Show analysis panel"),
+                        icon=":material/chevron_left:",
                         key="show_analysis",
                         on_click=_set_analysis_open,
                         args=(True,),

@@ -1,38 +1,76 @@
-# UI integration review
+# Combined UI handoff
 
-## Source revisions
+## Branch and source revisions
 
-- Shared UI base: `8249bdb` (`feat/streamlit-agent-ui`).
-- A: `623762f` (`feat/streamlit-ui-chat-layout`), user-approved appearance.
-- B: `944f47c` (`feat/ui-person-b`), bilingual workflows/evidence navigation.
-- Integration branch: `feat/ui-combined`. Both source branches remain intact.
+- Review branch: `feat/ui-combined`.
+- Target: `feat/streamlit-agent-ui`; the combined result can be proposed to
+  `integration/intent-enhancement` after shared UI review.
+- Approved appearance source: `623762f` (`feat/streamlit-ui-chat-layout`).
+- Person B source: `944f47c` (`feat/ui-person-b`).
+- Local integration merge: `8d8d143`, retaining both source histories.
+- PR #10 remains separate until the combined change is merged.
 
-## Conflict resolution
+## Delivered interface
 
-The main UI and stylesheet conflicted. The merged version preserves A's mint
-palette, white hydrogel center, 18 px user bubbles, flat metrics, native composer,
-short stable history labels and independent scrolling. B's language controls,
-parameter persistence/dialogs, full-analysis/copy actions and evidence ownership
-are connected to those containers. Old text-area/send controls, eight-chat
-limits, source banners and snapshot footer are not restored.
+The approved three-panel structure is preserved. Recent Chats scrolls independently
+and uses compact first-exchange titles, with quantity/category retained for
+feasibility and dates available on hover. User questions appear on the right;
+assistant answers appear on the left. The native composer stays at the bottom of
+the center surface. Questions render before the thinking indicator.
 
-The language widget lives below AI Configure. Both English and Chinese generated
-feasibility titles keep quantity/category while hover text retains the date.
-Saved backend replies and conversation task state are never translated in place.
-B's tests that addressed the replaced text area now exercise the native composer;
-actual unsent-draft preservation is checked in the browser because AppTest's
-chat-input `set_value().run()` submits rather than simulates an unsent draft.
+WORKSPACE contains AI Configure, the global language selector and three small
+appearance controls. Daily mode uses frosted silver/white, Eye comfort mode keeps
+the approved mint/teal palette, and Night mode uses neutral black/graphite. Swatches
+are 14 px with a thin selection ring and translated rounded hover labels. Theme
+changes preserve messages, task state, selected evidence and saved workflow inputs.
 
-## Validation and rollout
+The center and analysis rail have independent scrolling. The left collapse control
+is always visible. The analysis heading has a compact Hide control; its reopen
+button sits at the right of the center area. The follow-answer toggle is aligned
+with its label. Streamlit Deploy/menu chrome and redundant result/footer labels
+are hidden.
 
-532 tests, Ruff, formatting and whitespace checks pass on Streamlit 1.66.1.
-Additional integration coverage switches language while feasibility waits for a
-date, then resumes it and returns to earlier evidence without changing task state.
-Browser checks cover language/draft persistence, old chats, guided 800 TOPS,
-copy/full-analysis controls, panel visibility and scroll-based evidence follow.
-History remains session-local; refresh persistence is not implemented.
+## Workflows and answer controls
 
-The combined version is held locally for visual acceptance. After acceptance,
-create a PR from `feat/ui-combined` to `feat/streamlit-agent-ui`. Only after that
-shared UI version is checked should it be proposed to
-`integration/intent-enhancement`. PR #10 is retained until the combined PR lands.
+All four guided workflows open parameter dialogs. Drag the title to move and the
+edges/corners to resize. There is no size toolbar or visible resize glyph. Geometry
+is constrained to the viewport and retained in browser session storage; only
+numeric window geometry is stored there. Native Escape and the top-right 44 px
+close target preserve saved parameters. Dialogs do not tint or dim the page.
+
+Night dialogs and Run use solid graphite; the Daily Run control is white. Selected
+workflow cards use theme-specific gradients rather than the generic primary fill.
+
+Each answer offers a compact borderless View Evidence action beside its conclusion,
+key metrics, optional full analysis and a one-click copy icon at the expanded
+analysis's upper right. Copy does not open a second text window. Evidence selection
+uses stable answer IDs and remains local to the conversation. Scroll following can
+be disabled; manual selection is respected until the next intentional chat scroll.
+
+The evidence grid, toolbar, menus and scrollbars follow the selected theme. Night
+cell styling changes presentation only: source values, CSV exports and backend
+results remain intact. Day and Night send controls use solid high-contrast colours
+and a rounded-line arrow.
+
+## Language and state
+
+One `ui_language` key controls UI labels, guided replies and translated history.
+The original backend replies and agent sessions are never translated in place.
+Deterministic workflow text is localized locally; free-text history can use the
+configured model and a separate cache. Native form changes persist per thread.
+
+History and appearance are session-local. Conversation history does not survive a
+full browser refresh or server restart. Dialog geometry storage is independent of
+business task parameters.
+
+## Runtime and validation
+
+Requires Streamlit `>=1.66.1,<2` for native dialogs, fragments and v2 components.
+537 automated tests passed on the final approved version. Code-format,
+JavaScript syntax and whitespace checks also passed before publication. Tests use mocked model calls and real
+local business tools; automated regressions do not measure live-model accuracy.
+
+Browser checks cover the four guided dialogs, manual movement/resize, close/reopen,
+copy, evidence selection, panel controls, language-menu highlights, native table
+scrollbars, enabled send states and all three palettes. The user approved the final
+local appearance before requesting publication.

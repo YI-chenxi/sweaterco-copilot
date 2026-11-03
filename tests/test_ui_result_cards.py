@@ -4,6 +4,7 @@ from copy import deepcopy
 
 from app.ui.result_cards import card_summary
 from tests.test_ui_evidence_selection import execute
+from tests.ui_events import analysis_copy_payloads
 
 pytest_plugins = ["tests.test_ui_workflow_language"]
 
@@ -19,7 +20,10 @@ def test_each_answer_expands_independently_without_execution(screen):
     assert app.button(key="full_" + ids[0]).label == "Hide full analysis"
     assert app.button(key="full_" + ids[1]).label == "Show full analysis"
     assert any(m.value == snapshot[1]["reply"].text for m in app.markdown)
-    assert app.code[0].value == snapshot[1]["reply"].text
+    assert analysis_copy_payloads(app) == {
+        ids[0]: {"text": snapshot[1]["reply"].text, "language": "en"}
+    }
+    assert not app.code and not app.get("popover")
     app.button(key="full_" + ids[1]).click().run()
     app.button(key="full_" + ids[0]).click().run()
     assert app.button(key="full_" + ids[1]).label == "Hide full analysis"

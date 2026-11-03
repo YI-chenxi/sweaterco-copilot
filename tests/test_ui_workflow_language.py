@@ -15,6 +15,7 @@ from app.agent.service import AgentService
 from app.agent.settings import LLMSettings
 from app.ui.language import shared_language
 from app.ui.view_models import metrics_for_reply
+from tests.ui_events import dismiss_workflow_dialog
 
 ENTRY = Path(__file__).parents[1] / "app/ui/streamlit_app.py"
 
@@ -127,7 +128,7 @@ def test_input_values_survive_language_changes_and_form_reopening(screen, flow, 
             if key == "stage"
             else app.number_input
         )(key=widget_key).value == value
-    app.button(key="close_structured").click().run()
+    dismiss_workflow_dialog(app)
     app.button(key="center_" + flow).click().run()
     assert (
         app.text_input

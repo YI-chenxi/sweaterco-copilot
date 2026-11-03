@@ -7,6 +7,7 @@ import pytest
 from app.agent.orchestrator import AgentOrchestrator
 from app.ui.view_models import guided_decision
 from tests.test_ui_evidence_selection import execute
+from tests.ui_events import analysis_copy_payloads
 
 REAL_HANDLE = AgentOrchestrator.handle
 
@@ -48,7 +49,7 @@ def test_expanded_view_changes_language_and_preserves_original(
     app.selectbox(key="ui_language").set_value(target).run()
     assert not app.exception
     assert any(item.value == expected.text for item in app.markdown)
-    assert app.code[0].value == expected.text
+    assert analysis_copy_payloads(app) == {identity: {"text": expected.text, "language": target}}
     assert thread["messages"] == snapshot
     assert thread["expanded_answers"][identity]
     assert thread["selected_reply_id"] == identity

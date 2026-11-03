@@ -4,6 +4,7 @@ from copy import deepcopy
 
 from app.agent.contracts import AgentReply, Evidence
 from tests.test_ui_evidence_selection import execute
+from tests.ui_events import dismiss_workflow_dialog
 
 pytest_plugins = ["tests.test_ui_workflow_language"]
 
@@ -67,8 +68,9 @@ def test_workflow_dialog_closes_without_execution_and_reopens_saved_parameters(s
     app, guided, service = screen
     app.button(key="center_Order_Status").click().run()
     assert app.get("dialog")
+    assert not any(button.key == "close_structured" for button in app.button)
     app.text_input(key="wf_1_Order_Status_order_id").set_value("ORD-102").run()
-    app.button(key="close_structured").click().run()
+    dismiss_workflow_dialog(app)
     assert app.session_state["workflow"] is None
     assert not app.get("dialog")
     assert app.session_state["threads"][0]["messages"] == []

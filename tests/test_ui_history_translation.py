@@ -11,6 +11,7 @@ from app.agent.contracts import AgentReply, Evidence
 from app.agent.settings import LLMSettings
 from app.ui.history_translation import HistoryTranslator, cache_key, display, mask, prepare, restore
 from tests.test_ui_evidence_selection import execute
+from tests.ui_events import analysis_copy_payloads
 
 pytest_plugins = ["tests.test_ui_workflow_language"]
 
@@ -128,7 +129,7 @@ def test_free_text_translation_preserves_history_selection_and_uses_cache(screen
     assert not app.exception
     assert any(m.value == "请查看产能限制。" for m in app.markdown)
     assert any(m.value == "哪些情况需要关注？" for m in app.markdown)
-    assert app.code[0].value == "请查看产能限制。"
+    assert analysis_copy_payloads(app) == {identity: {"text": "请查看产能限制。", "language": "zh"}}
     assert any(w.value == "产能需要复核。" for w in app.warning)
     count = translator.translate.call_count
     for language in ("en", "zh"):
