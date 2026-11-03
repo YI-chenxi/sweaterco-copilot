@@ -2,99 +2,165 @@
    Layout inspired by enterprise AI workspaces, not a PPT.
    Subtle motion is decorative and never touches business calculations. */
 :root{
-  --sc-navy:#0d2330;--sc-side:#0d202c;--sc-side-light:#153341;
-  --sc-ink:#1b3240;--sc-gray:#647784;--sc-teal:#087f78;--sc-teal-dark:#07645f;
-  --sc-line:#cbd9df;--sc-light:#f5f9fa;--sc-pale:#eaf6f5;--sc-orange:#9e5b13;
+  --sc-ink:#163c43;--sc-gray:#547079;--sc-teal:#087f78;--sc-teal-dark:#05615b;
+  --sc-line:#b6d6d0;--sc-light:#edf5f0;--sc-pale:#e1f3ef;--sc-orange:#9e5b13;
+  --sc-side:#eaf5f1;--sc-side-ink:#214844;--sc-side-muted:#526f65;
+  --sc-bubble-radius:18px;
 }
 html,body,[class*="css"]{font-family:"Segoe UI",Inter,Arial,sans-serif!important}
-[data-testid="stAppViewContainer"]{background:#f8fbfc;color:var(--sc-ink)}
-[data-testid="stHeader"]{background:rgba(248,251,252,.82);backdrop-filter:blur(10px)}
-.block-container{max-width:1550px;padding:4rem 1.6rem 2.5rem}
+[data-testid="stAppViewContainer"]{background:var(--sc-light);color:var(--sc-ink)}
+/* Hide Streamlit chrome while retaining the sidebar reopen control. */
+[data-testid="stHeader"]{background:transparent;height:0;min-height:0;pointer-events:none}
+[data-testid="stAppDeployButton"],[data-testid="stToolbarActions"],
+[data-testid="stMainMenu"]{display:none!important}
+[data-testid="stExpandSidebarButton"]{pointer-events:auto;background:#eaf5f1;border-radius:10px}
+/* Both native toggle states share a fixed top edge instead of two header paddings. */
+button[aria-label="Collapse sidebar"],[data-testid="stExpandSidebarButton"]{
+ position:fixed!important;top:6px!important;width:28px!important;height:28px!important;
+ min-height:28px!important;margin-top:0!important;z-index:1000001;
+}
+[data-testid="stSidebarContent"] button[aria-label="Collapse sidebar"]{
+ position:absolute!important;left:auto!important;right:16px!important;
+}
+[data-testid="stExpandSidebarButton"]{left:12px!important}
+[data-testid="stSidebarCollapseButton"],button[aria-label="Collapse sidebar"]{
+ visibility:visible!important;opacity:1!important;pointer-events:auto!important;
+}
+main#stMain{overflow:hidden;overscroll-behavior:none}
+.block-container>[data-testid="stVerticalBlock"]{gap:0}
+.block-container{max-width:1550px;height:100dvh;padding:1rem 1.6rem}
 [data-testid="stCaptionContainer"]{color:var(--sc-gray)!important}
 [data-testid="stMarkdownContainer"] p{line-height:1.55}
 
-/* Dark product sidebar */
-[data-testid="stSidebar"]{background:linear-gradient(155deg,#0e2936 0%,#081824 83%);border-right:1px solid #204355}
-[data-testid="stSidebar"] [data-testid="stSidebarContent"]{padding-top:.7rem}
-[data-testid="stSidebar"] p,[data-testid="stSidebar"] label,[data-testid="stSidebar"] small{color:#c7dce2}
+/* The approved gel surface emphasizes the center while retaining every section. */
+.st-key-conversation_surface{
+ position:relative;isolation:isolate;flex:0 0 auto!important;height:calc(100dvh - 2rem)!important;min-height:calc(100dvh - 2rem)!important;overflow:hidden;
+ padding:1.2rem;gap:1rem;border:1px solid #dcece4;border-radius:28px;
+ background:linear-gradient(135deg,#fff 0%,#fcfefd 65%,#f5fbf8 100%);
+ box-shadow:inset 0 2px 2px #fff,inset 0 -2px 5px #d9ebe35c,
+  0 10px 28px #347a5c0d,0 1px 4px #347a5c0a;
+}
+.st-key-conversation_surface::before{
+ content:"";position:absolute;inset:5px;z-index:-1;pointer-events:none;
+ border:1px solid #ffffffd9;border-radius:23px;
+}
+
+/* Each rail owns its scroll; the center composer is an inline flex footer. */
+.st-key-conversation_surface>[data-testid="stLayoutWrapper"]:has(>.st-key-conversation_scroll){
+ flex:1 1 0!important;min-height:0!important;height:0!important;overflow:hidden;
+}
+.st-key-conversation_scroll{
+ height:100%!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;
+ scrollbar-width:thin;scrollbar-color:#bdd7c9 transparent;overscroll-behavior:contain;
+ padding:.1rem .35rem .25rem .05rem;
+}
+.st-key-conversation_surface>[data-testid="stElementContainer"]:has(.stChatInput),
+.st-key-conversation_surface>[data-testid="stElementContainer"]:has([data-testid="stChatInput"]){
+ flex:0 0 auto!important;min-height:0;
+}
+.st-key-analysis_rail{
+ flex:0 0 auto!important;height:calc(100dvh - 2rem)!important;min-height:calc(100dvh - 2rem)!important;overflow-y:auto!important;overflow-x:hidden!important;
+ scrollbar-width:thin;scrollbar-color:#bdd7c9 transparent;overscroll-behavior:contain;
+ padding:.1rem .2rem .5rem;
+}
+
+/* Mint sidebar shares the selected chat palette without becoming a large solid green panel. */
+[data-testid="stSidebar"]{background:var(--sc-side);border-right:1px solid #c9e0d9}
+[data-testid="stSidebar"] [data-testid="stSidebarContent"]{padding-top:.25rem!important}
+[data-testid="stSidebarHeader"]{
+ height:2rem!important;min-height:2rem!important;flex-shrink:0;
+ padding:.2rem .25rem!important;margin:0!important;
+}
+[data-testid="stSidebar"] p,[data-testid="stSidebar"] label,[data-testid="stSidebar"] small{color:var(--sc-side-ink)}
 .sc-brand{display:flex;align-items:center;gap:.75rem;margin:.15rem 0 1.2rem;padding:.3rem .1rem}
 .sc-mark{display:grid;place-items:center;width:42px;height:42px;border-radius:12px;
- background:linear-gradient(145deg,#0fa99d,#05655f);color:white;font-weight:800;box-shadow:0 0 22px #00c7b52c}
-.sc-brand strong{display:block;color:#f1fafb;font-size:1.13rem;letter-spacing:-.02em}
-.sc-brand small{display:block;color:#82bec4;font-size:.58rem;letter-spacing:.15em;font-weight:800;margin-top:2px}
-.sc-side-title{color:#8faebb;font-weight:800;letter-spacing:.15em;font-size:.62rem;margin:1.18rem 0 .6rem}
-.sc-side-rule{height:1px;background:#244655;margin:1.15rem 0 .8rem}
-.sc-nav-active{padding:.67rem .8rem;border:1px solid #287c80;border-radius:9px;
- background:linear-gradient(90deg,#184850,#173241);color:#ecfffe;font-size:.87rem;font-weight:700;box-shadow:inset 3px 0 #34cfc4}
+ background:var(--sc-teal);color:white;font-weight:800;box-shadow:0 5px 15px #087f7818}
+.sc-brand strong{display:block;color:var(--sc-ink);font-size:1.13rem;letter-spacing:-.02em}
+.sc-brand small{display:block;color:var(--sc-side-muted);font-size:.58rem;letter-spacing:.15em;font-weight:800;margin-top:2px}
+.sc-side-title{color:var(--sc-side-muted);font-weight:750;letter-spacing:.15em;font-size:.62rem;margin:1.18rem 0 .6rem}
+.sc-side-rule{height:1px;background:#c9e0d9;margin:1.15rem 0 .8rem}
+.sc-nav-active{padding:.67rem .8rem;border:1px solid #a6d3c4;border-radius:14px;
+ background:#d7eee6;color:#185a4d;font-size:.87rem;font-weight:650;box-shadow:inset 3px 0 var(--sc-teal)}
 .sc-nav-future{display:flex;align-items:center;justify-content:space-between;padding:.63rem .85rem;
- font-size:.84rem;color:#c9dde2}
-.sc-nav-future span{color:#678794;font-size:.61rem;font-weight:650;letter-spacing:.02em}
+ font-size:.84rem;color:var(--sc-side-ink)}
+.sc-nav-future span{color:var(--sc-side-muted);font-size:.61rem;font-weight:500;letter-spacing:.02em}
 .sc-workspace{border:1px solid #315363;border-radius:10px;padding:.68rem .85rem;color:#e7fafb;background:#15303e}
 .sc-workspace b{display:block;font-size:.83rem}
 .sc-workspace small{display:block;font-size:.69rem;color:#a5c5ce;margin-top:.2rem}
 .sc-service-state{font-size:.75rem;color:#c1dce0;padding:.83rem .3rem}
 .sc-led{display:inline-block;width:7px;height:7px;border-radius:100%;background:#dd9e49;margin-right:.35rem}
-.sc-led.online{background:#44ddbd}
+.sc-led.online{background:#128264}
 .sc-small{color:#8aa9b6;font-size:.69rem;margin-left:1rem}
 [data-testid="stSidebar"] [data-testid="stButton"] button{width:100%;min-height:2.3rem;justify-content:flex-start;
- text-align:left;background:#102b3b;border:1px solid #294657;color:#d5e8ec;border-radius:9px;
+ text-align:left;background:#f5faf7;border:1px solid #ccdfd6;color:var(--sc-side-ink);border-radius:14px;
  font-weight:500;font-size:.78rem;padding:.32rem .6rem;margin-bottom:.13rem}
-[data-testid="stSidebar"] [data-testid="stButton"] button:hover{background:#20565a;border-color:#39c4b7;color:#fff}
-[data-testid="stSidebar"] [data-testid="stButton"] button[kind="primary"]{background:#0a8078;border-color:#20b2a3;color:#fff;font-weight:700;justify-content:center}
-[data-testid="stSidebar"] [data-testid="stCaptionContainer"]{color:#7f9ba9!important;font-size:.67rem}
-[data-testid="stSidebar"] [data-testid="stExpander"]{background:#102a39;border-color:#2d5360}
-[data-testid="stSidebar"] [data-testid="stExpander"] summary{color:#d4eef1}
+[data-testid="stSidebar"] [data-testid="stButton"] button:hover{background:#dcefe6;border-color:#78b6a2;color:#185a4d}
+[data-testid="stSidebar"] [data-testid="stButton"] button[kind="primary"]{background:var(--sc-teal);border-color:var(--sc-teal);color:#fff;font-weight:650;justify-content:center}
+[data-testid="stSidebar"] [data-testid="stButton"] button p{color:inherit!important}
+[data-testid="stSidebar"] [data-testid="stCaptionContainer"]{color:var(--sc-side-muted)!important;font-size:.67rem}
+[data-testid="stSidebar"] [data-testid="stExpander"]{background:#f5faf7;border-color:#bdd8ca}
+[data-testid="stSidebar"] [data-testid="stExpander"] summary{color:var(--sc-side-ink)}
 
-/* Main workspace: subtle techno-wave animation, not decorative KPI walls */
+/* Quiet header and green accents leave the conversation in the foreground. */
 .sc-hero{position:relative;overflow:hidden;display:flex;align-items:flex-start;gap:1rem;
  padding:1.25rem 1.4rem 1.38rem;margin-bottom:1.2rem;
- border:1px solid #d1e2e6;border-radius:18px;
- background:linear-gradient(115deg,#fff 0%,#fbfefe 65%,#edf9f9 100%);box-shadow:0 8px 24px #0a37500a}
-.sc-hero::before,.sc-hero::after{content:"";position:absolute;pointer-events:none;border-radius:50%;
- border:1px solid rgba(4,169,166,.19);width:510px;height:170px;right:-95px;top:-73px;
- transform:rotate(-15deg);animation:sc-float 12s ease-in-out infinite alternate}
-.sc-hero::after{right:-55px;top:-48px;width:480px;height:155px;border-color:rgba(29,152,200,.14);animation-delay:-5s}
-@keyframes sc-float{from{transform:translateY(-4px) rotate(-13deg)}to{transform:translateY(14px) rotate(-18deg)}}
-.sc-orb{color:#078f88;text-shadow:0 0 20px #1fd2be99;font-size:1.75rem;line-height:1.3}
-.sc-hero h1{color:#172f42;margin:0 0 .32rem;font-size:clamp(1.28rem,2vw,1.78rem);letter-spacing:-.04em;font-weight:760;max-width:590px}
-.sc-hero p{color:#637986;font-size:.82rem;margin:0 0 .8rem;max-width:600px}
+ border:1px solid #dfebe4;border-radius:22px;
+ background:linear-gradient(115deg,#fff 0%,#fbfdfb 68%,#f1f8f4 100%);
+ box-shadow:inset 0 1px 1px #fff,0 4px 14px #347a5c05}
+.sc-orb{color:var(--sc-teal);font-size:1.75rem;line-height:1.3}
+.sc-hero h1{color:var(--sc-ink);margin:0 0 .32rem;font-size:clamp(1.28rem,2vw,1.78rem);letter-spacing:-.04em;font-weight:650;max-width:590px}
+.sc-hero p{color:var(--sc-gray);font-size:1.05rem;font-weight:450;margin:0 0 .8rem;max-width:600px}
 .sc-snapshot{color:#09756f;font-size:.64rem;letter-spacing:.12em;font-weight:800;
  padding:.31rem .52rem;border:1px solid #c5e6e2;border-radius:6px;background:#effaf8}
 .sc-label{font-size:.66rem;font-weight:790;letter-spacing:.12em;color:#496879;margin:.92rem 0 .56rem}
 .sc-label span{font-size:.67rem;font-weight:500;letter-spacing:0;color:#7a929d;margin-left:.5rem}
 .sc-empty{border:1px dashed #a8c1ca;background:#fbfefe;border-radius:13px;padding:1.45rem;
  color:#66808d;font-size:.83rem;margin-bottom:1.1rem}
-[data-testid="stButton"] button{border-radius:10px;border:1px solid #becfd5;background:#fff;color:#284959;min-height:2.7rem;font-weight:650}
-[data-testid="stButton"] button:hover{border-color:#0a8e87;background:#f0fbf9;color:#076b66}
+[data-testid="stButton"] button{border-radius:14px;border:1px solid var(--sc-line);background:#fff;color:var(--sc-ink);min-height:2.7rem;font-weight:550}
+[data-testid="stButton"] button:hover{border-color:var(--sc-teal);background:var(--sc-pale);color:var(--sc-teal-dark)}
 button[kind="primary"],[data-testid="stBaseButton-primary"]{background:#087f78!important;border-color:#087f78!important;color:#fff!important;
- font-weight:750!important;box-shadow:0 5px 13px #0d8a8329}
+ font-weight:650!important;box-shadow:0 5px 13px #087f7818}
 button[kind="primary"]:hover{background:#04635e!important;border-color:#04635e!important}
 [data-testid="stFormSubmitButton"] button{border-radius:10px}
 [data-testid="stTextArea"] textarea,[data-testid="stTextInput"] input,[data-testid="stSelectbox"] [data-baseweb="select"]>div,
 [data-testid="stDateInput"] input{border-color:#b9cdd4!important;background:#fff!important;border-radius:9px!important}
 [data-testid="stTextArea"] textarea:focus,[data-testid="stTextInput"] input:focus{border-color:#0a8f86!important}
-[data-testid="stForm"]{border:1px solid #bacfd6;background:#fcfefe;border-radius:13px}
+[data-testid="stForm"]{border:1px solid var(--sc-line);background:#fcfefc;border-radius:20px}
 
-/* Chat and analysis, stronger visual boundaries than initial MVP */
-[data-testid="stChatMessage"]{border:1px solid #c4d6dc;background:#fff;border-radius:14px;
- padding:1rem 1.02rem;margin-bottom:1rem;box-shadow:0 5px 17px #123d5406}
+/* Flowing whitespace: only the user's question has a contained water-drop bubble. */
+[data-testid="stChatMessage"]{border:0;background:transparent;
+ padding:.35rem 0 1rem;margin-bottom:1.2rem;box-shadow:none;gap:.9rem}
 [data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]){background:#f0f6f8}
 [data-testid="stChatMessage"] [data-testid="stChatMessageAvatarUser"]{background:#a6c1d3}
-[data-testid="stChatMessage"] [data-testid="stChatMessageAvatarAssistant"]{background:#0a8079;color:white}
+[data-testid="stChatMessage"] [data-testid="stChatMessageAvatarAssistant"]{background:var(--sc-pale);color:var(--sc-teal);border-radius:50%}
 .sc-mini-label{font-size:.65rem;letter-spacing:.08em;color:#52757f;font-weight:750;margin:.85rem 0 .53rem}
-[data-testid="stMetric"]{background:#fbfefe;border:1px solid #cfdee3;border-radius:10px;
- padding:.66rem .75rem;min-height:100%;overflow:hidden}
+[data-testid="stMetric"]{background:#eaf4ed;border:1px solid #cddfd3;border-radius:18px;
+ padding:.66rem .75rem;min-height:100%;overflow:hidden;box-shadow:none}
 [data-testid="stMetricLabel"]{color:#657f8a;font-size:.69rem;font-weight:650}
 [data-testid="stMetricValue"]{color:#1b3a49;font-weight:760;letter-spacing:-.03em;font-size:1.22rem}
-.sc-footnote{border-top:1px solid #d2e0e4;color:#88a0a9;padding:.92rem 0 0;margin-top:1.4rem;
- font-size:.58rem;letter-spacing:.12em;font-weight:700}
-[data-testid="stExpander"]{border:1px solid #ccdade!important;border-radius:10px!important;background:#fff}
-[data-testid="stVerticalBlockBorderWrapper"]>div{border-color:#c7d8dd!important;border-radius:13px!important}
+
+[data-testid="stExpander"]{border:1px solid #c9ded4!important;border-radius:16px!important;background:#fff;overflow:hidden}
+[data-testid="stExpander"]>details{border:0!important;border-radius:inherit!important;box-shadow:none!important}
+[data-testid="stExpander"]>details>summary{border-radius:inherit!important}
+[data-testid="stExpander"]>details[open]>summary{border-radius:16px 16px 0 0!important}
+[data-testid="stVerticalBlockBorderWrapper"]>div{border-color:#c9ded4!important;border-radius:18px!important}
 [data-testid="stDataFrame"]{border-radius:9px}
 
 /* Right contextual detail rail */
 .sc-details-title{margin:0 0 .7rem;padding:.58rem .15rem;font-size:.78rem;line-height:1.35;font-weight:800;letter-spacing:.1em;color:#1e4855;
- border-bottom:2px solid #0a8b82}
+ border-bottom:2px solid var(--sc-teal)}
+.st-key-detail_empty,.st-key-detail_evidence{
+ background:#fff;border-color:#d5e5dc!important;
+}
+.st-key-detail_evidence{border-left:3px solid #82baa3!important}
+[class*="st-key-detail_context_"]{
+ background:linear-gradient(135deg,#fff 0%,#f0f7f3 100%);border-color:#d0e3d7!important;
+}
+.st-key-detail_assumptions{
+ background:linear-gradient(135deg,#fff 0%,#f0f7f3 100%);border-color:#d0e3d7!important;
+ border-radius:18px!important;box-shadow:inset 0 1px 1px #fff,0 3px 10px #347a5c08;
+}
+.st-key-detail_warnings{background:#fffdf8;border-color:#e8d9bf!important}
 @media(max-width:1200px){.block-container{padding-left:.75rem;padding-right:.75rem}.sc-hero{padding:1rem}.sc-hero h1{font-size:1.38rem}}
 @media(max-width:750px){.sc-hero{margin-top:.25rem}.sc-label span{display:block;margin-left:0;margin-top:.16rem}}
 @media(prefers-reduced-motion:reduce){.sc-hero::before,.sc-hero::after{animation:none!important}button{transition:none!important}}
@@ -108,8 +174,8 @@ button[kind="primary"]:hover{background:#04635e!important;border-color:#04635e!i
 .sc-hero-copy p{margin-bottom:0}
 .sc-snapshot-card{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;
  min-width:195px;padding:.7rem .98rem;border-radius:12px;
- background:linear-gradient(135deg,#0e4d55,#096c66);color:#fff;
- border:1px solid #2a9e96;box-shadow:0 5px 19px #0d766b24}
+ background:var(--sc-teal);color:#fff;
+ border:1px solid var(--sc-teal);box-shadow:0 5px 19px #087f7814}
 .sc-snapshot-heading{font-size:.6rem;line-height:1.4;letter-spacing:.115em;
  font-weight:850;color:#b6f1e9}
 .sc-snapshot-date{font-size:1.14rem;line-height:1.5;font-weight:850;
@@ -121,15 +187,235 @@ button[kind="primary"]:hover{background:#04635e!important;border-color:#04635e!i
 .sc-workflow-title{margin:.45rem 0 .6rem;color:#234f5b}
 .st-key-expand_workflows button{height:3.05rem!important;text-align:left;
  justify-content:flex-start!important;padding-left:1rem!important;
- border:1px solid #9fcbc8!important;background:#eef8f7!important;
- font-weight:800!important;color:#126d68!important}
+ border:1px solid var(--sc-line)!important;background:#e7f4ed!important;
+ font-weight:600!important;color:var(--sc-teal-dark)!important}
 .st-key-expand_workflows button:hover{background:#e0f4f1!important;border-color:#148f85!important}
 .st-key-center_Order_Status button,
 .st-key-center_Production_Health button,
 .st-key-center_Morning_Briefing button,
 .st-key-center_Check_Feasibility button{
- min-height:3.35rem;border:1px solid #b6cbd2;border-radius:12px;
- box-shadow:0 3px 12px #183b4b09;white-space:normal}
+ min-height:3.35rem;border:1px solid #d2e4da;border-radius:18px;
+ background:linear-gradient(145deg,#fff 10%,#fbfefd 55%,#edf7f1 100%);
+ box-shadow:inset 0 2px 2px #fff,inset 0 -3px 6px #d4e8dc55,0 5px 12px #347a5c12;
+ white-space:normal;transition:transform .15s ease,box-shadow .15s ease;
+}
+.st-key-center_Order_Status button:hover,
+.st-key-center_Production_Health button:hover,
+.st-key-center_Morning_Briefing button:hover,
+.st-key-center_Check_Feasibility button:hover{
+ transform:translateY(-1px);border-color:#81b7a0;
+ background:linear-gradient(145deg,#fff,#edf7f1);
+ box-shadow:inset 0 2px 2px #fff,0 7px 16px #347a5c1a;
+}
 .st-key-collapse_workflows button{min-height:2.05rem;font-size:.74rem;
  padding-left:.35rem;padding-right:.35rem}
 @media(max-width:900px){.sc-hero{align-items:stretch}.sc-snapshot-card{min-width:100%}}
+
+/* Recent conversations remain available without pushing Configure off screen. */
+[data-testid="stSidebarContent"]{overflow:hidden!important}
+[data-testid="stSidebarUserContent"]{padding-top:.25rem!important;padding-bottom:0!important}
+.st-key-sidebar_layout{
+ height:calc(100dvh - 3.5rem)!important;max-height:calc(100dvh - 3.5rem)!important;
+ min-height:0!important;flex:0 0 auto!important;overflow:hidden!important;gap:.35rem;
+}
+.st-key-sidebar_layout .sc-brand{margin-bottom:.6rem}
+.st-key-sidebar_layout .sc-nav-future{padding-top:.4rem;padding-bottom:.4rem}
+.st-key-sidebar_layout .sc-side-title{margin-top:.8rem}
+.st-key-sidebar_layout>[data-testid="stLayoutWrapper"]:has(>.st-key-recent_chats){
+ height:auto!important;min-height:0!important;flex:1 1 0!important;overflow:hidden;
+}
+.st-key-recent_chats{
+ height:100%!important;min-height:0!important;max-height:none;overflow-y:auto!important;
+ scrollbar-gutter:stable;scrollbar-width:thin;scrollbar-color:#88b5a3 transparent;
+ overscroll-behavior:contain;padding-right:.25rem;
+}
+.st-key-recent_chats::-webkit-scrollbar{width:6px}
+.st-key-recent_chats::-webkit-scrollbar-thumb{background:#88b5a3;border-radius:6px}
+.st-key-recent_chats button{
+ height:auto!important;min-height:2.75rem!important;white-space:normal!important;
+ padding:.55rem .65rem!important;line-height:1.4!important;
+}
+.st-key-recent_chats button [data-testid="stMarkdownContainer"],
+.st-key-recent_chats button p{
+ white-space:normal!important;overflow:visible!important;text-overflow:clip!important;
+ overflow-wrap:anywhere;line-height:1.4!important;-webkit-line-clamp:unset!important;
+}
+.st-key-workspace [data-testid="stButton"] button p{
+ white-space:normal;overflow:visible;text-overflow:clip;
+}
+/* Reserve one future action row below AI Configure, without adding a fake control. */
+.st-key-sidebar_footer{margin-top:auto;padding-top:.5rem;padding-bottom:.5rem}
+.st-key-sidebar_layout>[data-testid="stLayoutWrapper"]:has(>.st-key-sidebar_footer){
+ margin-top:auto;flex:0 0 auto;
+}
+.st-key-sidebar_footer .sc-side-rule{margin:.5rem 0 .7rem}
+.st-key-sidebar_footer .sc-side-title{margin:.3rem 0 .6rem}
+.sc-ai-config{display:flex;align-items:center;justify-content:space-between;gap:.7rem;
+ padding:.65rem .2rem;color:var(--sc-side-ink);font-size:.8rem;flex-wrap:wrap}
+.sc-ai-config-label{font-weight:600}
+.sc-ai-config-state{display:inline-flex;align-items:center;font-size:.72rem;color:#226c55}
+.sc-ai-config-state.offline{color:#905b20}
+.sc-ai-config .sc-led{margin-right:.4rem;flex-shrink:0}
+@media(min-width:768px){
+ [data-testid="stSidebar"][aria-expanded="true"]{min-width:280px;max-width:430px}
+}
+
+/* User messages sit on the right; assistant answers retain the left edge. */
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]),
+[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]){
+ flex-direction:row-reverse;width:fit-content!important;max-width:88%;
+ margin-left:auto;margin-right:.35rem;background:#dcefe5;border:1.5px solid #9ac5b1;
+ border-radius:var(--sc-bubble-radius) var(--sc-bubble-radius) 7px var(--sc-bubble-radius);
+ padding:.9rem 1.2rem;box-shadow:inset 0 2px 0 #ffffffd9,0 7px 18px #087f780d;
+}
+[data-testid="stChatMessage"] [data-testid="stChatMessageContent"]{min-width:0;overflow-wrap:anywhere}
+[data-testid="stChatMessage"] [data-testid="stChatMessageAvatarUser"]{display:none}
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]){
+ margin-left:0;margin-right:auto;background:transparent;border:0;box-shadow:none;border-radius:0;
+}
+
+/* The native composer belongs only to the fixed center surface. */
+.st-key-chat_prompt{width:100%!important;max-width:100%;margin:0;flex-shrink:0}
+[data-testid="stChatInput"]{
+ position:relative;isolation:isolate;overflow:hidden;border:0!important;
+ border-radius:32px!important;background:#fff!important;
+ box-shadow:0 5px 22px #123d5410;transition:box-shadow .18s ease;
+}
+[data-testid="stChatInput"]::after{
+ content:"";position:absolute;inset:0;z-index:2;pointer-events:none;
+ border:1.5px solid #8db9b6;border-radius:inherit;transition:border-color .18s ease;
+}
+[data-testid="stChatInput"]:hover::after{border-color:#3a9b93}
+[data-testid="stChatInput"]:focus-within{box-shadow:0 0 0 4px #0a9c8e24,0 8px 25px #123d5412}
+[data-testid="stChatInput"]:focus-within::after{border:2px solid #087f78}
+[data-testid="stChatInputTextArea"]{background:transparent!important;min-height:2.3rem}
+[data-testid="stChatInputSubmitButton"]{border-radius:50%!important;transition:background .18s ease}
+[data-testid="stChatInputSubmitButton"]:not(:disabled){background:#087f78!important;color:#fff!important}
+[data-testid="stChatInputSubmitButton"]:not(:disabled):hover{background:#05615b!important}
+[data-testid="stChatInputSubmitButton"]:disabled{background:#e6eeed!important;color:#6a8582!important}
+[data-testid="stChatInputSubmitButton"] svg{color:inherit!important;fill:currentColor!important}
+.sc-thinking{display:flex;align-items:center;gap:.65rem;padding:.1rem 0;color:#3e6d71;font-size:.9rem}
+.sc-thinking-ring{width:18px;height:18px;border-radius:50%;border:2px solid #c8e8e2;
+ border-top-color:#087f78;animation:sc-thinking-spin .85s linear infinite;flex-shrink:0}
+@keyframes sc-thinking-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){
+ .sc-thinking-ring{animation:none}
+ [data-testid="stChatInput"],[data-testid="stChatInput"]::after,
+ [data-testid="stChatInputSubmitButton"]{transition:none}
+}
+@media(max-width:900px){
+ main#stMain{overflow-y:auto}
+ .block-container{height:auto;min-height:100dvh}
+ .st-key-workspace>[data-testid="stLayoutWrapper"]>[data-testid="stHorizontalBlock"]{
+  flex-direction:column;gap:1.5rem;
+ }
+ .st-key-workspace>[data-testid="stLayoutWrapper"]>[data-testid="stHorizontalBlock"]>[data-testid="stColumn"]{
+  width:100%!important;flex:1 1 100%!important;min-width:0!important;
+ }
+ .st-key-analysis_rail{height:50dvh!important;min-height:50dvh!important}
+}
+@media(max-width:600px){
+ .st-key-conversation_surface{padding:.85rem .8rem;border-radius:22px}
+ [data-testid="stChatMessage"]{padding:.8rem;gap:.5rem}
+ [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]){max-width:94%}
+}
+
+/* Combined UI: evidence ownership and controls use the approved mint material. */
+.sc-evidence-selected,.sc-answer-reference{display:block;height:0;line-height:0}
+.sc-analysis-context{background:#e3f1e9;color:#235c4a;border-radius:12px;
+ padding:.6rem .7rem;margin:.2rem 0;font-size:.78rem;font-weight:600}
+.st-key-analysis_workspace{height:calc(100dvh - 2rem)!important;min-height:0;
+ flex:0 0 auto!important;overflow:hidden;gap:.6rem;padding:.1rem .2rem .4rem}
+.st-key-analysis_workspace>div:has(.st-key-analysis_header){flex:1 1 0;height:100%;min-height:0}
+.st-key-analysis_workspace [data-testid="stVerticalBlock"]:has(>div>.st-key-analysis_header){
+ height:100%;min-height:0;gap:.6rem}
+.st-key-analysis_workspace div:has(>[class*="st-key-analysis_scroll_"]){
+ flex:1 1 0!important;min-height:0!important;height:0!important;overflow:hidden}
+[class*="st-key-analysis_scroll_"]{height:100%!important;min-height:0!important;
+ overflow-y:auto!important;overflow-x:hidden;overscroll-behavior:contain;
+ scrollbar-width:thin;scrollbar-color:#bdd7c9 transparent;padding-right:.2rem}
+.st-key-conversation_scroll>*,[class*="st-key-analysis_scroll_"]>*{flex-shrink:0}
+.st-key-analysis_header{gap:.4rem}
+.st-key-analysis_header .sc-details-title{margin:0;padding:.5rem .1rem}
+.st-key-analysis_header button{min-height:2rem;font-size:.76rem}
+.sc-assessment{padding:.2rem 0 .6rem;margin:.2rem 0;background:transparent}
+.sc-assessment strong{font-size:1.03rem;line-height:1.55;color:var(--sc-ink)}
+@media(max-width:900px){.st-key-analysis_workspace{height:60dvh!important}}
+
+[data-testid="stDialog"] [role="dialog"]{
+ border:1px solid #d5e6dc;border-radius:22px;
+ background:linear-gradient(140deg,#fff 0%,#f4faf6 100%);
+ box-shadow:inset 0 1px 1px #fff,0 16px 48px #163c4322;
+}
+
+/* Native workflow dialogs can move/resize without changing their form state. */
+.sc-workflow-window{position:fixed!important;margin:0!important;transform:none!important;
+ max-width:none!important;max-height:none!important;min-width:0!important;min-height:0!important;
+ border-radius:22px!important;overflow:hidden!important;box-sizing:border-box}
+.sc-workflow-dialog{position:relative!important;display:flex!important;flex-direction:column;
+ width:100%!important;height:100%!important;min-height:0!important;overflow:hidden!important;
+ box-sizing:border-box}
+.sc-workflow-dialog>h2{flex:0 0 auto;cursor:grab;touch-action:none;user-select:none;
+ margin-bottom:0!important;padding:1rem .5rem .5rem 1.5rem!important}
+.sc-workflow-dialog>h2:focus-visible{outline:2px solid #087f78;outline-offset:-5px;border-radius:12px}
+.sc-workflow-dialog>div{flex:1 1 auto;min-height:0;overflow-y:auto;
+ padding-top:.25rem!important;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#a9cdbb transparent}
+.sc-workflow-dialog .sc-label{margin:0 0 .45rem}
+.sc-dialog-adjusting,.sc-dialog-adjusting *{user-select:none!important}
+.sc-dialog-adjusting .sc-dialog-drag-title{cursor:grabbing}
+.sc-dialog-resize{position:absolute;z-index:4;touch-action:none;user-select:none}
+.sc-dialog-resize-n,.sc-dialog-resize-s{left:18px;right:18px;height:7px;cursor:ns-resize}
+.sc-dialog-resize-n{top:0}.sc-dialog-resize-s{bottom:0}
+.sc-dialog-resize-e,.sc-dialog-resize-w{top:18px;bottom:18px;width:7px;cursor:ew-resize}
+.sc-dialog-resize-e{right:0}.sc-dialog-resize-w{left:0}
+.sc-dialog-resize-ne,.sc-dialog-resize-nw,.sc-dialog-resize-se,.sc-dialog-resize-sw{width:18px;height:18px}
+.sc-dialog-resize-ne{right:0;top:0;cursor:nesw-resize}
+.sc-dialog-resize-nw{left:0;top:0;cursor:nwse-resize}
+.sc-dialog-resize-se{right:0;bottom:0;cursor:nwse-resize}
+.sc-dialog-resize-sw{left:0;bottom:0;cursor:nesw-resize}
+.sc-dialog-resize:focus-visible{outline:2px solid #087f78;outline-offset:-3px;background:#bfe2cf80}
+
+/* Compact answer actions: reserve room at the right end of each conclusion. */
+[class*="st-key-answer_summary_"]{position:relative;min-height:2.5rem}
+[class*="st-key-answer_summary_"] .sc-assessment{padding-right:8.8rem;min-height:2.1rem}
+[class*="st-key-answer_summary_"]>[class*="st-key-evidence_"]{
+ position:absolute!important;top:0;right:0;width:auto!important;max-width:8.5rem}
+[class*="st-key-evidence_"] button{background:transparent!important;border:0!important;
+ box-shadow:none!important;color:#087f78!important;border-radius:9px!important;
+ padding:.25rem .4rem!important;min-height:2rem!important;font-size:.76rem!important}
+[class*="st-key-evidence_"] button:hover{background:#e8f3ed!important}
+[class*="st-key-evidence_"] button:focus-visible{outline:2px solid #087f78;outline-offset:2px}
+[class*="st-key-evidence_"] button p{font-size:.76rem!important}
+[class*="st-key-full_analysis_"]{position:relative;padding:.25rem 2.7rem .1rem 0}
+[class*="st-key-full_analysis_"]>div:has(>[class*="st-key-analysis_copy_"]){
+ position:absolute!important;top:0;right:0;width:2.1rem!important;z-index:1}
+[class*="st-key-analysis_copy_"]{width:2.1rem!important}
+.st-key-analysis_heading{position:relative;min-height:2.5rem;padding-right:5.2rem}
+.st-key-analysis_heading .sc-details-title{border:0;padding:.45rem .1rem}
+.st-key-analysis_heading>.st-key-hide_analysis{
+ position:absolute!important;right:0;top:0;width:auto!important}
+.st-key-hide_analysis button{width:auto;height:2rem;min-height:2rem!important;
+ padding:.25rem .55rem!important;background:#f5fbf7!important;border:1px solid #a8cdbb!important;
+ border-radius:9px!important;color:#087f78!important;box-shadow:none!important;gap:.2rem}
+.st-key-hide_analysis button p{font-size:.76rem!important;line-height:1.2!important;margin:0!important}
+.st-key-hide_analysis button:hover{background:#dcefe4!important;border-color:#6ca68c!important}
+.st-key-show_analysis{width:fit-content!important;align-self:flex-end!important;margin-left:auto!important}
+.st-key-show_analysis button{min-height:2rem;padding:.3rem .65rem;border-radius:9px;font-size:.8rem}
+.st-key-show_analysis button p{font-size:.8rem}
+.st-key-follow_evidence [data-testid="stCheckbox"]>label{align-items:center!important}
+.st-key-follow_evidence [data-testid="stCheckbox"]>label>div:not([data-testid="stWidgetLabel"]){
+ margin-top:0!important;flex-shrink:0}
+.st-key-follow_evidence [data-testid="stWidgetLabel"]{display:flex;align-items:center;min-height:2rem}
+.st-key-follow_evidence [data-testid="stWidgetLabel"] p{margin:0!important}
+/* A generous close target sits above resize handles and never becomes a drag surface. */
+.sc-workflow-dialog>button{position:absolute!important;top:8px!important;right:8px!important;
+ width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important;
+ display:flex!important;align-items:center;justify-content:center;border-radius:50%!important;
+ cursor:pointer!important;z-index:8!important;touch-action:manipulation}
+.sc-workflow-dialog>button:hover{background:#dceee4!important}
+.sc-workflow-dialog>button svg{width:14px;height:14px;pointer-events:none}
+.sc-workflow-dialog>h2{margin-right:64px!important;padding-right:.5rem!important}
+@media(max-width:600px){
+ [class*="st-key-answer_summary_"] .sc-assessment{padding-right:6.9rem}
+ [class*="st-key-answer_summary_"]>[class*="st-key-evidence_"]{max-width:6.7rem}
+}
