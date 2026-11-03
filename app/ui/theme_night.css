@@ -1,0 +1,104 @@
+/* Obsidian glass: neutral graphite, a silver rim and restrained reflected light. */
+.st-key-conversation_surface{
+ background:radial-gradient(ellipse at 30% 0%,#ffffff04 0%,transparent 50%),
+  linear-gradient(160deg,#1b1b1b 0%,#161616 48%,#141414 100%);
+ border-color:#ffffff18;
+ box-shadow:0 8px 24px #00000038;
+}
+/* The light themes keep their inset rim; the night surface has only one quiet edge. */
+.st-key-conversation_surface::before{display:none;content:none;border:0;box-shadow:none}
+.sc-hero{
+ background:linear-gradient(130deg,#242424 0%,#1d1d1d 65%,#191919 100%);
+ border-color:#ffffff14;
+ box-shadow:inset 0 1px 0 #ffffff08,0 3px 10px #00000020;
+}
+.sc-snapshot-card{
+ background:linear-gradient(125deg,#3d3d3d 0%,#242424 55%,#151515 100%);
+ border-color:#767676;
+ box-shadow:inset 0 1px 1px #ffffff30,inset 0 -1px 2px #00000080,0 4px 12px #00000050;
+}
+.sc-snapshot-heading,.sc-snapshot-date,.sc-snapshot-disclaimer{color:#f5f5f5}
+.sc-snapshot-heading,.sc-snapshot-disclaimer{opacity:.85}
+.st-key-center_Order_Status button,.st-key-center_Production_Health button,
+.st-key-center_Morning_Briefing button,.st-key-center_Check_Feasibility button{
+ background:linear-gradient(140deg,#303030 0%,#1c1c1c 45%,#111111 100%);
+ border-color:#575757;
+ box-shadow:inset 0 1px 1px #ffffff29,inset 0 -2px 3px #00000080,0 5px 12px #00000060;
+}
+.st-key-center_Order_Status button:hover,.st-key-center_Production_Health button:hover,
+.st-key-center_Morning_Briefing button:hover,.st-key-center_Check_Feasibility button:hover{
+ background:linear-gradient(140deg,#383838,#151515);border-color:#7a7a7a;
+ box-shadow:inset 0 1px 1px #ffffff38,0 6px 18px #00000080;
+}
+[data-testid="stDialog"] [role="dialog"]{
+ background:#242424;border-color:#606060;
+ box-shadow:inset 0 1px 1px #ffffff26,0 20px 60px #000000b0;
+}
+[data-testid="stChatInput"]{box-shadow:inset 0 1px 1px #ffffff14,0 4px 18px #00000080}
+[data-testid="stChatInput"]::after{border-color:#626262}
+[data-testid="stChatInput"]:focus-within{box-shadow:0 0 0 3px #ffffff0f,0 6px 24px #00000090}
+[data-testid="stChatInput"]:focus-within::after{border-color:#bfbfbf}
+[data-testid="stMetric"]{background:#202020;border-color:#484848}
+.st-key-detail_empty,.st-key-detail_evidence{background:#191919;border-color:#505050!important}
+[class*="st-key-detail_context_"],.st-key-detail_assumptions{
+ background:linear-gradient(140deg,#222222,#151515);border-color:#505050!important;
+ box-shadow:inset 0 1px 0 #ffffff0d,0 3px 10px #00000030;
+}
+
+/* Brushed graphite controls replace the broad flat silver fills. */
+.sc-mark{
+ background:linear-gradient(140deg,#505050 0%,#252525 45%,#1c1c1c 100%);
+ color:#f7f7f7;border:1px solid #555555;
+ box-shadow:inset 0 1px 1px #ffffff24,0 3px 8px #00000040;
+}
+[data-testid="stSidebar"] .st-key-new_chat button[kind="primary"]{
+ background:linear-gradient(115deg,#363636 0%,#252525 55%,#1f1f1f 100%)!important;
+ border:1px solid #525252!important;color:#f5f5f5!important;
+ box-shadow:inset 0 1px 0 #ffffff1c,0 3px 9px #00000025!important;
+}
+[data-testid="stSidebar"] .st-key-new_chat button[kind="primary"]:hover{
+ background:linear-gradient(115deg,#414141,#292929)!important;
+ border-color:#737373!important;filter:none;
+}
+[data-testid="stSidebar"] .st-key-new_chat button [data-testid="stMarkdownContainer"]{
+ color:#f5f5f5!important;
+}
+
+/* An open workflow uses a stronger graphite gradient, never the generic silver primary. */
+[class*="st-key-center_"] button[kind="primary"]{
+ background:linear-gradient(135deg,#606060 0%,#343434 48%,#252525 100%)!important;
+ border-color:#898989!important;color:#f5f5f5!important;filter:none!important;
+ box-shadow:inset 0 1px 1px #ffffff38,inset 0 -2px 3px #00000070,0 5px 14px #00000065!important;
+}
+[class*="st-key-center_"] button[kind="primary"] [data-testid="stMarkdownContainer"],
+[class*="st-key-center_"] button[kind="primary"] p{color:#f5f5f5!important}
+.st-key-run_workflow button[kind="primary"]{
+ background:#202020!important;
+ border:1px solid #747474!important;color:#f5f5f5!important;
+ box-shadow:inset 0 1px 1px #ffffff30,0 4px 10px #00000050!important;filter:none!important;
+}
+.st-key-run_workflow button[kind="primary"]:hover{
+ background:#2a2a2a!important;border-color:#999999!important;
+}
+.st-key-run_workflow button[kind="primary"] [data-testid="stMarkdownContainer"],
+.st-key-run_workflow button[kind="primary"] p{color:#f5f5f5!important}
+/* The complete native table toolbar, including its outer tray, uses one dark material. */
+[data-testid="stElementToolbarButtonContainer"]{
+ background:#161616!important;border:1px solid #505050!important;
+ box-shadow:0 3px 10px #00000050!important;
+}
+[data-testid="stElementToolbar"] [data-testid="stBaseButton-elementToolbar"]{
+ background:transparent!important;color:#ededed!important;box-shadow:none!important;
+}
+[data-testid="stElementToolbar"] [data-testid="stBaseButton-elementToolbar"]:hover{
+ background:#2d2d2d!important;color:#ffffff!important;
+}
+[data-testid="stElementToolbarButtonIcon"]{color:inherit!important}
+
+[data-testid="stChatInputSubmitButton"]:not(:disabled){
+ background:#f7f7f7!important;color:#111111!important;background-image:none!important;
+ border:1px solid #ffffff!important;box-shadow:0 2px 8px #00000040;filter:none!important;
+}
+[data-testid="stChatInputSubmitButton"]:not(:disabled):hover{
+ background:#ffffff!important;color:#111111!important;
+}

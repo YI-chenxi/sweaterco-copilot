@@ -9,6 +9,7 @@ from typing import Any
 
 from app.agent.contracts import AgentReply
 from app.agent.intents import Intent
+from app.ui.language import translate
 
 _ASSESSMENT_LABELS = {
     "NORMAL": "On track",
@@ -64,7 +65,7 @@ def reply_headline(reply: AgentReply) -> tuple[str, str]:
     return ("分析结果" if chinese else "Answer"), "neutral"
 
 
-def contextual_sections(reply: AgentReply) -> list[dict[str, Any]]:
+def _contextual_sections(reply: AgentReply) -> list[dict[str, Any]]:
     """Return display specs only for context backed by actual structured data."""
     data = reply.metadata.get("structured_result")
     if not isinstance(data, dict):
@@ -143,4 +144,22 @@ def contextual_sections(reply: AgentReply) -> list[dict[str, Any]]:
             )
     # No material availability, shipment photos, completion %, or live sensor data
     # exists in the provided backend contract. Never create fake UI cards for them.
+    return sections
+
+
+def contextual_sections(reply: AgentReply, *, language: str = "en") -> list[dict[str, Any]]:
+    sections = _contextual_sections(reply)
+    for section in sections:
+        for field in ("title", "description"):
+            if field in section:
+                section[field] = translate(section[field], language)
+        section["facts"] = [
+            (translate(label, language), translate(value, language))
+            for label, value in section.get("facts", [])
+        ]
+        if "rows" in section:
+            section["rows"] = [
+                {translate(key, language): value for key, value in row.items()}
+                for row in section["rows"]
+            ]
     return sections
