@@ -1,6 +1,6 @@
 # P4 confirmed actions
 
-Independent P4 implementation on branch feat/confirmed-actions, based on
+Independent P4 implementation on branch feat/person4-confirmed-actions-audit, based on
 fec149e from integration/intent-enhancement (3 November 2026).
 The existing four workflows, shared contracts, Agent entry points and UI are unchanged.
 
@@ -156,7 +156,7 @@ The documented P3/P5 public methods do not yet expose revision checks or
 idempotency keys. Integration must implement these in their repository adapters
 (or a shared unit of work) before wrapping those methods as production executors.
 Simply wrapping a non-idempotent service call does not provide that guarantee.
-No shared contract or another person's implementation is changed by this PR.
+No shared contract or another person's implementation is changed by this branch.
 
 P5's V1 contract has no update_watch method. Do not register a watch/update
 executor until its owner supplies and agrees an implementation. Unregistered
