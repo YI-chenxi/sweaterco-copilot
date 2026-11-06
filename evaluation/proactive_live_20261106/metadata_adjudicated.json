@@ -1,0 +1,45 @@
+{
+  "run_started_at_utc": "2026-11-06T01:51:19.375945+00:00",
+  "run_completed_at_utc": "2026-11-06T01:53:10.934076+00:00",
+  "provider": "openai",
+  "model": "gpt-6-luna",
+  "llm_calls": 32,
+  "llm_call_failures": 0,
+  "side_effects_enabled": false,
+  "parser_revision": "14390cc1bf45f95247ef4af6c56fa603259c50ce",
+  "parser_source_sha256": "0205255796ee4c02c97f821ecd72c74475a2c910aa742059da1456b77be2b514",
+  "prompt_sha256": "6b324e5cda181e78c762c74858f5424090e623c21ce78816e60e7564bf7d891a",
+  "original_cases_sha256": "d1ba00367fce7f329bc345769eb13b959ff5d0f281b88dea641be39d5f02ed38",
+  "reviewed_cases_sha256": "7987bc29d66f990900c4bdc28bf892b0e18ae365b26c2839acd6c612edea9a66",
+  "reviewed_annotations_after_initial_score": 5,
+  "same_utterances_and_contexts": true,
+  "parser_or_prompt_changed_after_run": false,
+  "reviewed_score_is_exploratory": true,
+  "reviewed_exact_match": {"passed": 23, "total": 33, "accuracy": 0.696969696969697},
+  "metrics": {
+    "command_and_task": {"correct": 30, "total": 33, "accuracy": 0.9090909090909091},
+    "parameters_exact": {"correct": 26, "total": 33, "accuracy": 0.7878787878787878},
+    "missing_fields_exact": {"correct": 27, "total": 33, "accuracy": 0.8181818181818182},
+    "target_binding": {"correct": 33, "total": 33, "accuracy": 1.0},
+    "language": {"correct": 33, "total": 33, "accuracy": 1.0},
+    "proposal_safety_gate": {"correct": 28, "total": 33, "accuracy": 0.8484848484848485}
+  },
+  "proposal_gate_confusion": {
+    "true_positive": 3,
+    "false_positive": 2,
+    "true_negative": 25,
+    "false_negative": 3,
+    "false_accept_rate": 0.07407407407407407,
+    "precision": 0.6,
+    "recall": 0.5
+  },
+  "branch_tests": {
+    "p1_parser": {"revision": "14390cc1bf45f95247ef4af6c56fa603259c50ce", "passed": 11},
+    "p2_harness": {"revision": "local_worktree", "passed": 12},
+    "p3_briefing": {"revision": "de07ef72c0d5d474367f490209e9b7999e0c689a", "passed": 105},
+    "p4_actions": {"revision": "40b4127382d40de2a4b64ea1daafa44607779cff", "passed": 76},
+    "p1_p4_contract": {"revision": "p1 14390cc1 + p4 40b4127 snapshots", "passed": 3},
+    "p5_watches": {"revision": "9e4d2eed91bfb2c5441b715aac28ace556c3d85e", "passed": 351}
+  },
+  "confirmatory_evaluation_status": "Requires a new blind holdout because labels were reviewed after inspecting initial predictions."
+}

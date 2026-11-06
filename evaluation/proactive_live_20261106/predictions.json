@@ -1,0 +1,382 @@
+{
+  "p1-seed-01-briefing-create-zh": {
+    "command_type": "unknown",
+    "task_type": null,
+    "parameters": {},
+    "target_id": null,
+    "missing_fields": [],
+    "language": "zh",
+    "reference_text": null
+  },
+  "p1-seed-02-briefing-missing-fields-en": {
+    "command_type": "create",
+    "task_type": "briefing",
+    "parameters": {
+      "interval_days": 1,
+      "enabled": true,
+      "timezone": "Asia/Singapore"
+    },
+    "target_id": null,
+    "missing_fields": [
+      "local_time",
+      "start_date"
+    ],
+    "language": "en",
+    "reference_text": null
+  },
+  "p1-seed-03-immediate-briefing-is-not-schedule": {
+    "command_type": "unknown",
+    "task_type": null,
+    "parameters": {},
+    "target_id": null,
+    "missing_fields": [],
+    "language": "zh",
+    "reference_text": null
+  },
+  "p1-seed-04-ambiguous-briefing-update": {
+    "command_type": "update",
+    "task_type": "briefing",
+    "parameters": {
+      "interval_days": 1
+    },
+    "target_id": "57e26e90-343a-426c-b0ed-50784144e095",
+    "missing_fields": [],
+    "language": "zh",
+    "reference_text": null
+  },
+  "p1-seed-05-cancel-unique-context-target": {
+    "command_type": "cancel",
+    "task_type": "briefing",
+    "parameters": {},
+    "target_id": "57e26e90-343a-426c-b0ed-50784144e095",
+    "missing_fields": [],
+    "language": "zh",
+    "reference_text": null
+  },
+  "p1-seed-06-watch-relative-deadline": {
+    "command_type": "create",
+    "task_type": "watch",
+    "parameters": {
+      "order_id": "ORD-058",
+      "condition_type": "no_progress_by_deadline"
+    },
+    "target_id": null,
+    "missing_fields": [
+      "check_interval_minutes",
+      "deadline_at"
+    ],
+    "language": "en",
+    "reference_text": null
+  },
+  "p1-seed-07-watch-explicit-deadline-en": {
+    "command_type": "create",
+    "task_type": "watch",
+    "parameters": {
+      "order_id": "ORD-058",
+      "condition_type": "no_progress_by_deadline",
+      "check_interval_minutes": 60
+    },
+    "target_id": null,
+    "missing_fields": [
+      "deadline_at"
+    ],
+    "language": "en",
+    "reference_text": null
+  },
+  "p1-seed-08-watch-typo-not-corrected": {
+    "command_type": "create",
+    "task_type": "watch",
+    "parameters": {
+      "condition_type": "status_equals",
+      "expected_status": "DELAYED"
+    },
+    "target_id": null,
+    "missing_fields": [
+      "order_id",
+      "check_interval_minutes"
+    ],
+    "language": "en",
+    "reference_text": null
+  },
+  "p1-seed-09-immediate-order-query-is-not-watch": {
+    "command_type": "unknown",
+    "task_type": null,
+    "parameters": {},
+    "target_id": null,
+    "missing_fields": [],
+    "language": "en",
+    "reference_text": null
+  },
+  "p1-seed-10-unsupported-risk-watch": {
+    "command_type": "create",
+    "task_type": "watch",
+    "parameters": {
+      "order_id": "ORD-058"
+    },
+    "target_id": null,
+    "missing_fields": [
+      "condition_type",
+      "check_interval_minutes"
+    ],
+    "language": "zh",
+    "reference_text": null
+  },
+  "p1-seed-11-single-pending-proposal-confirmation": {
+    "command_type": "confirm",
+    "task_type": null,
+    "parameters": {},
+    "target_id": "0e92a447-6808-4cd0-bcf6-319824796258",
+    "missing_fields": [],
+    "language": "zh",
+    "reference_text": null
+  },
+  "p1-seed-12-negation-never-confirms": {
+    "command_type": "reject",
+    "task_type": null,
+    "parameters": {},
+    "target_id": "0e92a447-6808-4cd0-bcf6-319824796258",
+    "missing_fields": [],
+    "language": "zh",
+    "reference_text": null
+  },
+  "p1-seed-13-unsupported-order-note": {
+    "command_type": "unknown",
+    "task_type": null,
+    "parameters": {},
+    "target_id": null,
+    "missing_fields": [],
+    "language": "zh",
+    "reference_text": null
+  },
+  "p1-seed-14-draft-message-not-send": {
+    "command_type": "unknown",
+    "task_type": null,
+    "parameters": {},
+    "target_id": null,
+    "missing_fields": [],
+    "language": "zh",
+    "reference_text": null
+  },
+  "p1-seed-15-factual-question-is-not-proactive": {
+    "command_type": "unknown",
+    "task_type": null,
+    "parameters": {},
+    "target_id": null,
+    "missing_fields": [],
+    "language": "en",
+    "reference_text": null
+  },
+  "p1-extra-vague-confirmation": {
+    "command_type": "unknown",
+    "task_type": null,
+    "parameters": {},
+    "target_id": null,
+    "missing_fields": [],
+    "language": "en",
+    "reference_text": null
+  },
+  "p2-holdout-16-ambiguous-briefing-time": {
+    "command_type": "create",
+    "task_type": "briefing",
+    "parameters": {
+      "interval_days": 1,
+      "start_date": "2026-11-12",
+      "enabled": true,
+      "timezone": "Asia/Singapore"
+    },
+    "target_id": null,
+    "missing_fields": [
+      "local_time"
+    ],
+    "language": "en",
+    "reference_text": null
+  },
+  "p2-holdout-17-zero-interval": {
+    "command_type": "create",
+    "task_type": "briefing",
+    "parameters": {
+      "local_time": "08:30",
+      "start_date": "2026-11-12",
+      "timezone": "Asia/Singapore"
+    },
+    "target_id": null,
+    "missing_fields": [
+      "interval_days"
+    ],
+    "language": "en",
+    "reference_text": null
+  },
+  "p2-holdout-18-empty-input": {
+    "command_type": "unknown",
+    "task_type": null,
+    "parameters": {},
+    "target_id": null,
+    "missing_fields": [],
+    "language": "en",
+    "reference_text": null
+  },
+  "p2-holdout-19-two-commands-at-once": {
+    "command_type": "unknown",
+    "task_type": null,
+    "parameters": {},
+    "target_id": null,
+    "missing_fields": [],
+    "language": "en",
+    "reference_text": null
+  },
+  "p2-holdout-20-unsupported-watch-update": {
+    "command_type": "unknown",
+    "task_type": null,
+    "parameters": {},
+    "target_id": null,
+    "missing_fields": [],
+    "language": "en",
+    "reference_text": null
+  },
+  "p2-holdout-21-list-watches-read-only": {
+    "command_type": "list",
+    "task_type": "watch",
+    "parameters": {},
+    "target_id": null,
+    "missing_fields": [],
+    "language": "en",
+    "reference_text": null
+  },
+  "p2-holdout-22-get-known-briefing": {
+    "command_type": "get",
+    "task_type": "briefing",
+    "parameters": {},
+    "target_id": "57e26e90-343a-426c-b0ed-50784144e095",
+    "missing_fields": [],
+    "language": "en",
+    "reference_text": null
+  },
+  "p2-holdout-23-ambiguous-cancel-target": {
+    "command_type": "cancel",
+    "task_type": "briefing",
+    "parameters": {},
+    "target_id": null,
+    "missing_fields": [
+      "target_id"
+    ],
+    "language": "en",
+    "reference_text": null
+  },
+  "p2-holdout-24-explicit-confirm-with-multiple-proposals": {
+    "command_type": "confirm",
+    "task_type": null,
+    "parameters": {},
+    "target_id": "0e92a447-6808-4cd0-bcf6-319824796258",
+    "missing_fields": [],
+    "language": "en",
+    "reference_text": null
+  },
+  "p2-holdout-25-unknown-proposal-id": {
+    "command_type": "unknown",
+    "task_type": null,
+    "parameters": {},
+    "target_id": null,
+    "missing_fields": [],
+    "language": "en",
+    "reference_text": null
+  },
+  "p2-holdout-26-watch-status-missing-expected-value": {
+    "command_type": "create",
+    "task_type": "watch",
+    "parameters": {
+      "order_id": "ORD-058"
+    },
+    "target_id": null,
+    "missing_fields": [
+      "condition_type",
+      "check_interval_minutes"
+    ],
+    "language": "en",
+    "reference_text": null
+  },
+  "p2-holdout-27-watch-explicit-deadline-zh": {
+    "command_type": "create",
+    "task_type": "watch",
+    "parameters": {
+      "order_id": "ORD-058",
+      "condition_type": "no_progress_by_deadline",
+      "check_interval_minutes": 30
+    },
+    "target_id": null,
+    "missing_fields": [
+      "deadline_at"
+    ],
+    "language": "zh",
+    "reference_text": null
+  },
+  "p2-holdout-28-price-condition-not-allowlisted": {
+    "command_type": "create",
+    "task_type": "watch",
+    "parameters": {
+      "order_id": "ORD-058"
+    },
+    "target_id": null,
+    "missing_fields": [
+      "condition_type",
+      "check_interval_minutes"
+    ],
+    "language": "en",
+    "reference_text": null
+  },
+  "p2-holdout-29-invalid-timezone-not-silently-defaulted": {
+    "command_type": "create",
+    "task_type": "briefing",
+    "parameters": {
+      "interval_days": 1,
+      "local_time": "08:30",
+      "start_date": "2026-11-12",
+      "enabled": true,
+      "timezone": "Asia/Singapore"
+    },
+    "target_id": null,
+    "missing_fields": [],
+    "language": "en",
+    "reference_text": null
+  },
+  "p2-holdout-30-relative-start-date-needs-clarification": {
+    "command_type": "create",
+    "task_type": "briefing",
+    "parameters": {
+      "interval_days": 1,
+      "local_time": "08:30",
+      "enabled": true,
+      "timezone": "Asia/Singapore"
+    },
+    "target_id": null,
+    "missing_fields": [
+      "start_date"
+    ],
+    "language": "en",
+    "reference_text": null
+  },
+  "p2-holdout-31-complete-briefing-create": {
+    "command_type": "create",
+    "task_type": "briefing",
+    "parameters": {
+      "interval_days": 7,
+      "local_time": "09:00",
+      "start_date": "2026-11-16",
+      "timezone": "Asia/Singapore"
+    },
+    "target_id": null,
+    "missing_fields": [],
+    "language": "en",
+    "reference_text": null
+  },
+  "p2-holdout-32-targeted-briefing-update": {
+    "command_type": "update",
+    "task_type": "briefing",
+    "parameters": {
+      "local_time": "19:30"
+    },
+    "target_id": "57e26e90-343a-426c-b0ed-50784144e095",
+    "missing_fields": [],
+    "language": "en",
+    "reference_text": null
+  }
+}

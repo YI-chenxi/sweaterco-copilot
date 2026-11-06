@@ -1,0 +1,332 @@
+[
+  {
+    "id": "p1-seed-01-briefing-create-zh",
+    "source_seed": "docs/proactive/P1_EVALUATION_SEEDS.md#1",
+    "feature": "briefing",
+    "category": "create",
+    "language": "zh",
+    "input": "从 2026-11-06 开始每 3 天早上 8 点生成晨报",
+    "context": {"briefings": [], "watches": [], "proposals": []},
+    "expected": {"command_type": "create", "task_type": "briefing", "parameters": {"interval_days": 3, "local_time": "08:00", "start_date": "2026-11-06", "timezone": "Asia/Singapore"}, "target_id": null, "missing_fields": [], "proposal_allowed": true}
+  },
+  {
+    "id": "p1-seed-02-briefing-missing-fields-en",
+    "source_seed": "docs/proactive/P1_EVALUATION_SEEDS.md#2",
+    "feature": "briefing",
+    "category": "clarification",
+    "language": "en",
+    "input": "Schedule a briefing every day",
+    "context": {"briefings": [], "watches": [], "proposals": []},
+    "expected": {"command_type": "create", "task_type": "briefing", "parameters": {"interval_days": 1, "timezone": "Asia/Singapore"}, "target_id": null, "missing_fields": ["local_time", "start_date"], "proposal_allowed": false}
+  },
+  {
+    "id": "p1-seed-03-immediate-briefing-is-not-schedule",
+    "source_seed": "docs/proactive/P1_EVALUATION_SEEDS.md#3",
+    "feature": "routing_safety",
+    "category": "negative",
+    "language": "zh",
+    "input": "现在给我一份晨报",
+    "context": {"briefings": [], "watches": [], "proposals": []},
+    "expected": {"command_type": "unknown", "task_type": null, "parameters": {}, "target_id": null, "missing_fields": [], "proposal_allowed": false}
+  },
+  {
+    "id": "p1-seed-04-ambiguous-briefing-update",
+    "source_seed": "docs/proactive/P1_EVALUATION_SEEDS.md#4",
+    "feature": "briefing",
+    "category": "ambiguity",
+    "language": "zh",
+    "input": "把这份晨报改成每天 7 点",
+    "context": {"briefings": [{"id": "57e26e90-343a-426c-b0ed-50784144e095"}], "watches": [], "proposals": []},
+    "expected": {"command_type": "update", "task_type": "briefing", "parameters": {"interval_days": 1}, "target_id": "57e26e90-343a-426c-b0ed-50784144e095", "missing_fields": ["local_time"], "proposal_allowed": false}
+  },
+  {
+    "id": "p1-seed-05-cancel-unique-context-target",
+    "source_seed": "docs/proactive/P1_EVALUATION_SEEDS.md#5",
+    "feature": "briefing",
+    "category": "context_binding",
+    "language": "zh",
+    "input": "取消刚才那个定时晨报",
+    "context": {"briefings": [{"id": "57e26e90-343a-426c-b0ed-50784144e095"}], "watches": [], "proposals": []},
+    "expected": {"command_type": "cancel", "task_type": "briefing", "parameters": {}, "target_id": "57e26e90-343a-426c-b0ed-50784144e095", "missing_fields": [], "proposal_allowed": true}
+  },
+  {
+    "id": "p1-seed-06-watch-relative-deadline",
+    "source_seed": "docs/proactive/P1_EVALUATION_SEEDS.md#6",
+    "feature": "watch",
+    "category": "clarification",
+    "language": "en",
+    "input": "Tell me if ORD-058 has not moved by Thursday",
+    "context": {"briefings": [], "watches": [], "proposals": []},
+    "expected": {"command_type": "create", "task_type": "watch", "parameters": {"order_id": "ORD-058", "condition_type": "no_progress_by_deadline"}, "target_id": null, "missing_fields": ["check_interval_minutes", "deadline_at"], "proposal_allowed": false}
+  },
+  {
+    "id": "p1-seed-07-watch-explicit-deadline-en",
+    "source_seed": "docs/proactive/P1_EVALUATION_SEEDS.md#7",
+    "feature": "watch",
+    "category": "create",
+    "language": "en",
+    "input": "Watch ORD058 for no progress by 2026-11-06 18:00; check every hour",
+    "context": {"briefings": [], "watches": [], "proposals": []},
+    "expected": {"command_type": "create", "task_type": "watch", "parameters": {"order_id": "ORD-058", "condition_type": "no_progress_by_deadline", "deadline_at": "2026-11-06T10:00:00+00:00", "check_interval_minutes": 60}, "target_id": null, "missing_fields": [], "proposal_allowed": true}
+  },
+  {
+    "id": "p1-seed-08-watch-typo-not-corrected",
+    "source_seed": "docs/proactive/P1_EVALUATION_SEEDS.md#8",
+    "feature": "watch",
+    "category": "safety",
+    "language": "en",
+    "input": "Watch ODR058 for status DELAYED",
+    "context": {"briefings": [], "watches": [], "proposals": []},
+    "expected": {"command_type": "create", "task_type": "watch", "parameters": {"condition_type": "status_equals", "expected_status": "DELAYED"}, "target_id": null, "missing_fields": ["order_id", "check_interval_minutes"], "proposal_allowed": false}
+  },
+  {
+    "id": "p1-seed-09-immediate-order-query-is-not-watch",
+    "source_seed": "docs/proactive/P1_EVALUATION_SEEDS.md#9",
+    "feature": "routing_safety",
+    "category": "negative",
+    "language": "en",
+    "input": "What is the status of ORD-058 now?",
+    "context": {"briefings": [], "watches": [], "proposals": []},
+    "expected": {"command_type": "unknown", "task_type": null, "parameters": {}, "target_id": null, "missing_fields": [], "proposal_allowed": false}
+  },
+  {
+    "id": "p1-seed-10-unsupported-risk-watch",
+    "source_seed": "docs/proactive/P1_EVALUATION_SEEDS.md#10",
+    "feature": "routing_safety",
+    "category": "unsupported",
+    "language": "zh",
+    "input": "监控 ORD-058 的交期风险",
+    "context": {"briefings": [], "watches": [], "proposals": []},
+    "expected": {"command_type": "create", "task_type": "watch", "parameters": {"order_id": "ORD-058"}, "target_id": null, "missing_fields": ["condition_type", "check_interval_minutes"], "proposal_allowed": false}
+  },
+  {
+    "id": "p1-seed-11-single-pending-proposal-confirmation",
+    "source_seed": "docs/proactive/P1_EVALUATION_SEEDS.md#11",
+    "feature": "actions",
+    "category": "context_binding",
+    "language": "zh",
+    "input": "好的，确认",
+    "context": {"briefings": [], "watches": [], "proposals": [{"id": "0e92a447-6808-4cd0-bcf6-319824796258"}]},
+    "expected": {"command_type": "confirm", "task_type": null, "parameters": {}, "target_id": "0e92a447-6808-4cd0-bcf6-319824796258", "missing_fields": [], "proposal_allowed": false}
+  },
+  {
+    "id": "p1-seed-12-negation-never-confirms",
+    "source_seed": "docs/proactive/P1_EVALUATION_SEEDS.md#12",
+    "feature": "actions",
+    "category": "safety",
+    "language": "zh",
+    "input": "不要确认刚才那个",
+    "context": {"briefings": [], "watches": [], "proposals": [{"id": "0e92a447-6808-4cd0-bcf6-319824796258"}]},
+    "expected": {"command_type": "reject", "task_type": null, "parameters": {}, "target_id": "0e92a447-6808-4cd0-bcf6-319824796258", "missing_fields": [], "proposal_allowed": false}
+  },
+  {
+    "id": "p1-seed-13-unsupported-order-note",
+    "source_seed": "docs/proactive/P1_EVALUATION_SEEDS.md#13",
+    "feature": "routing_safety",
+    "category": "unsupported",
+    "language": "zh",
+    "input": "给 ORD-058 加备注：客户要求周五前回复",
+    "context": {"briefings": [], "watches": [], "proposals": []},
+    "expected": {"command_type": "unknown", "task_type": null, "parameters": {}, "target_id": null, "missing_fields": [], "proposal_allowed": false}
+  },
+  {
+    "id": "p1-seed-14-draft-message-not-send",
+    "source_seed": "docs/proactive/P1_EVALUATION_SEEDS.md#14",
+    "feature": "routing_safety",
+    "category": "unsupported",
+    "language": "zh",
+    "input": "帮我写催办消息",
+    "context": {"briefings": [], "watches": [], "proposals": []},
+    "expected": {"command_type": "unknown", "task_type": null, "parameters": {}, "target_id": null, "missing_fields": [], "proposal_allowed": false}
+  },
+  {
+    "id": "p1-seed-15-factual-question-is-not-proactive",
+    "source_seed": "docs/proactive/P1_EVALUATION_SEEDS.md#15",
+    "feature": "routing_safety",
+    "category": "negative",
+    "language": "en",
+    "input": "Why is ORD-058 at risk?",
+    "context": {"briefings": [], "watches": [], "proposals": []},
+    "expected": {"command_type": "unknown", "task_type": null, "parameters": {}, "target_id": null, "missing_fields": [], "proposal_allowed": false}
+  },
+  {
+    "id": "p1-extra-vague-confirmation",
+    "source_seed": "P2 safety extension",
+    "feature": "actions",
+    "category": "safety",
+    "language": "en",
+    "input": "Yes, go ahead.",
+    "context": {"briefings": [], "watches": [], "proposals": [{"id": "0e92a447-6808-4cd0-bcf6-319824796258"}, {"id": "edb27dfc-dad1-4851-93d5-27015bc4c726"}]},
+    "expected": {"command_type": "confirm", "task_type": null, "parameters": {}, "target_id": null, "missing_fields": ["target_id"], "proposal_allowed": false}
+  },
+  {
+    "id": "p2-holdout-16-ambiguous-briefing-time",
+    "source_seed": "P2 independent holdout",
+    "feature": "briefing",
+    "category": "adversarial_ambiguity",
+    "language": "en",
+    "input": "Schedule a briefing every day at 8 starting 2026-11-12",
+    "context": {"briefings": [], "watches": [], "proposals": []},
+    "expected": {"command_type": "create", "task_type": "briefing", "parameters": {"interval_days": 1, "start_date": "2026-11-12", "timezone": "Asia/Singapore"}, "target_id": null, "missing_fields": ["local_time"], "proposal_allowed": false}
+  },
+  {
+    "id": "p2-holdout-17-zero-interval",
+    "source_seed": "P2 independent holdout",
+    "feature": "briefing",
+    "category": "adversarial_invalid_value",
+    "language": "en",
+    "input": "Create a briefing every 0 days at 08:30 starting 2026-11-12",
+    "context": {"briefings": [], "watches": [], "proposals": []},
+    "expected": {"command_type": "create", "task_type": "briefing", "parameters": {"local_time": "08:30", "start_date": "2026-11-12", "timezone": "Asia/Singapore"}, "target_id": null, "missing_fields": ["interval_days"], "proposal_allowed": false}
+  },
+  {
+    "id": "p2-holdout-18-empty-input",
+    "source_seed": "P2 independent holdout",
+    "feature": "routing_safety",
+    "category": "no_answer",
+    "language": "en",
+    "input": " ",
+    "context": {"briefings": [], "watches": [], "proposals": []},
+    "expected": {"command_type": "unknown", "task_type": null, "parameters": {}, "target_id": null, "missing_fields": [], "proposal_allowed": false}
+  },
+  {
+    "id": "p2-holdout-19-two-commands-at-once",
+    "source_seed": "P2 independent holdout",
+    "feature": "routing_safety",
+    "category": "adversarial_ambiguity",
+    "language": "en",
+    "input": "Create a briefing every day at 08:00 starting 2026-11-12 and watch ORD058 for no progress by 2026-11-20 17:00",
+    "context": {"briefings": [], "watches": [], "proposals": []},
+    "expected": {"command_type": "unknown", "task_type": null, "parameters": {}, "target_id": null, "missing_fields": [], "proposal_allowed": false}
+  },
+  {
+    "id": "p2-holdout-20-unsupported-watch-update",
+    "source_seed": "P2 independent holdout",
+    "feature": "watch",
+    "category": "unsupported",
+    "language": "en",
+    "input": "Change watch 57e26e90-343a-426c-b0ed-50784144e095 to check every 15 minutes",
+    "context": {"briefings": [], "watches": [{"id": "57e26e90-343a-426c-b0ed-50784144e095"}], "proposals": []},
+    "expected": {"command_type": "unknown", "task_type": null, "parameters": {}, "target_id": null, "missing_fields": [], "proposal_allowed": false}
+  },
+  {
+    "id": "p2-holdout-21-list-watches-read-only",
+    "source_seed": "P2 independent holdout",
+    "feature": "watch",
+    "category": "read_only_action",
+    "language": "en",
+    "input": "List my active watches",
+    "context": {"briefings": [], "watches": [], "proposals": []},
+    "expected": {"command_type": "list", "task_type": "watch", "parameters": {}, "target_id": null, "missing_fields": [], "proposal_allowed": false}
+  },
+  {
+    "id": "p2-holdout-22-get-known-briefing",
+    "source_seed": "P2 independent holdout",
+    "feature": "briefing",
+    "category": "read_only_action",
+    "language": "en",
+    "input": "Show details for 57e26e90-343a-426c-b0ed-50784144e095",
+    "context": {"briefings": [{"id": "57e26e90-343a-426c-b0ed-50784144e095"}], "watches": [], "proposals": []},
+    "expected": {"command_type": "get", "task_type": "briefing", "parameters": {}, "target_id": "57e26e90-343a-426c-b0ed-50784144e095", "missing_fields": [], "proposal_allowed": false}
+  },
+  {
+    "id": "p2-holdout-23-ambiguous-cancel-target",
+    "source_seed": "P2 independent holdout",
+    "feature": "briefing",
+    "category": "adversarial_ambiguity",
+    "language": "en",
+    "input": "Cancel that briefing",
+    "context": {"briefings": [{"id": "57e26e90-343a-426c-b0ed-50784144e095"}, {"id": "0f52d94e-9063-46b8-89d0-e46b85cd53cb"}], "watches": [], "proposals": []},
+    "expected": {"command_type": "cancel", "task_type": "briefing", "parameters": {}, "target_id": null, "missing_fields": ["target_id"], "proposal_allowed": false}
+  },
+  {
+    "id": "p2-holdout-24-explicit-confirm-with-multiple-proposals",
+    "source_seed": "P2 independent holdout",
+    "feature": "actions",
+    "category": "positive_safety_action",
+    "language": "en",
+    "input": "Confirm proposal 0e92a447-6808-4cd0-bcf6-319824796258",
+    "context": {"briefings": [], "watches": [], "proposals": [{"id": "0e92a447-6808-4cd0-bcf6-319824796258"}, {"id": "edb27dfc-dad1-4851-93d5-27015bc4c726"}]},
+    "expected": {"command_type": "confirm", "task_type": null, "parameters": {}, "target_id": "0e92a447-6808-4cd0-bcf6-319824796258", "missing_fields": [], "proposal_allowed": false}
+  },
+  {
+    "id": "p2-holdout-25-unknown-proposal-id",
+    "source_seed": "P2 independent holdout",
+    "feature": "actions",
+    "category": "adversarial_context",
+    "language": "en",
+    "input": "Confirm proposal 5ce71a93-f130-4d78-9dc9-b8d6ea9e1100",
+    "context": {"briefings": [], "watches": [], "proposals": [{"id": "0e92a447-6808-4cd0-bcf6-319824796258"}]},
+    "expected": {"command_type": "confirm", "task_type": null, "parameters": {}, "target_id": null, "missing_fields": ["target_id"], "proposal_allowed": false}
+  },
+  {
+    "id": "p2-holdout-26-watch-status-missing-expected-value",
+    "source_seed": "P2 independent holdout",
+    "feature": "watch",
+    "category": "clarification",
+    "language": "en",
+    "input": "Watch ORD-058 until its status changes",
+    "context": {"briefings": [], "watches": [], "proposals": []},
+    "expected": {"command_type": "create", "task_type": "watch", "parameters": {"order_id": "ORD-058"}, "target_id": null, "missing_fields": ["condition_type", "check_interval_minutes"], "proposal_allowed": false}
+  },
+  {
+    "id": "p2-holdout-27-watch-explicit-deadline-zh",
+    "source_seed": "P2 independent holdout",
+    "feature": "watch",
+    "category": "action_request",
+    "language": "zh",
+    "input": "监控 ORD-058，如果到 2026-11-20 17:30 仍未发货，每 30 分钟检查",
+    "context": {"briefings": [], "watches": [], "proposals": []},
+    "expected": {"command_type": "create", "task_type": "watch", "parameters": {"order_id": "ORD-058", "condition_type": "no_progress_by_deadline", "deadline_at": "2026-11-20T09:30:00+00:00", "check_interval_minutes": 30}, "target_id": null, "missing_fields": [], "proposal_allowed": true}
+  },
+  {
+    "id": "p2-holdout-28-price-condition-not-allowlisted",
+    "source_seed": "P2 independent holdout",
+    "feature": "routing_safety",
+    "category": "adversarial_unsupported_condition",
+    "language": "en",
+    "input": "Watch ORD-058 and alert me if the price falls below 100",
+    "context": {"briefings": [], "watches": [], "proposals": []},
+    "expected": {"command_type": "create", "task_type": "watch", "parameters": {"order_id": "ORD-058"}, "target_id": null, "missing_fields": ["condition_type", "check_interval_minutes"], "proposal_allowed": false}
+  },
+  {
+    "id": "p2-holdout-29-invalid-timezone-not-silently-defaulted",
+    "source_seed": "P2 independent holdout; validation gap probe",
+    "feature": "briefing",
+    "category": "adversarial_invalid_value",
+    "language": "en",
+    "input": "Schedule a briefing every day at 08:30 starting 2026-11-12 in timezone Mars/Olympus",
+    "context": {"briefings": [], "watches": [], "proposals": []},
+    "expected": {"command_type": "create", "task_type": "briefing", "parameters": {"interval_days": 1, "local_time": "08:30", "start_date": "2026-11-12"}, "target_id": null, "missing_fields": ["timezone"], "proposal_allowed": false}
+  },
+  {
+    "id": "p2-holdout-30-relative-start-date-needs-clarification",
+    "source_seed": "P2 independent holdout",
+    "feature": "briefing",
+    "category": "adversarial_ambiguity",
+    "language": "en",
+    "input": "Schedule a briefing every day at 08:30 starting next Friday",
+    "context": {"briefings": [], "watches": [], "proposals": []},
+    "expected": {"command_type": "create", "task_type": "briefing", "parameters": {"interval_days": 1, "local_time": "08:30", "timezone": "Asia/Singapore"}, "target_id": null, "missing_fields": ["start_date"], "proposal_allowed": false}
+  },
+  {
+    "id": "p2-holdout-31-complete-briefing-create",
+    "source_seed": "P2 independent positive-action holdout",
+    "feature": "briefing",
+    "category": "action_request",
+    "language": "en",
+    "input": "Schedule a briefing every 7 days at 09:00 starting 2026-11-16",
+    "context": {"briefings": [], "watches": [], "proposals": []},
+    "expected": {"command_type": "create", "task_type": "briefing", "parameters": {"interval_days": 7, "local_time": "09:00", "start_date": "2026-11-16", "timezone": "Asia/Singapore"}, "target_id": null, "missing_fields": [], "proposal_allowed": true}
+  },
+  {
+    "id": "p2-holdout-32-targeted-briefing-update",
+    "source_seed": "P2 independent positive-action holdout",
+    "feature": "briefing",
+    "category": "action_request",
+    "language": "en",
+    "input": "Change briefing 57e26e90-343a-426c-b0ed-50784144e095 to 19:30",
+    "context": {"briefings": [{"id": "57e26e90-343a-426c-b0ed-50784144e095"}], "watches": [], "proposals": []},
+    "expected": {"command_type": "update", "task_type": "briefing", "parameters": {"local_time": "19:30"}, "target_id": "57e26e90-343a-426c-b0ed-50784144e095", "missing_fields": [], "proposal_allowed": true}
+  }
+]

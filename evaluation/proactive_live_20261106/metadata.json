@@ -1,0 +1,20 @@
+{
+  "started_at_utc": "2026-11-06T01:51:19.375945+00:00",
+  "completed_at_utc": "2026-11-06T01:53:10.934076+00:00",
+  "provider": "openai",
+  "model": "gpt-6-luna",
+  "api_key_recorded": false,
+  "case_count": 33,
+  "prediction_count": 33,
+  "llm_calls": 32,
+  "llm_call_failures": 0,
+  "runner_exceptions": {},
+  "case_sha256": "d1ba00367fce7f329bc345769eb13b959ff5d0f281b88dea641be39d5f02ed38",
+  "parser_revision": "14390cc1bf45f95247ef4af6c56fa603259c50ce",
+  "evaluation_repo_revision": "61df52073dc13626b7401ddac9eba34fe8af1458",
+  "parser_source_sha256": "0205255796ee4c02c97f821ecd72c74475a2c910aa742059da1456b77be2b514",
+  "prompt_sha256": "6b324e5cda181e78c762c74858f5424090e623c21ce78816e60e7564bf7d891a",
+  "worktree_dirty": true,
+  "parser_root": "C:\\Users\\24105\\AppData\\Local\\Temp\\sweaterco-p1-live-eval-20261106",
+  "side_effects_enabled": false
+}

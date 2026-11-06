@@ -1,0 +1,355 @@
+{
+  "case_count": 33,
+  "prediction_count": 33,
+  "passed": 19,
+  "accuracy": 0.5757575757575758,
+  "by_feature": {
+    "briefing": {
+      "total": 12,
+      "passed": 6
+    },
+    "routing_safety": {
+      "total": 9,
+      "passed": 7
+    },
+    "watch": {
+      "total": 7,
+      "passed": 4
+    },
+    "actions": {
+      "total": 5,
+      "passed": 2
+    }
+  },
+  "by_category": {
+    "create": {
+      "total": 2,
+      "passed": 0
+    },
+    "clarification": {
+      "total": 3,
+      "passed": 1
+    },
+    "negative": {
+      "total": 3,
+      "passed": 2
+    },
+    "ambiguity": {
+      "total": 1,
+      "passed": 0
+    },
+    "context_binding": {
+      "total": 2,
+      "passed": 2
+    },
+    "safety": {
+      "total": 3,
+      "passed": 1
+    },
+    "unsupported": {
+      "total": 4,
+      "passed": 3
+    },
+    "adversarial_ambiguity": {
+      "total": 4,
+      "passed": 2
+    },
+    "adversarial_invalid_value": {
+      "total": 2,
+      "passed": 1
+    },
+    "no_answer": {
+      "total": 1,
+      "passed": 1
+    },
+    "read_only_action": {
+      "total": 2,
+      "passed": 2
+    },
+    "positive_safety_action": {
+      "total": 1,
+      "passed": 1
+    },
+    "adversarial_context": {
+      "total": 1,
+      "passed": 0
+    },
+    "action_request": {
+      "total": 3,
+      "passed": 2
+    },
+    "adversarial_unsupported_condition": {
+      "total": 1,
+      "passed": 1
+    }
+  },
+  "metrics": {
+    "command_and_task": {
+      "correct": 27,
+      "total": 33,
+      "accuracy": 0.8181818181818182
+    },
+    "language": {
+      "correct": 33,
+      "total": 33,
+      "accuracy": 1.0
+    },
+    "missing_fields_exact": {
+      "correct": 24,
+      "total": 33,
+      "accuracy": 0.7272727272727273
+    },
+    "parameters_exact": {
+      "correct": 22,
+      "total": 33,
+      "accuracy": 0.6666666666666666
+    },
+    "proposal_safety_gate": {
+      "correct": 28,
+      "total": 33,
+      "accuracy": 0.8484848484848485
+    },
+    "target_binding": {
+      "correct": 32,
+      "total": 33,
+      "accuracy": 0.9696969696969697
+    }
+  },
+  "failure_taxonomy": {
+    "parameter_extraction_or_normalization": 8,
+    "wrong_command_type": 6
+  },
+  "cases": [
+    {
+      "id": "p1-seed-01-briefing-create-zh",
+      "feature": "briefing",
+      "category": "create",
+      "passed": false,
+      "failure_type": "wrong_command_type"
+    },
+    {
+      "id": "p1-seed-02-briefing-missing-fields-en",
+      "feature": "briefing",
+      "category": "clarification",
+      "passed": false,
+      "failure_type": "parameter_extraction_or_normalization"
+    },
+    {
+      "id": "p1-seed-03-immediate-briefing-is-not-schedule",
+      "feature": "routing_safety",
+      "category": "negative",
+      "passed": false,
+      "failure_type": "wrong_command_type"
+    },
+    {
+      "id": "p1-seed-04-ambiguous-briefing-update",
+      "feature": "briefing",
+      "category": "ambiguity",
+      "passed": false,
+      "failure_type": "parameter_extraction_or_normalization"
+    },
+    {
+      "id": "p1-seed-05-cancel-unique-context-target",
+      "feature": "briefing",
+      "category": "context_binding",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "p1-seed-06-watch-relative-deadline",
+      "feature": "watch",
+      "category": "clarification",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "p1-seed-07-watch-explicit-deadline-en",
+      "feature": "watch",
+      "category": "create",
+      "passed": false,
+      "failure_type": "parameter_extraction_or_normalization"
+    },
+    {
+      "id": "p1-seed-08-watch-typo-not-corrected",
+      "feature": "watch",
+      "category": "safety",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "p1-seed-09-immediate-order-query-is-not-watch",
+      "feature": "routing_safety",
+      "category": "negative",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "p1-seed-10-unsupported-risk-watch",
+      "feature": "routing_safety",
+      "category": "unsupported",
+      "passed": false,
+      "failure_type": "wrong_command_type"
+    },
+    {
+      "id": "p1-seed-11-single-pending-proposal-confirmation",
+      "feature": "actions",
+      "category": "context_binding",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "p1-seed-12-negation-never-confirms",
+      "feature": "actions",
+      "category": "safety",
+      "passed": false,
+      "failure_type": "wrong_command_type"
+    },
+    {
+      "id": "p1-seed-13-unsupported-order-note",
+      "feature": "routing_safety",
+      "category": "unsupported",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "p1-seed-14-draft-message-not-send",
+      "feature": "routing_safety",
+      "category": "unsupported",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "p1-seed-15-factual-question-is-not-proactive",
+      "feature": "routing_safety",
+      "category": "negative",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "p1-extra-vague-confirmation",
+      "feature": "actions",
+      "category": "safety",
+      "passed": false,
+      "failure_type": "wrong_command_type"
+    },
+    {
+      "id": "p2-holdout-16-ambiguous-briefing-time",
+      "feature": "briefing",
+      "category": "adversarial_ambiguity",
+      "passed": false,
+      "failure_type": "parameter_extraction_or_normalization"
+    },
+    {
+      "id": "p2-holdout-17-zero-interval",
+      "feature": "briefing",
+      "category": "adversarial_invalid_value",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "p2-holdout-18-empty-input",
+      "feature": "routing_safety",
+      "category": "no_answer",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "p2-holdout-19-two-commands-at-once",
+      "feature": "routing_safety",
+      "category": "adversarial_ambiguity",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "p2-holdout-20-unsupported-watch-update",
+      "feature": "watch",
+      "category": "unsupported",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "p2-holdout-21-list-watches-read-only",
+      "feature": "watch",
+      "category": "read_only_action",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "p2-holdout-22-get-known-briefing",
+      "feature": "briefing",
+      "category": "read_only_action",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "p2-holdout-23-ambiguous-cancel-target",
+      "feature": "briefing",
+      "category": "adversarial_ambiguity",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "p2-holdout-24-explicit-confirm-with-multiple-proposals",
+      "feature": "actions",
+      "category": "positive_safety_action",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "p2-holdout-25-unknown-proposal-id",
+      "feature": "actions",
+      "category": "adversarial_context",
+      "passed": false,
+      "failure_type": "wrong_command_type"
+    },
+    {
+      "id": "p2-holdout-26-watch-status-missing-expected-value",
+      "feature": "watch",
+      "category": "clarification",
+      "passed": false,
+      "failure_type": "parameter_extraction_or_normalization"
+    },
+    {
+      "id": "p2-holdout-27-watch-explicit-deadline-zh",
+      "feature": "watch",
+      "category": "action_request",
+      "passed": false,
+      "failure_type": "parameter_extraction_or_normalization"
+    },
+    {
+      "id": "p2-holdout-28-price-condition-not-allowlisted",
+      "feature": "routing_safety",
+      "category": "adversarial_unsupported_condition",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "p2-holdout-29-invalid-timezone-not-silently-defaulted",
+      "feature": "briefing",
+      "category": "adversarial_invalid_value",
+      "passed": false,
+      "failure_type": "parameter_extraction_or_normalization"
+    },
+    {
+      "id": "p2-holdout-30-relative-start-date-needs-clarification",
+      "feature": "briefing",
+      "category": "adversarial_ambiguity",
+      "passed": false,
+      "failure_type": "parameter_extraction_or_normalization"
+    },
+    {
+      "id": "p2-holdout-31-complete-briefing-create",
+      "feature": "briefing",
+      "category": "action_request",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "p2-holdout-32-targeted-briefing-update",
+      "feature": "briefing",
+      "category": "action_request",
+      "passed": true,
+      "failure_type": null
+    }
+  ]
+}

@@ -1,0 +1,341 @@
+{
+  "case_count": 30,
+  "prediction_count": 30,
+  "passed": 17,
+  "accuracy": 0.5666666666666667,
+  "by_feature": {
+    "briefing": {
+      "total": 9,
+      "passed": 5
+    },
+    "routing_safety": {
+      "total": 2,
+      "passed": 2
+    },
+    "watch": {
+      "total": 10,
+      "passed": 7
+    },
+    "actions": {
+      "total": 9,
+      "passed": 3
+    }
+  },
+  "by_category": {
+    "create": {
+      "total": 4,
+      "passed": 4
+    },
+    "clarification": {
+      "total": 5,
+      "passed": 1
+    },
+    "invalid_value": {
+      "total": 1,
+      "passed": 0
+    },
+    "update": {
+      "total": 1,
+      "passed": 1
+    },
+    "ambiguity": {
+      "total": 4,
+      "passed": 0
+    },
+    "read_only": {
+      "total": 3,
+      "passed": 2
+    },
+    "cancel": {
+      "total": 3,
+      "passed": 3
+    },
+    "negative": {
+      "total": 2,
+      "passed": 2
+    },
+    "unsupported": {
+      "total": 1,
+      "passed": 1
+    },
+    "safety": {
+      "total": 1,
+      "passed": 0
+    },
+    "confirmation": {
+      "total": 1,
+      "passed": 1
+    },
+    "rejection": {
+      "total": 2,
+      "passed": 2
+    },
+    "context_binding": {
+      "total": 1,
+      "passed": 0
+    },
+    "state_context": {
+      "total": 1,
+      "passed": 0
+    }
+  },
+  "metrics": {
+    "command_and_task": {
+      "correct": 27,
+      "total": 30,
+      "accuracy": 0.9
+    },
+    "language": {
+      "correct": 30,
+      "total": 30,
+      "accuracy": 1.0
+    },
+    "missing_fields_exact": {
+      "correct": 21,
+      "total": 30,
+      "accuracy": 0.7
+    },
+    "parameters_exact": {
+      "correct": 24,
+      "total": 30,
+      "accuracy": 0.8
+    },
+    "proposal_safety_gate": {
+      "correct": 28,
+      "total": 30,
+      "accuracy": 0.9333333333333333
+    },
+    "target_binding": {
+      "correct": 29,
+      "total": 30,
+      "accuracy": 0.9666666666666667
+    }
+  },
+  "proposal_gate_confusion": {
+    "true_positive": 8,
+    "false_positive": 2,
+    "true_negative": 20,
+    "false_negative": 0,
+    "false_accept_rate": 0.09090909090909091,
+    "precision": 0.8,
+    "recall": 1.0
+  },
+  "failure_taxonomy": {
+    "clarification_or_missing_field": 3,
+    "parameter_extraction_or_normalization": 6,
+    "wrong_command_type": 3,
+    "wrong_or_unbound_target": 1
+  },
+  "cases": [
+    {
+      "id": "v2-brief-01-create-3day-zh",
+      "feature": "briefing",
+      "category": "create",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "v2-brief-02-create-weekly-en",
+      "feature": "briefing",
+      "category": "create",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "v2-brief-03-daily-missing-time-en",
+      "feature": "briefing",
+      "category": "clarification",
+      "passed": false,
+      "failure_type": "parameter_extraction_or_normalization"
+    },
+    {
+      "id": "v2-brief-04-time-no-start-zh",
+      "feature": "briefing",
+      "category": "clarification",
+      "passed": false,
+      "failure_type": "parameter_extraction_or_normalization"
+    },
+    {
+      "id": "v2-brief-05-invalid-zone-en",
+      "feature": "briefing",
+      "category": "invalid_value",
+      "passed": false,
+      "failure_type": "parameter_extraction_or_normalization"
+    },
+    {
+      "id": "v2-brief-06-update-time-zh",
+      "feature": "briefing",
+      "category": "update",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "v2-brief-07-ambiguous-hour-zh",
+      "feature": "briefing",
+      "category": "ambiguity",
+      "passed": false,
+      "failure_type": "clarification_or_missing_field"
+    },
+    {
+      "id": "v2-brief-08-list-en",
+      "feature": "briefing",
+      "category": "read_only",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "v2-brief-09-cancel-unique-zh",
+      "feature": "briefing",
+      "category": "cancel",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "v2-brief-10-immediate-not-schedule-en",
+      "feature": "routing_safety",
+      "category": "negative",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "v2-watch-01-status-create-en",
+      "feature": "watch",
+      "category": "create",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "v2-watch-02-status-missing-interval-zh",
+      "feature": "watch",
+      "category": "clarification",
+      "passed": false,
+      "failure_type": "parameter_extraction_or_normalization"
+    },
+    {
+      "id": "v2-watch-03-deadline-explicit-en",
+      "feature": "watch",
+      "category": "create",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "v2-watch-04-relative-deadline-missing-zh",
+      "feature": "watch",
+      "category": "clarification",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "v2-watch-05-unsupported-condition-en",
+      "feature": "watch",
+      "category": "unsupported",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "v2-watch-06-invalid-order-zh",
+      "feature": "watch",
+      "category": "safety",
+      "passed": false,
+      "failure_type": "parameter_extraction_or_normalization"
+    },
+    {
+      "id": "v2-watch-07-cancel-unique-en",
+      "feature": "watch",
+      "category": "cancel",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "v2-watch-08-list-zh",
+      "feature": "watch",
+      "category": "read_only",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "v2-watch-09-current-status-is-not-watch-en",
+      "feature": "routing_safety",
+      "category": "negative",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "v2-watch-10-no-progress-without-interval-zh",
+      "feature": "watch",
+      "category": "clarification",
+      "passed": false,
+      "failure_type": "parameter_extraction_or_normalization"
+    },
+    {
+      "id": "v2-action-01-confirm-sole-en",
+      "feature": "actions",
+      "category": "confirmation",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "v2-action-02-confirm-none-zh",
+      "feature": "actions",
+      "category": "ambiguity",
+      "passed": false,
+      "failure_type": "wrong_command_type"
+    },
+    {
+      "id": "v2-action-03-confirm-two-zh",
+      "feature": "actions",
+      "category": "ambiguity",
+      "passed": false,
+      "failure_type": "clarification_or_missing_field"
+    },
+    {
+      "id": "v2-action-04-reject-sole-en",
+      "feature": "actions",
+      "category": "rejection",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "v2-action-05-unknown-proposal-zh",
+      "feature": "actions",
+      "category": "context_binding",
+      "passed": false,
+      "failure_type": "wrong_command_type"
+    },
+    {
+      "id": "v2-watch-11-cancel-watch-en",
+      "feature": "watch",
+      "category": "cancel",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "v2-action-07-vague-affirmation-two-proposals-en",
+      "feature": "actions",
+      "category": "ambiguity",
+      "passed": false,
+      "failure_type": "clarification_or_missing_field"
+    },
+    {
+      "id": "v2-action-08-reject-sole-zh",
+      "feature": "actions",
+      "category": "rejection",
+      "passed": true,
+      "failure_type": null
+    },
+    {
+      "id": "v2-action-09-read-only-list-proposals-en",
+      "feature": "actions",
+      "category": "read_only",
+      "passed": false,
+      "failure_type": "wrong_command_type"
+    },
+    {
+      "id": "v2-action-10-confirm-executed-proposal-zh",
+      "feature": "actions",
+      "category": "state_context",
+      "passed": false,
+      "failure_type": "wrong_or_unbound_target"
+    }
+  ]
+}
