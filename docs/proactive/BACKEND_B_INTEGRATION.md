@@ -2,6 +2,23 @@
 
 This document describes the stable Python entry points for the proactive pages. Frontend C should use these methods and must not call P3/P5 mutation methods directly.
 
+## B task completion matrix
+
+Use this matrix to audit the six Backend B items from the team assignment. “Backend complete” means the Python service path and its direct tests are present. It does not mean Frontend C has wired the page or that cloud deployment has passed acceptance.
+
+| ID | Assignment item | Backend status | Implementation and evidence | Remaining boundary |
+| --- | --- | --- | --- | --- |
+| B1 | Pending proposal and detail reads | Complete | `ActionService.get_pending_proposals()` and `get_proposal()` reuse the P4 repository. Pending excludes expired or claimed proposals. `test_pending_and_detail_are_scoped_and_hide_claimed` covers scope, expiry/claim visibility, and reconciliation fields. | C still needs to render Pending and Details pages. |
+| B2 | Operation history presentation | Complete | `ProactiveApplication.list_action_history()` groups existing P4 audit events by `proposal_id`; `test_operation_history_groups_by_proposal` checks one operation with an event timeline. | C should count proposal groups, not audit events, and render the timeline. |
+| B3 | Register and execute real actions | Backend path complete | `build_proactive_application()` registers A1 briefing create/update/cancel and A2 watch create/cancel adapters. P4 supplies identity authorization, expiry, claim, idempotency key, target version, result, and audit. Evidence: `tests/proactive/test_backend_b_integration.py::test_composed_real_briefing_adapter_runs_only_after_confirm`, `tests/proactive/adapters/test_briefing_p4_integration.py`, and `tests/proactive/adapters/test_watch_p4_integration.py`. | C still needs to call the shared page API and refresh pages from stored results. Watch update is unsupported. |
+| B4 | Unclear execution result handling | Complete | P4 exposes `execution_state` and `requires_reconciliation`. Unknown receipts remain claimed and are never retried automatically. Covered by `test_crash_after_claim_requires_reconciliation_and_never_blindly_retries`, `test_result_storage_failure_leaves_durable_claim_and_blocks_reexecution`, and `test_lost_claim_acknowledgement_blocks_execution_and_requires_reconciliation`. | C must show “needs verification” and must not show success or retry on its own. |
+| B5 | Agent routing | Backend path complete | `AgentService._handle_proactive()` checks proactive routing before the ordinary agent route. `ProactiveApplication.handle_text()` routes writes through P4, reads through domain services, and stops on missing fields, missing identity, or read failure. Evidence: `tests/test_agent_service.py::test_proactive_request_is_routed_before_existing_agent_pipeline`, the three routing/fail-closed cases in `tests/proactive/test_backend_b_integration.py`, and `tests/proactive/test_p1_p4_contract.py`. | C still needs to connect chat and pages to the same configured `AgentService` instance. |
+| B6 | Unified service configuration and integration acceptance | Backend composition complete; end-to-end acceptance pending | `build_proactive_application()` shares the local SQLite path across P3/P4/P5 and returns stable page-facing APIs. `AgentService.from_env()` accepts trusted identity and authorizer providers. `test_page_facing_read_apis_return_json_safe_results` and the composed adapter test cover the service boundary. Ruff passes. | The real browser session provider, C pages, complete repository regression, cloud database, and external scheduler have not been accepted here. Do not claim deployment acceptance. |
+
+### Overall acceptance summary
+
+Backend B's six Python service responsibilities are implemented to the statuses above. B3, B5, and B6 still depend on Frontend C or deployment work for end-to-end acceptance. The full repository test suite was not completed, so this handoff does not claim a full regression pass.
+
 ## 1. Service access and identity
 
 The chat and pages must share the same `ProactiveApplication` instance:
