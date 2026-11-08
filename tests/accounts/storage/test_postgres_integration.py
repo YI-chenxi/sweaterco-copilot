@@ -193,3 +193,44 @@ def test_stale_state_revision_cannot_overwrite(chat_context):
     assert exc.value.code == "CONFLICT"
     assert repo.get_state(user_id, user_id, thread_id).revision == 1
     assert len(repo.list_messages(user_id, user_id, thread_id)) == 3
+
+
+def test_concurrent_completion_allows_only_one_revision(chat_context):
+    from concurrent.futures import ThreadPoolExecutor
+
+    repo, user_id, thread_id = chat_context
+    request_ids = [str(uuid4()), str(uuid4())]
+
+    for index, request_id in enumerate(request_ids):
+        repo.begin_turn(
+            user_id, user_id, thread_id,
+            request_id, f"Question {index}",
+        )
+
+    def complete(index):
+        try:
+            repo.complete_turn(
+                user_id, user_id, thread_id,
+                request_ids[index],
+                f"Answer {index}",
+                {"text": f"Answer {index}"},
+                {"step": index},
+                schema_version=1,
+                expected_revision=0,
+            )
+            return "success"
+        except ChatStorageError as exc:
+            return exc.code
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(complete, range(2)))
+
+    assert sorted(results) == ["CONFLICT", "success"]
+
+    messages = repo.list_messages(user_id, user_id, thread_id)
+    state = repo.get_state(user_id, user_id, thread_id)
+
+    assert len(messages) == 3
+    assert len({message.sequence for message in messages}) == 3
+    assert state is not None
+    assert state.revision == 1
