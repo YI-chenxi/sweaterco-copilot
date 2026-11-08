@@ -7,6 +7,7 @@ from .contracts import (
     DisplayMessage,
     IdentityProvider,
     OpenedConversation,
+    PendingTurn,
     Principal,
     SavedTurn,
     StoredMessage,
@@ -15,9 +16,19 @@ from .contracts import (
     TurnReceipt,
 )
 from .errors import ConversationError
+from .identity_adapter import SessionIdentityAdapter
+from .postgres_adapter import PostgresConversationRepository
+from .runtime import AccountBackend, LoginResult, build_account_backend, compose_account_backend
 from .service import PersistentConversationService
 
 __all__ = [
+    "AccountBackend",
+    "LoginResult",
+    "PendingTurn",
+    "PostgresConversationRepository",
+    "SessionIdentityAdapter",
+    "build_account_backend",
+    "compose_account_backend",
     "ConversationError",
     "ConversationRepository",
     "ConversationSnapshot",

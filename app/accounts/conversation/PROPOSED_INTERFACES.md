@@ -1,195 +1,123 @@
-# Provisional integration contract: Account Person 4
+# P4 internal contracts and real P1 P2 P3 adapters
 
-Status: P4-local proposal. P2/P3 have NOT signed off on these method names,
-schema changes, or storage implementation. Adapt the finalized team services
-instead of implementing authentication or SQL in P4.
+This replaces the initial proposal's assumptions. These are internal P4 types,
+not a demand that P3 rename/reimplement its published repository.
 
-Python 3.10+. Public types and Protocols are in contracts.py.
-Persistence envelopes use schema_version=1 and kind=chat_session / agent_reply.
+## Verified dependency revisions
 
-## Ownership and scope
+P1 f5dd3d2, P2 e67aa3c, P3 0d2f90f. See README for full commit IDs.
+P4 changes no shared schema, SQL migration, Agent entry point or main UI file.
 
-P2 validates authentication and supplies an immutable Principal:
-user_id, workspace_id, session_id. session_id identifies the authenticated login
-session; it is not the chat thread ID and must not be the raw login token.
+## Actual mapping
 
-IdentityProvider.require_principal(session_handle) must validate expiry,
-revocation, logout and membership on every call. The handle is opaque to P4.
-Do not pass an editable UI/model user_id as proof of identity. Do not persist or
-log the login handle in messages, metadata, request receipts or exception text.
-P4 fails closed when this provider is absent.
-
-P3 owns conversation lifecycle, SQL schema/migrations, transactions, request
-reservations and concurrency. P4 does not add a users table, auth implementation
-or a production repository.
-
-P4 owns safe JSON codecs, detached restoration and per-turn orchestration.
-P5 owns UI/session integration. No existing core/UI entry point is changed by
-this standalone branch.
-
-## Identity and transaction boundary
-
-P4 revalidates identity at read, pre-claim, pre-execution, pre-commit and
-post-commit response boundaries. It checks owner/workspace on snapshots and
-receipts as a second defense. P3 must also apply ownership and deletion checks
-inside every operation, never only in a previous load.
-
-A Principal is a point-in-time assertion. If logout/revocation must prevent a
-concurrent commit atomically, P2/P3 must agree on a transactional active-session
-check or equivalent. Revalidation alone does not eliminate that race.
-No user-specific state may be placed in a shared cached service/global variable.
-
-## Repository operations
-
-All returned records are detached copies. Unknown or deleted threads are never
-silently recreated. Foreign owners/workspaces must be denied on every method.
-
-### load(principal, thread_id) -> ConversationSnapshot
-
-Return a consistent snapshot of messages, latest state and revision.
-
-- New empty thread: revision=0, messages=(), state_document=None.
-- Completed turns: exactly two messages per revision, in user/assistant pairs.
-- Message IDs and request IDs are canonical UUID strings.
-- sequence starts at 1 and is consecutive within the thread.
-- Paired messages share request_id; separate turns use separate request IDs.
-- User message: original user text, reply_document=None.
-- Assistant message: content equals decoded AgentReply.text and includes the
-  complete versioned reply_document.
-- Every nonempty thread has the latest complete versioned state_document.
-- Snapshot includes thread_id, owner_user_id and workspace_id.
-
-P4 validates these invariants before displaying history or invoking the agent.
-If your finalized message format differs, translate it in the P3 adapter.
-Imported old histories need an explicit migration; P4 does not silently fill
-missing state with a blank ChatSession.
-
-### begin_turn(principal, thread_id, request_id, user_text, expected_revision)
-
-Return TurnClaim with one of these statuses:
-
-| Status | Meaning | P4 behavior |
-| --- | --- | --- |
-| acquired | New request reservation committed | Invoke Agent once |
-| completed | Same request/text already committed | Return original receipt; no execution |
-| in_progress | Reservation exists, result not resolved | Return REQUEST_IN_PROGRESS |
-| uncertain | Execution/save outcome needs reconciliation | Return RECONCILIATION_REQUIRED |
-
-Atomic rules:
-1. Verify ownership, membership rules and thread existence.
-2. For an already known request ID, check original text. Different text is
-   CONFLICT. A completed request returns its original receipt even if the
-   caller's new expected_revision reflects later conversation turns.
-3. For a new request, compare expected_revision with current revision and
-   reject any outstanding/uncertain request on that same thread.
-4. Persist reservation before returning acquired. Use unique constraints or
-   equivalent serialization across processes; a Python-only lock is insufficient.
-5. Release DB transaction before calling the agent. Never hold a DB lock while
-   waiting for model/tool calls.
-
-On a lost begin acknowledgement, P4 has not invoked the agent. The reservation
-may nevertheless exist; P4 does not take it over automatically.
-
-### commit_turn(..., expected_revision, reply_document, state_document)
-
-Return TurnReceipt. Within ONE transaction:
-- Recheck ownership, thread existence and deletion; validate reservation.
-- Compare current revision with expected_revision.
-- Append the original reserved user text and complete assistant reply.
-- Save state_document as latest state.
-- Increment revision exactly once.
-- Mark request completed and persist immutable replay receipt.
-
-The receipt contains thread/owner/workspace/request identity, original user text,
-base_revision, revision, complete reply_document and state_document.
-revision = base_revision + 1. An acquired request's base revision must equal the
-snapshot used for execution.
-
-Repeated commit of a completed request returns the same receipt. Never overwrite
-later state with an old replay. Do not return success before the transaction
-commits. On failure there must be no partial user-only or reply-only turn.
-A deleted thread must not be resurrected by a delayed agent response.
-
-### mark_uncertain(principal, thread_id, request_id, error_code)
-
-Retain the reservation and mark it for review. Store a safe code, not raw
-exception text. Never modify a completed receipt. Never automatically release
-a reservation because P4 encountered an exception or its timeout expired.
-
-If this operation fails, the original reservation still blocks execution.
-This is why begin_turn must durably reserve BEFORE the agent call.
-
-## Request idempotency and recovery
-
-P5 creates one UUID per send attempt and retains the same UUID/text for network
-retries. A subsequent intentional user message gets a new UUID. Reusing an ID
-with changed text is an error.
-
-SavedTurn returns reply, committed_revision and replayed, but NOT an old writable
-ChatSession. After success/replay, reload current history and state. Replaying
-turn 1 after turn 2 must not replace the live thread with turn 1's snapshot.
-
-Do not market this as general exactly-once external effects. A crash between an
-external tool effect and result persistence cannot be solved by a chat-state
-transaction alone. Effectful tools must use their own confirmed action IDs and
-idempotency contracts.
-
-Uncertain/in-progress records need a P2/P3/P4-agreed reconciliation policy.
-No automatic recovery endpoint or scheduler is implemented here. Do not advise
-users to bypass a blocked reservation with another request ID.
-
-## Codec rules
-
-- Complete envelope with exact fields and explicit version; no pickle/eval.
-- Unknown versions raise UNSUPPORTED_SCHEMA; no silent reset/fallback.
-- Known task statuses are retained, including completed and failed.
-- User maps are tagged as mappings to prevent collision with metadata type tags.
-- Metadata permits JSON values, finite floats, tuple, date, datetime and four
-  allowlisted project enums. No arbitrary import/class reconstruction.
-- Duplicate JSON keys, invalid references, bad types, NaN/Infinity, unknown tags,
-  excessive depth and oversized documents fail explicitly.
-- Dates and typed metadata survive JSON roundtrips; unsupported future model
-  types require an explicit codec/version change.
-- Decoding is side-effect free. Loading history never replays model/tool calls.
-
-## Safe error codes and UI handling
-
-| Code | UI action |
+| P4 internal operation | Real implementation |
 | --- | --- |
-| INVALID_ARGUMENT | Ask user to correct the request; do not send |
-| UNAUTHENTICATED / IDENTITY_CHANGED | Clear displayed user state and require valid login |
-| FORBIDDEN / NOT_FOUND | Do not expose foreign history; refresh the user's thread list |
-| INVALID_STATE / UNSUPPORTED_SCHEMA / UNSUPPORTED_VALUE / PAYLOAD_TOO_LARGE | Explain data cannot currently be restored/saved; preserve it for diagnosis |
-| CONFLICT | Reload current thread; do not auto-reexecute |
-| REQUEST_IN_PROGRESS | Display processing/outcome pending; do not execute again |
-| RECONCILIATION_REQUIRED | Outcome needs review; do not retry tools |
-| STORAGE_ERROR | Storage unavailable before confirmed execution |
-| STORAGE_OUTCOME_UNKNOWN | Query using same request ID; never show unacknowledged success |
-| AGENT_ERROR | Execution did not finish normally; reservation needs review |
+| IdentityProvider.require_principal | P2 resolve_current_user plus P3 workspace membership |
+| load | P3 list_messages/get_state inside one guarded short transaction |
+| begin_turn | Inspect durable request under row lock; delegate new reservation to P3 begin_turn |
+| commit_turn | Delegate P3 complete_turn inside one guarded short transaction |
+| mark_uncertain | Scoped update processing -> failed in existing P3 request table |
+| account register/authenticate | P1 AuthService |
+| login/resolve/logout | P2 SessionService with stable configured pepper |
+| create/list/rename/delete thread | P3 repository behind trusted facade and transactional session check |
 
-An error after execution does not prove that tools did nothing. P4 does not
-return partial output as a successfully persisted chat turn. Raw exceptions
-must not be shown to users.
+## Differences from the original proposal
 
-## Integration acceptance: pending real P2/P3 services
+1. P3 commits the user message when beginning a turn, not together with its
+   assistant reply. A ConversationSnapshot can contain one PendingTurn and a
+   trailing user message. Completed pairs still correspond to revision.
+2. Processing user messages are visible as pending, not fake successful replies.
+   Missing state is allowed only for a new thread with revision zero and at most
+   its declared pending user message. Missing state on a completed thread is invalid.
+3. P3 begin_turn returns processing for both a new request and a retry. Calling
+   Agent whenever it says processing would duplicate execution. The P4 adapter
+   first locks the owned thread, checks for an existing request or any unresolved
+   request, compares revision, and only then delegates a new reservation.
+4. P3 has processing/completed/failed. P4 maps processing to in_progress and failed
+   to uncertain. No unsafe automatic retry/lease takeover is added.
+5. P3 retains latest state and completion fingerprint/revision/assistant ID,
+   rather than every historical state. TurnReceipt.state_document can be None
+   ONLY for a replay. The historical reply is restored, the latest state is loaded
+   separately, and SavedTurn does not expose writable old state.
+6. Old completed requests without 002 completion identity are rejected for review.
+7. P4 does not add request/error columns. Failed processing uses existing failed
+   status; the original diagnostic code is not stored in that table.
 
-1. Valid login: create thread, send a realistic business request, logout/login,
-   load history and continue a pending clarification using original state.
-2. A second user/workspace cannot read, list, mutate or deduplicate against a
-   foreign thread, even with copied UUIDs.
-3. Real database/process restart restores the same messages, evidence, task
-   statuses, active tasks, global issues and task counter.
-4. Two processes/tabs sending concurrently cannot both acquire new requests for
-   the same revision; same-ID retry never invokes the model/tool twice.
-5. Lose acknowledgement after commit: same-ID retry returns the receipt without
-   another execution. Lose acknowledgement after reservation: no takeover.
-6. Agent failure or commit failure leaves no partial turn and no automatic retry.
-7. Expired/revoked login, thread deletion and concurrency are checked at commit.
-8. Invalid version/data is retained and reported, not replaced with empty state.
-9. UI switching users/threads never reuses another thread's in-memory state.
-10. External confirmed actions have a separate idempotency/reconciliation policy.
+## Transaction ownership
 
-Test-only FakeRepository exercises the intended contract under a local RLock.
-It does NOT verify SQL transactions, schema constraints, crash recovery, cloud
-persistence, browser cookies or actual authentication. These acceptance items
-remain integration work, not completed production features.
+PostgresConversationRepository owns the outer transaction and connection.
+A narrow borrowed connection exposes cursor(), while commit/rollback/close from
+P3 are no-ops. P3 reads/writes therefore participate in the P4 transaction.
+On any P3 exception the outer owner rolls back, and errors are safely mapped.
+
+Lock order: live account session and workspace, then owned thread. Each
+load/reservation/completion is short. There is NO connection/transaction held
+while the Agent/model is running.
+
+Thread FOR SHARE keeps message/state reads coherent because P3 writes use
+FOR UPDATE on that thread. Reservation FOR UPDATE serializes request checks and
+the P3 user-message insert. Completion uses P3's unchanged atomic assistant/state
+and immutable-receipt logic. Database ownership and live-session checks are
+inside the same transaction; revoked sessions cannot authorize a later write.
+
+A connection/commit failure after a write is STORAGE_OUTCOME_UNKNOWN, never
+success. The original reservation is kept; a completed receipt cannot be changed
+back to failed. Repeating the same ID reads its existing result; changing the ID
+does not bypass unresolved work.
+
+The adapter relies on the inspected P3 transaction/cursor behavior. A change to
+P3 committing/closing semantics or query ownership requires re-review. Do not
+bypass this facade and independently call P3 begin_turn then invoke the Agent:
+that bypasses P4's execution reservation rules.
+
+This is not a general exactly-once guarantee for external business effects.
+Effectful tools still require their own confirmed-action idempotency contracts.
+
+## Safe UI API
+
+AccountBackend accepts credentials for register/login, and otherwise accepts a
+browser token plus resource IDs. Identity IDs are never editable UI parameters.
+P3's default private workspace mapping is used only AFTER successful P1
+authentication and checked by P2.
+
+LoginResult hides cookie instructions from repr, but its cookie.value remains a
+sensitive one-time bearer credential for the browser adapter. Do not serialize
+the login result to logs/history/session_state, and do not put it in a URL.
+P4 does not create HttpOnly cookies by injecting browser JavaScript.
+
+All service errors use fixed safe messages. Existing P1 errors are preserved:
+INVALID_USERNAME, INVALID_PASSWORD, USERNAME_TAKEN, INVALID_CREDENTIALS,
+RATE_LIMITED, STORAGE_ERROR. P2 INVALID_SESSION -> UNAUTHENTICATED;
+UNAUTHORIZED -> FORBIDDEN. Unexpected provider errors -> STORAGE_ERROR.
+Missing drivers/services/configuration -> CONFIGURATION_ERROR.
+
+UI must distinguish conflict, processing, reconciliation, unknown save outcome
+and invalid/unsupported state from successful completion. Reload current history
+after save/replay. On logout/account switch clear all user display/caches and
+pending request state. These UI changes belong to P5.
+
+## Configuration and migration
+
+DATABASE_URL comes from injected secrets=st.secrets; P3's
+create_connection_factory receives it. ACCOUNT_SECRET must be a stable random
+server secret of at least 32 UTF-8 bytes. P4 derives independent session and login
+throttle keys with labeled HMAC. No ephemeral per-process fallback is used.
+Restarting instances with the same stable secret preserves token verification;
+changing it invalidates existing sessions.
+
+P3 migrations 001 and 002 are the single schema authority. No migration runs
+automatically on application startup. P1 returns canonical UUID strings; P3 TEXT
+columns hold those strings and P2 accepts them. Do not change column types or
+run P2 schema.sql during P4 integration.
+
+## Validation boundary
+
+Scripted DB-API tests execute actual P3 repository code and verify delegation,
+transaction ownership, state/reply mapping and error behavior. P1/P2 integration
+tests execute real services with in-memory repositories. Neither proves real
+PostgreSQL row locks, network failures, cloud persistence or browser cookies.
+
+Opt-in PostgreSQL tests create a random isolated schema, apply the unchanged P3
+migrations only there, and remove that schema afterward. They require a dedicated
+connection and explicit opt-in; no production URL is implicitly discovered.
+Cloud/application tables are not migrated or cleaned by those tests.

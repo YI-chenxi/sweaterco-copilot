@@ -27,6 +27,12 @@ class StoredMessage:
 
 
 @dataclass(frozen=True)
+class PendingTurn:
+    request_id: str
+    status: str  # processing | failed (requires reconciliation, not safe to retry)
+
+
+@dataclass(frozen=True)
 class ConversationSnapshot:
     thread_id: str
     owner_user_id: str
@@ -34,6 +40,7 @@ class ConversationSnapshot:
     revision: int
     messages: tuple[StoredMessage, ...] = ()
     state_document: dict | None = None
+    pending: PendingTurn | None = None
 
 
 @dataclass(frozen=True)
@@ -46,7 +53,7 @@ class TurnReceipt:
     base_revision: int
     revision: int
     reply_document: dict
-    state_document: dict
+    state_document: dict | None  # P3 historical replay has no historical state snapshot.
 
 
 @dataclass(frozen=True)
@@ -71,6 +78,7 @@ class OpenedConversation:
     revision: int
     messages: tuple[DisplayMessage, ...]
     session: ChatSession  # Detached read snapshot, never a caller-supplied update.
+    pending: PendingTurn | None = None
 
 
 @dataclass(frozen=True)

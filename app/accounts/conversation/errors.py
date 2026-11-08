@@ -1,6 +1,12 @@
 """Safe module-local errors; never expose credential, provider or database details."""
 
 MESSAGES = {
+    "CONFIGURATION_ERROR": "Account backend configuration is missing or invalid.",
+    "INVALID_USERNAME": "The username does not meet the account rules.",
+    "INVALID_PASSWORD": "The password does not meet the account rules.",
+    "USERNAME_TAKEN": "This username is unavailable.",
+    "INVALID_CREDENTIALS": "The username or password is incorrect.",
+    "RATE_LIMITED": "Too many login attempts; try again later.",
     "INVALID_ARGUMENT": "Invalid conversation request.",
     "UNAUTHENTICATED": "A valid authenticated session is required.",
     "FORBIDDEN": "This conversation is not accessible.",

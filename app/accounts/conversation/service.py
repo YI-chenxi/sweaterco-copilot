@@ -14,6 +14,7 @@ from .contracts import (
     DisplayMessage,
     IdentityProvider,
     OpenedConversation,
+    PendingTurn,
     Principal,
     SavedTurn,
     StoredMessage,
@@ -106,8 +107,19 @@ class PersistentConversationService:
         _revision(snapshot.revision)
         if type(snapshot.messages) is not tuple:
             _deny()
-        # Every committed turn is a user/assistant pair in the proposed P3 contract.
-        if len(snapshot.messages) != snapshot.revision * 2:
+        pending = snapshot.pending
+        if pending is not None:
+            if not isinstance(pending, PendingTurn) or pending.status not in (
+                "processing",
+                "failed",
+            ):
+                _deny()
+            try:
+                _uuid(pending.request_id)
+            except ConversationError:
+                _deny()
+        # P3 commits the user message at begin_turn; at most one reserved tail is allowed.
+        if len(snapshot.messages) != snapshot.revision * 2 + int(pending is not None):
             _deny()
         messages = []
         ids = set()
@@ -149,8 +161,10 @@ class PersistentConversationService:
                     reply,
                 )
             )
+        if pending is not None and snapshot.messages[-1].request_id != pending.request_id:
+            _deny()
         if snapshot.state_document is None:
-            if snapshot.revision or snapshot.messages:
+            if snapshot.revision:
                 _deny()
             session = ChatSession()
         else:
@@ -162,9 +176,9 @@ class PersistentConversationService:
         _uuid(thread_id)
         snapshot, messages, session = self._load(principal, thread_id)
         self._revalidate(session_handle, principal)
-        return OpenedConversation(thread_id, snapshot.revision, messages, session)
+        return OpenedConversation(thread_id, snapshot.revision, messages, session, snapshot.pending)
 
-    def _receipt(self, receipt, principal, thread_id, request_id, text):
+    def _receipt(self, receipt, principal, thread_id, request_id, text, *, replay=False):
         if not isinstance(receipt, TurnReceipt):
             _deny()
         self._owned(receipt, principal, thread_id)
@@ -177,7 +191,10 @@ class PersistentConversationService:
         ):
             _deny()
         reply = decode_reply(receipt.reply_document)
-        decode_session(receipt.state_document)
+        if receipt.state_document is not None:
+            decode_session(receipt.state_document)
+        elif not replay:
+            _deny()
         return reply
 
     def _uncertain(self, principal, thread_id, request_id, code):
@@ -215,7 +232,9 @@ class PersistentConversationService:
         if not isinstance(claim, TurnClaim):
             _deny()
         if claim.status == "completed":
-            reply = self._receipt(claim.receipt, principal, thread_id, request_id, text)
+            reply = self._receipt(
+                claim.receipt, principal, thread_id, request_id, text, replay=True
+            )
             self._revalidate(session_handle, principal)
             return SavedTurn(thread_id, request_id, claim.receipt.revision, reply, True)
         if claim.status == "in_progress":
