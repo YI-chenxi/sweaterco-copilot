@@ -120,6 +120,15 @@ class SQLiteActionRepository:
         with self._lock:
             return self._get(workspace_id, proposal_id)
 
+    def list_proposals(self, workspace_id: str) -> list[dict]:
+        """Return detached proposals for one workspace in creation order."""
+        with self._lock:
+            rows = self._connection.execute(
+                "SELECT document FROM action_proposals WHERE workspace_id = ? ORDER BY rowid DESC",
+                (workspace_id,),
+            ).fetchall()
+            return [json.loads(row[0]) for row in rows]
+
     def create(self, proposal: dict) -> tuple[dict, bool]:
         proposal = deepcopy(proposal)
         with self._transaction():

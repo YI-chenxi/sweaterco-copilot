@@ -229,16 +229,27 @@ class ActionService:
         public.pop("fingerprint", None)
         public.pop("request_key", None)
         started = public["execution_started_at"] is not None
+        outcome_unknown = bool((public.get("result") or {}).get("outcome_unknown"))
         public["execution_state"] = (
             "in_progress_or_unknown"
             if started and public["status"] == "pending_confirmation"
+            else "outcome_unknown"
+            if outcome_unknown
             else "finished"
             if started
             else "not_started"
         )
-        public["requires_reconciliation"] = public[
-            "execution_state"
-        ] == "in_progress_or_unknown" or bool((public.get("result") or {}).get("outcome_unknown"))
+        public["requires_reconciliation"] = public["execution_state"] in {
+            "in_progress_or_unknown",
+            "outcome_unknown",
+        }
+        return public
+
+    @classmethod
+    def _public_read(cls, proposal: dict) -> dict:
+        """Expose UI fields while keeping execution credentials server-side."""
+        public = cls._public(proposal)
+        public.pop("idempotency_key", None)
         return public
 
     def _reply(self, proposal: dict, *, already_executed: bool = False) -> dict:
@@ -418,3 +429,32 @@ class ActionService:
         actor = self._actor()
         self._authorize(actor, workspace, "history")
         return self._store("history", workspace)
+
+    def get_pending_proposals(self, workspace_id: str) -> list[dict]:
+        """List only actionable proposals owned by the trusted current actor."""
+        workspace = _identifier(workspace_id)
+        actor = self._actor()
+        self._authorize(actor, workspace, "pending")
+        now = self._stamp(self._now())
+        proposals = self._store("list_proposals", workspace)
+        result = []
+        for proposal in proposals:
+            if proposal["creator_id"] != actor:
+                continue
+            if proposal["status"] != "pending_confirmation" or proposal["execution_started_at"]:
+                continue
+            if proposal["expires_at"] <= now:
+                continue
+            result.append(self._public_read(proposal))
+        return result
+
+    def get_proposal(self, workspace_id: str, proposal_id: str) -> dict:
+        """Read one exact proposal, enforcing the same creator/workspace boundary."""
+        workspace = _identifier(workspace_id)
+        actor = self._actor()
+        proposal_id = _identifier(proposal_id, uuid=True)
+        proposal = self._store("get", workspace, proposal_id)
+        self._authorize(actor, workspace, "get", proposal)
+        if proposal["creator_id"] != actor:
+            raise ActionError("NOT_FOUND")
+        return self._public_read(proposal)
