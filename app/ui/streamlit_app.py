@@ -26,6 +26,7 @@ from app.agent.contracts import AgentReply  # noqa: E402
 from app.agent.orchestrator import AgentOrchestrator  # noqa: E402
 from app.agent.service import AgentService  # noqa: E402
 from app.agent.settings import AgentSettings, LLMSettings  # noqa: E402
+from app.agent.speech import SpeechError, SpeechService  # noqa: E402
 from app.ui import evidence_follow as follow_presentation  # noqa: E402
 from app.ui import language as language_catalog  # noqa: E402
 from app.ui import localized_reply as reply_presentation  # noqa: E402
@@ -307,7 +308,28 @@ def _run_guided(workflow: str, language: str, values: dict[str, Any]) -> None:
 
 def _queue_chat_prompt() -> None:
     """Show the user's question on the next render before starting model work."""
-    prompt = str(st.session_state.get("chat_prompt", "")).strip()
+    value = st.session_state.get("chat_prompt")
+    if value is None:
+        return
+    if isinstance(value, str):
+        _queue_text(value)
+        return
+    prompt = str(value.text or "").strip()
+    audio = getattr(value, "audio", None)
+    if audio is not None:
+        if st.session_state.get("pending_speech"):
+            return
+        st.session_state["pending_speech"] = {
+            "thread_id": _thread()["id"],
+            "audio": audio.getvalue(),
+            "typed_text": prompt,
+        }
+        return
+    _queue_text(prompt)
+
+
+def _queue_text(prompt: str) -> None:
+    prompt = prompt.strip()
     if not prompt or st.session_state.get("pending_chat"):
         return
     if not _chat_ready():
@@ -317,6 +339,66 @@ def _queue_chat_prompt() -> None:
         return
     _append_user(prompt)
     st.session_state["pending_chat"] = {"thread_id": _thread()["id"], "prompt": prompt}
+
+
+_SPEECH_ERRORS = {
+    "empty_audio": ("The recording is empty. Please record again.", "录音为空，请重新录制。"),
+    "invalid_audio": (
+        "The recording could not be read. Please record again.",
+        "无法读取录音，请重新录制。",
+    ),
+    "too_large": (
+        "Recording exceeds 5 MB. Please make it shorter.",
+        "录音超过 5 MB，请缩短录制时间。",
+    ),
+    "too_long": (
+        "Recording exceeds 60 seconds. Please make it shorter.",
+        "录音超过 60 秒，请缩短录制时间。",
+    ),
+    "no_speech": ("No clear speech was found. Please try again.", "未识别到有效语音，请重试。"),
+    "timeout": ("Transcription timed out. Please try again.", "语音转写超时，请重试。"),
+    "unavailable": (
+        "Transcription is unavailable. You can still type.",
+        "语音转写暂不可用，仍可输入文字。",
+    ),
+}
+
+
+def _process_pending_speech() -> None:
+    pending = st.session_state.pop("pending_speech", None)
+    if not pending:
+        return
+    thread = next(
+        (item for item in st.session_state["threads"] if item["id"] == pending["thread_id"]),
+        None,
+    )
+    if thread is None:
+        return
+    try:
+        with st.spinner(_t("Transcribing recording...")):
+            transcript = SpeechService.from_env().transcribe(pending["audio"])
+    except SpeechError as exc:
+        pair = _SPEECH_ERRORS.get(exc.code, _SPEECH_ERRORS["unavailable"])
+        thread["speech_error"] = pair[1] if shared_language(st.session_state) == "zh" else pair[0]
+    except Exception:
+        pair = _SPEECH_ERRORS["unavailable"]
+        thread["speech_error"] = pair[1] if shared_language(st.session_state) == "zh" else pair[0]
+    else:
+        typed = pending["typed_text"]
+        thread["speech_draft"] = (typed + "\n" + transcript).strip() if typed else transcript
+        st.session_state["speech_draft_" + str(thread["id"])] = thread["speech_draft"]
+        thread.pop("speech_error", None)
+    st.rerun()
+
+
+def _send_speech_draft() -> None:
+    thread = _thread()
+    draft = st.session_state.get("speech_draft_" + str(thread["id"]), "").strip()
+    if not draft or st.session_state.get("pending_chat"):
+        return
+    _queue_text(draft)
+    if st.session_state.get("pending_chat"):
+        thread.pop("speech_draft", None)
 
 
 def _process_pending_chat() -> None:
@@ -827,10 +909,28 @@ def _composer() -> None:
     The sibling scroll container owns long conversations, so this input stays
     at the bottom of the surface in new, empty and populated conversations.
     """
+    thread = _thread()
+    if thread.get("speech_error"):
+        st.warning(thread.pop("speech_error"))
+    if thread.get("speech_draft"):
+        st.text_area(
+            _t("Review transcription before sending"),
+            key="speech_draft_" + str(thread["id"]),
+        )
+        send, discard = st.columns(2)
+        send.button(
+            _t("Send reviewed text"),
+            key="send_speech_" + str(thread["id"]),
+            on_click=_send_speech_draft,
+        )
+        if discard.button(_t("Discard transcription"), key="discard_speech_" + str(thread["id"])):
+            thread.pop("speech_draft", None)
+            st.rerun()
     st.chat_input(
         _t("Ask about orders, production, risks or feasibility..."),
         key="chat_prompt",
         on_submit=_queue_chat_prompt,
+        accept_audio=True,
     )
     notice = st.session_state.pop("chat_notice", None)
     if notice:
@@ -1074,6 +1174,7 @@ def main() -> None:
                 _conversation()
                 _process_pending_chat()
                 _request_context()
+            _process_pending_speech()
             _composer()
         if st.session_state["analysis_open"]:
             with columns[1], st.container(key="analysis_workspace"):

@@ -10,6 +10,10 @@ from typing import Any
 HISTORICAL_COMPARISON = "Recorded production performance versus the established baseline."
 
 ZH = {
+    "Transcribing recording...": "正在转写录音…",
+    "Review transcription before sending": "请检查并编辑识别文字，再发送",
+    "Send reviewed text": "发送检查后的文字",
+    "Discard transcription": "丢弃识别文字",
     "Daily mode": "日常模式",
     "Eye comfort mode": "护眼模式",
     "Night mode": "黑夜模式",
