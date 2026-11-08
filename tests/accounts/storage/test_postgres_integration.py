@@ -124,3 +124,72 @@ def test_old_request_replay_after_newer_turn(chat_context):
     assert exc.value.code == "CONFLICT"
     assert len(repo.list_messages(user_id, user_id, thread_id)) == 4
     assert repo.get_state(user_id, user_id, thread_id).revision == 2
+
+
+def test_failed_state_serialization_rolls_back(chat_context):
+    repo, user_id, thread_id = chat_context
+    request_id = str(uuid4())
+
+    repo.begin_turn(user_id, user_id, thread_id, request_id, "Question")
+
+    with pytest.raises(ChatStorageError) as exc:
+        repo.complete_turn(
+            user_id, user_id, thread_id, request_id,
+            "Answer",
+            {"text": "Answer"},
+            {"invalid": object()},
+            schema_version=1,
+            expected_revision=0,
+        )
+
+    assert exc.value.code in {"INVALID_ARGUMENT", "STORAGE_ERROR"}
+    messages = repo.list_messages(user_id, user_id, thread_id)
+    assert len(messages) == 1
+    assert messages[0].role == "user"
+    assert repo.get_state(user_id, user_id, thread_id) is None
+
+
+def test_cross_user_cannot_access_private_thread(chat_context):
+    repo, user_id, thread_id = chat_context
+    other_user = str(uuid4())
+
+    assert repo.list_messages(other_user, other_user, thread_id) == []
+    assert repo.get_state(other_user, other_user, thread_id) is None
+
+    with pytest.raises(ChatStorageError) as exc:
+        repo.delete_thread(other_user, other_user, thread_id)
+
+    assert exc.value.code == "NOT_FOUND"
+    assert len(repo.list_threads(user_id, user_id)) == 1
+
+
+def test_stale_state_revision_cannot_overwrite(chat_context):
+    repo, user_id, thread_id = chat_context
+    first_request = str(uuid4())
+    second_request = str(uuid4())
+
+    repo.begin_turn(user_id, user_id, thread_id, first_request, "First")
+    repo.begin_turn(user_id, user_id, thread_id, second_request, "Second")
+
+    repo.complete_turn(
+        user_id, user_id, thread_id, first_request,
+        "First answer",
+        {"text": "First answer"},
+        {"step": 1},
+        schema_version=1,
+        expected_revision=0,
+    )
+
+    with pytest.raises(ChatStorageError) as exc:
+        repo.complete_turn(
+            user_id, user_id, thread_id, second_request,
+            "Second answer",
+            {"text": "Second answer"},
+            {"step": 2},
+            schema_version=1,
+            expected_revision=0,
+        )
+
+    assert exc.value.code == "CONFLICT"
+    assert repo.get_state(user_id, user_id, thread_id).revision == 1
+    assert len(repo.list_messages(user_id, user_id, thread_id)) == 3

@@ -585,4 +585,3 @@ class PostgresChatRepository:
             raise ChatStorageError("STORAGE_ERROR") from None
         finally:
             connection.close()
-
