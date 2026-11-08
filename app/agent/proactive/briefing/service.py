@@ -314,6 +314,13 @@ class BriefingService:
                 "message": "Unable to update briefing schedule.",
             }
 
+        # The repository atomically increments config_version.
+        # Reflect the committed version in the returned business result.
+        updated = replace(
+            updated,
+            config_version=updated.config_version + 1,
+        )
+
         data = asdict(updated)
         data.update({
             "local_time": updated.local_time.strftime("%H:%M"),

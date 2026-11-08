@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS briefing_schedules (
     next_run_at TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
-    cancelled_at TEXT
+    cancelled_at TEXT,
+    config_version INTEGER NOT NULL DEFAULT 1 CHECK (config_version >= 1)
 );
 
 CREATE INDEX IF NOT EXISTS idx_briefing_schedules_due
@@ -54,6 +55,16 @@ CREATE TABLE IF NOT EXISTS briefing_claims (
     FOREIGN KEY (schedule_id)
         REFERENCES briefing_schedules(id)
 );
+
+CREATE TABLE IF NOT EXISTS briefing_action_receipts (
+    workspace_id TEXT NOT NULL,
+    idempotency_key TEXT NOT NULL,
+    command_hash TEXT NOT NULL,
+    receipt_json TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (workspace_id, idempotency_key)
+);
+
 """
 
 
@@ -90,6 +101,326 @@ class SQLiteBriefingRepository:
                     "ADD COLUMN cancelled_at TEXT"
                 )
 
+            if "config_version" not in columns:
+                connection.execute(
+                    "ALTER TABLE briefing_schedules "
+                    "ADD COLUMN config_version INTEGER NOT NULL DEFAULT 1 "
+                    "CHECK (config_version >= 1)"
+                )
+
+
+    def execute_confirmed_action(
+        self,
+        workspace_id: str,
+        command: dict,
+        *,
+        idempotency_key: str,
+        expected_version: str | None,
+    ) -> dict:
+        """Execute a confirmed briefing create with durable idempotency."""
+        import hashlib
+        from uuid import uuid4
+
+        from app.agent.proactive.briefing.scheduler import calculate_next_run
+        from app.agent.proactive.briefing.service import BriefingService
+
+        if not isinstance(workspace_id, str) or not workspace_id.strip():
+            raise ValueError("INVALID_ARGUMENT")
+        if not isinstance(idempotency_key, str) or not idempotency_key.strip():
+            raise ValueError("INVALID_ARGUMENT")
+        if not isinstance(command, dict):
+            raise ValueError("INVALID_ARGUMENT")
+
+        if command.get("task_type") != "briefing":
+            raise ValueError("INVALID_ARGUMENT")
+
+        operation = command.get("command_type")
+        if operation not in {"create", "update", "cancel"}:
+            raise ValueError("INVALID_ARGUMENT")
+
+        target_id = command.get("target_id")
+
+        if operation == "create":
+            if target_id is not None or expected_version is not None:
+                raise ValueError("INVALID_ARGUMENT")
+        else:
+            if not isinstance(target_id, str) or not target_id.strip():
+                raise ValueError("MISSING_FIELD")
+            if (
+                not isinstance(expected_version, str)
+                or not expected_version.isdecimal()
+                or int(expected_version) < 1
+            ):
+                raise ValueError("INVALID_ARGUMENT")
+
+        parameters = command.get("parameters")
+        if not isinstance(parameters, dict):
+            raise ValueError("INVALID_ARGUMENT")
+
+        allowed = {
+            "interval_days", "local_time", "timezone",
+            "start_date", "enabled",
+        }
+        if set(parameters) - allowed:
+            raise ValueError("INVALID_ARGUMENT")
+
+        if operation == "create":
+            values = BriefingService._validate_parameters(parameters)
+        elif operation == "update":
+            if not parameters:
+                raise ValueError("MISSING_FIELD")
+            values = None
+        else:
+            if parameters:
+                raise ValueError("INVALID_ARGUMENT")
+            values = None
+
+        command_json = json.dumps(
+            {
+                "command": command,
+                "expected_version": expected_version,
+            },
+            sort_keys=True,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            allow_nan=False,
+        )
+        command_hash = hashlib.sha256(
+            command_json.encode("utf-8")
+        ).hexdigest()
+
+        now = datetime.now(__import__("datetime").timezone.utc)
+
+        next_run = (
+            calculate_next_run(
+                values["start_date"],
+                values["local_time"],
+                values["timezone"],
+                values["interval_days"],
+                now,
+            )
+            if values is not None and values["enabled"]
+            else None
+        )
+
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+
+            existing = connection.execute(
+                """
+                SELECT command_hash, receipt_json
+                FROM briefing_action_receipts
+                WHERE workspace_id = ? AND idempotency_key = ?
+                """,
+                (workspace_id, idempotency_key),
+            ).fetchone()
+
+            if existing is not None:
+                if existing[0] != command_hash:
+                    raise ValueError("CONFLICT")
+                return json.loads(existing[1])
+
+
+            if operation in {"update", "cancel"}:
+                connection.row_factory = sqlite3.Row
+
+                row = connection.execute(
+                    """
+                    SELECT * FROM briefing_schedules
+                    WHERE id = ? AND workspace_id = ?
+                    """,
+                    (target_id, workspace_id),
+                ).fetchone()
+
+                if row is None:
+                    raise ValueError("NOT_FOUND")
+
+                if row["cancelled_at"] is not None:
+                    raise ValueError("CONFLICT")
+
+                if row["config_version"] != int(expected_version):
+                    raise ValueError("CONFLICT")
+
+                if operation == "update":
+                    merged = {
+                        "interval_days": row["interval_days"],
+                        "local_time": time.fromisoformat(
+                            row["local_time"]
+                        ).strftime("%H:%M"),
+                        "timezone": row["timezone"],
+                        "start_date": row["start_date"],
+                        "enabled": bool(row["enabled"]),
+                    }
+                    merged.update(parameters)
+
+                    values = BriefingService._validate_parameters(merged)
+
+                    next_run = (
+                        calculate_next_run(
+                            values["start_date"],
+                            values["local_time"],
+                            values["timezone"],
+                            values["interval_days"],
+                            now,
+                        )
+                        if values["enabled"]
+                        else None
+                    )
+
+                    cursor = connection.execute(
+                        """
+                        UPDATE briefing_schedules
+                        SET interval_days = ?,
+                            local_time = ?,
+                            timezone = ?,
+                            start_date = ?,
+                            enabled = ?,
+                            next_run_at = ?,
+                            updated_at = ?,
+                            config_version = config_version + 1
+                        WHERE id = ? AND workspace_id = ?
+                          AND cancelled_at IS NULL
+                          AND config_version = ?
+                        """,
+                        (
+                            values["interval_days"],
+                            values["local_time"].isoformat(),
+                            values["timezone"],
+                            values["start_date"].isoformat(),
+                            int(values["enabled"]),
+                            next_run.isoformat() if next_run else None,
+                            now.isoformat(),
+                            target_id,
+                            workspace_id,
+                            int(expected_version),
+                        ),
+                    )
+
+                    status = "updated"
+
+                else:
+                    cursor = connection.execute(
+                        """
+                        UPDATE briefing_schedules
+                        SET enabled = 0,
+                            next_run_at = NULL,
+                            cancelled_at = ?,
+                            updated_at = ?,
+                            config_version = config_version + 1
+                        WHERE id = ? AND workspace_id = ?
+                          AND cancelled_at IS NULL
+                          AND config_version = ?
+                        """,
+                        (
+                            now.isoformat(),
+                            now.isoformat(),
+                            target_id,
+                            workspace_id,
+                            int(expected_version),
+                        ),
+                    )
+
+                    status = "cancelled"
+                    next_run = None
+
+                if cursor.rowcount != 1:
+                    raise ValueError("CONFLICT")
+
+                connection.execute(
+                    "DELETE FROM briefing_claims WHERE schedule_id = ?",
+                    (target_id,),
+                )
+
+                receipt = {
+                    "ok": True,
+                    "status": status,
+                    "id": target_id,
+                    "data": {
+                        "schedule_id": target_id,
+                        "config_version": int(expected_version) + 1,
+                        "next_run_at": (
+                            next_run.isoformat() if next_run else None
+                        ),
+                    },
+                    "error_code": None,
+                }
+
+                connection.execute(
+                    """
+                    INSERT INTO briefing_action_receipts (
+                        workspace_id, idempotency_key,
+                        command_hash, receipt_json, created_at
+                    ) VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (
+                        workspace_id,
+                        idempotency_key,
+                        command_hash,
+                        json.dumps(receipt, ensure_ascii=False),
+                        now.isoformat(),
+                    ),
+                )
+
+                return receipt
+
+            schedule_id = str(uuid4())
+
+            connection.execute(
+                """
+                INSERT INTO briefing_schedules (
+                    id, workspace_id, interval_days, local_time,
+                    timezone, start_date, enabled, next_run_at,
+                    created_at, updated_at, cancelled_at, config_version
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    schedule_id,
+                    workspace_id,
+                    values["interval_days"],
+                    values["local_time"].isoformat(),
+                    values["timezone"],
+                    values["start_date"].isoformat(),
+                    int(values["enabled"]),
+                    next_run.isoformat() if next_run else None,
+                    now.isoformat(),
+                    now.isoformat(),
+                    None,
+                    1,
+                ),
+            )
+
+            receipt = {
+                "ok": True,
+                "status": "created",
+                "id": schedule_id,
+                "data": {
+                    "schedule_id": schedule_id,
+                    "config_version": 1,
+                    "next_run_at": (
+                        next_run.isoformat() if next_run else None
+                    ),
+                },
+                "error_code": None,
+            }
+
+            connection.execute(
+                """
+                INSERT INTO briefing_action_receipts (
+                    workspace_id, idempotency_key,
+                    command_hash, receipt_json, created_at
+                ) VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    workspace_id,
+                    idempotency_key,
+                    command_hash,
+                    json.dumps(receipt, ensure_ascii=False),
+                    now.isoformat(),
+                ),
+            )
+
+            return receipt
+
     def create_schedule(self, schedule: BriefingSchedule) -> None:
         """Insert a new schedule into SQLite."""
         with self._connect() as connection:
@@ -98,8 +429,8 @@ class SQLiteBriefingRepository:
                 INSERT INTO briefing_schedules (
                     id, workspace_id, interval_days, local_time,
                     timezone, start_date, enabled, next_run_at,
-                    created_at, updated_at, cancelled_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    created_at, updated_at, cancelled_at, config_version
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     schedule.id,
@@ -121,6 +452,7 @@ class SQLiteBriefingRepository:
                         if schedule.cancelled_at is not None
                         else None
                     ),
+                    schedule.config_version,
                 ),
             )
 
@@ -161,6 +493,7 @@ class SQLiteBriefingRepository:
                 if row["cancelled_at"] is not None
                 else None
             ),
+            config_version=row["config_version"],
         )
 
     def update_schedule(self, schedule: BriefingSchedule) -> None:
@@ -176,8 +509,11 @@ class SQLiteBriefingRepository:
                     enabled = ?,
                     next_run_at = ?,
                     updated_at = ?,
-                    cancelled_at = ?
-                WHERE id = ? AND workspace_id = ? AND cancelled_at IS NULL
+                    cancelled_at = ?,
+                    config_version = config_version + 1
+                WHERE id = ? AND workspace_id = ?
+                  AND cancelled_at IS NULL
+                  AND config_version = ?
                 """,
                 (
                     schedule.interval_days,
@@ -198,6 +534,7 @@ class SQLiteBriefingRepository:
                     ),
                     schedule.id,
                     schedule.workspace_id,
+                    schedule.config_version,
                 ),
             )
 
@@ -213,6 +550,9 @@ class SQLiteBriefingRepository:
 
                 if existing is not None and existing[0] is not None:
                     raise ValueError("Schedule already cancelled")
+
+                if existing is not None:
+                    raise ValueError("Schedule version conflict")
 
                 raise ValueError("Schedule not found")
 

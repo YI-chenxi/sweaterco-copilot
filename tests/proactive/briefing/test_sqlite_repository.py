@@ -525,6 +525,7 @@ def test_sqlite_complete_run_advances_schedule(tmp_path):
 
     assert saved is not None
     assert saved.next_run_at == next_run
+    assert saved.config_version == 1
     assert len(history) == 1
     assert history[0].status == "success"
     assert history[0].result["text"] == "Morning briefing completed."

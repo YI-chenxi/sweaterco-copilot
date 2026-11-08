@@ -27,6 +27,7 @@ class BriefingSchedule:
     created_at: datetime
     updated_at: datetime
     cancelled_at: datetime | None = None
+    config_version: int = 1
 
     def __post_init__(self) -> None:
         if not self.id or not self.workspace_id.strip():
@@ -52,6 +53,9 @@ class BriefingSchedule:
 
         if not isinstance(self.enabled, bool):
             raise ValueError("enabled must be boolean")
+
+        if type(self.config_version) is not int or self.config_version < 1:
+            raise ValueError("config_version must be a positive integer")
 
         _require_utc(self.created_at, "created_at")
         _require_utc(self.updated_at, "updated_at")

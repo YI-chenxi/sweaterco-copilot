@@ -34,9 +34,21 @@ class InMemoryBriefingRepository:
     def update_schedule(self, schedule: BriefingSchedule) -> None:
         with self._lock:
             key = (schedule.workspace_id, schedule.id)
-            if key not in self._schedules:
+            existing = self._schedules.get(key)
+
+            if existing is None:
                 raise ValueError("Schedule not found")
-            self._schedules[key] = replace(schedule)
+
+            if existing.cancelled_at is not None:
+                raise ValueError("Schedule already cancelled")
+
+            if schedule.config_version != existing.config_version:
+                raise ValueError("Schedule version conflict")
+
+            self._schedules[key] = replace(
+                schedule,
+                config_version=existing.config_version + 1,
+            )
 
             # Invalidate claims created before this schedule update.
             stale_claims = [
