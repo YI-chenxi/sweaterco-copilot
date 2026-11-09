@@ -3,11 +3,11 @@
 ## 当前交付
 
 Person 4 已从仅有 Fake 的独立模块升级为适配实际 P1/P2/P3 的后端组合代码。
-本次用户决定先完成离线验证，真实 Supabase 与部署浏览器验收留待连接配置补齐后进行。
+已完成离线验证，并于 2026 年 11 月 9 日完成真实 Supabase 联合验证。部署浏览器验收仍需 P5 接入页面和安全 Cookie。
 
 正式个人分支：feat/account-person4-state-recovery。
 本地验证分支：test/account-p4-adapters-20261108，仅用于合入依赖、运行测试，不是团队正式交付分支。
-没有推送、创建 PR 或修改公共分支，也没有修改前端主文件或云端数据库。
+本个人交付不直接修改公共分支，不包含前端主文件。真实数据库验证仅在隔离临时 schema 中进行，没有修改正式业务表或正式迁移。
 
 精确依赖：
 | 模块 | 分支 | 提交 |
@@ -166,30 +166,26 @@ opened.pending：
 
 ## 本次验证记录
 
-- P4 personal branch: 134 passed, 3 integration modules skipped because peer modules are not merged there.
-- Local combined branch with the exact P1/P2/P3 revisions: 741 passed, 13 skipped, 0 failures, 0 errors (full repository run).
-- 13 skips: 7 P4 real PostgreSQL tests + 6 original P3 real PostgreSQL tests; no database connection was configured for this run.
-- Ruff check/format passed for P4-owned Python files; Python 3.10 syntax parsing passed.
-- The initial temporary-directory setup errors were corrected by configuring an existing D-drive parent and a fresh pytest base directory; no P3 implementation changes were needed.
+- P4 个人分支独立测试：134 passed，3 个依赖 P1/P2/P3 的测试模块按预期跳过。
+- 精确组合 P1/P2/P3 后的完整本地回归：741 passed，13 skipped，0 failures，0 errors。该运行未注入云端测试连接；其中七项 P4 与六项原 P3 数据库测试跳过。
+- 另外执行真实 Supabase 验收：七个独立功能场景经复验均通过。首轮 6 passed、1 failed；并发用例失败原因是 15 秒同步等待不足。仅将测试同步等待改为 180 秒后，单独复验 1 passed、6 deselected；所有业务断言保留。
+- 上述是不同运行记录，不相加冒充单次全仓结果。真实云端七项测试详情见 LIVE_VALIDATION_20261109.md。
+- P3 原有六项绑定本机测试库的 PostgreSQL 测试本次仍未重跑；不能把 P4 的云端结果归为该六项的结果。
+- Ruff 检查和格式检查通过；Python 3.10 语法检查通过。
+- 正式 Supabase 001/002 迁移校验值与固定的 P3 源码相符，完成回执字段与私人工作区触发器已只读核对。
+- 测试结束后只读确认临时 p4_test_ schema 数为 0；正式迁移版本仍为 001/002。
+- 已对待上传 P4 文件扫描实际连接串、密码和账号密钥，未发现这些配置值。
+- 数据库连接使用 TLS；真实凭据仅保存在 Git 仓库之外，不在交接文档中记录。
 
-Final full command: python -m pytest -q -p no:cacheprovider --basetemp <fresh-D-drive-path> --tb=short -rs
+七项真实场景覆盖：重新登录恢复待补参数任务、两账号隔离与线程 CRUD、旧请求重放不回滚最新状态、并发与重复请求不重复执行、失败后保留待核实、真实提交后回执丢失、执行中退出登录阻止提交。
 
+真实数据库测试使用真实 P1/P2/P3 Repository 和现有本地业务工具，模型输出采用预设 Mock。它验证数据库链路，不验证在线模型准确率，也不代表 Streamlit 浏览器 Cookie 或部署重启已经验收。
 
-P4 的真实 PostgreSQL 测试为 test_postgres_live.py，七项覆盖：
-重新登录后恢复澄清、两账号隔离及 CRUD、旧请求重放、并发不重复执行、
-失败后保留待核实、真实提交后回执丢失、执行中退出登录阻止提交。
+## P5 接入与部署后验收
 
-本次没有提供数据库连接，因此这七项未运行。P3 自有的六项真实 PostgreSQL 测试同样跳过。
-P3 曾报告的 PostgreSQL 18 与 Supabase 结果是其交接记录，不当成本次 P4 实测结果。
-
-离线结果包括真实 P1/P2 服务加内存 Repository、真实 P3 SQL 方法加脚本化 DB-API
-测试替身。不能据此宣称真实数据库行锁、云端重启持久化或浏览器持续登录已经验收。
-
-## 补齐连接后如何继续
-
-用户电脑仓库外已有本地 secrets.toml，ACCOUNT_SECRET 已生成。
-请 P3 只填入原有 DATABASE_URL，用户告诉 P4“已填好”即可继续，由 P4 安全读取。
-不需要服务器 SSH 密码，也不要求在聊天发送数据库密码。
+用户电脑仓库外的本地 secrets.toml 已配置 DATABASE_URL 和稳定 ACCOUNT_SECRET。
+部署者需要将同一 ACCOUNT_SECRET 安全加入 Streamlit Cloud Secrets，保留已有 DATABASE_URL；不要每次启动生成不同密钥。
+不需要服务器 SSH 密码，不在 GitHub、页面调试输出或普通日志中保存连接串及密钥。
 
 真实 PostgreSQL 测试显式读取 SWEATERCO_P4_TEST_DATABASE_URL，
 并要求 SWEATERCO_P4_ALLOW_TEST_SCHEMA=1。不会自动使用生产 DATABASE_URL。

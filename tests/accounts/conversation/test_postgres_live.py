@@ -141,7 +141,7 @@ def test_real_database_concurrent_workers_do_not_execute_twice(real_factory):
 
     def wait(session):
         entered.set()
-        assert release.wait(15)
+        assert release.wait(180)
 
     agent.hook = wait
     backend = make_backend(real_factory, agent)
@@ -153,7 +153,7 @@ def test_real_database_concurrent_workers_do_not_execute_twice(real_factory):
     with ThreadPoolExecutor(max_workers=1) as pool:
         future = pool.submit(backend.handle_turn, token, thread.thread_id, "first", request)
         try:
-            assert entered.wait(15)
+            assert entered.wait(180)
             opened = other.open_thread(token, thread.thread_id)
             assert opened.pending.status == "processing" and len(opened.messages) == 1
             for text, request_id in (("first", request), ("second", uid())):
@@ -162,7 +162,7 @@ def test_real_database_concurrent_workers_do_not_execute_twice(real_factory):
                 assert error.value.code == "REQUEST_IN_PROGRESS"
         finally:
             release.set()
-        future.result(timeout=15)
+        future.result(timeout=180)
     assert agent.calls == 1 and other_agent.calls == 0
 
 

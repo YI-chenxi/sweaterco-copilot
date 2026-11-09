@@ -10,7 +10,7 @@
 - P2 feat/account-sessions：e67aa3c78c593facc4338fc880fcbc2050d911a1。
 - P3 feat/account-storage：0d2f90f0bf839a84b1bb87c72a0bd08b7f96203c。
 
-已实现状态和回复 JSON 编解码、P2 可信身份适配、P3 事务适配、账号组合服务，以及恢复/隔离/去重/异常测试。真实数据库和部署网页验收尚未执行；本轮先完成离线验证。
+已实现状态和回复 JSON 编解码、P2 可信身份适配、P3 事务适配、账号组合服务，以及恢复/隔离/去重/异常测试。2026 年 11 月 9 日已追加真实 Supabase 联合验证，7 个场景经复验全部通过；部署网页与浏览器 Cookie 验收仍待 P5 接入。
 
 ## 文件
 
@@ -77,9 +77,9 @@ P4 个人分支不包含别人的模块：涉及真实 P1/P2/P3 的测试在依�
 联合验证在独立本地集成分支上合入三个精确提交后运行。
 真实 P1/P2 服务的离线测试使用内存 Repository；P4/P3 SQL 适配测试使用脚本化 DB-API 替身。这些不等于真实 PostgreSQL 持久化验证。
 
-test_postgres_live.py 提供独立临时 schema 的真实 PostgreSQL 验收，默认不连接数据库、不读取生产 DATABASE_URL。需要专用测试配置并显式开启，见交接说明。本次用户选择先完成离线工作。
+test_postgres_live.py 提供独立临时 schema 的真实 PostgreSQL 验收，默认不连接数据库、不读取生产 DATABASE_URL。需要专用测试配置并显式开启，见交接说明。最新真实验证在用户授权的 Supabase 独立临时 schema 中完成，测试区域已清理；过程未调用在线模型。
 
-详细实际测试结果记录在 INTEGRATION_HANDOFF.md。旧版 108/645 的结果不能当作本次集成结果，也不能与各人的分支测试数相加。
+详细实际测试结果记录在 INTEGRATION_HANDOFF.md 和 LIVE_VALIDATION_20261109.md。旧版 108/645 的结果不能当作本次集成结果，也不能与各人的分支测试数相加。
 
 ## 边界
 
