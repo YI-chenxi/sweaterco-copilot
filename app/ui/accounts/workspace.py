@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
@@ -19,7 +20,7 @@ from app.ui.language import shared_language
 if TYPE_CHECKING:
     from app.accounts.conversation import AccountBackend, Principal
     from app.agent.contracts import AgentReply
-    from app.ui.accounts.panels import BrowserSession
+    from app.ui.accounts.panels import BrowserSession, PanelContext
 
 _STATE = "account_workspace"
 _SESSION_ERRORS = {"UNAUTHENTICATED", "IDENTITY_CHANGED"}
@@ -122,11 +123,22 @@ class AccountWorkspace:
         self.preview = None
         self.notice = None
 
-    def render_auth(self) -> bool:
-        if isinstance(self.mode, AccountTestMode):
-            st.info(label("Offline account test mode. No real login or cloud storage."))
+    def render_auth(self, *, signed_in: PanelContext, signed_out: PanelContext) -> bool:
+        @contextmanager
+        def account_sidebar():
+            with signed_in():
+                if isinstance(self.mode, AccountTestMode):
+                    st.info(label("Offline account test mode. No real login or cloud storage."))
+                yield
+
         return (
-            render_account_panel(self.backend, self.mode.session, on_identity=self.sync_owner)
+            render_account_panel(
+                self.backend,
+                self.mode.session,
+                on_identity=self.sync_owner,
+                signed_in=account_sidebar,
+                signed_out=signed_out,
+            )
             is not None
         )
 

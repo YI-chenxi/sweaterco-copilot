@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from contextlib import AbstractContextManager, contextmanager, nullcontext
+from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
 
 import streamlit as st
@@ -17,6 +19,7 @@ if TYPE_CHECKING:
 
 _DISPLAY_IDENTITY = "account_display_identity"
 _EXPIRED = {"UNAUTHENTICATED", "IDENTITY_CHANGED"}
+PanelContext = Callable[[], AbstractContextManager[None]]
 _LABELS = {
     "Account": "账号",
     "Sign in": "登录",
@@ -24,6 +27,12 @@ _LABELS = {
     "Sign out": "退出登录",
     "Username": "用户名",
     "Password": "密码",
+    "Enter your username": "请输入用户名",
+    "Enter your password": "请输入密码",
+    "Welcome back": "欢迎回来",
+    "Sign in to access your factory workspace": "登录以进入你的工厂工作区",
+    "Your factory operations, all in one place.": "在一个地方管理工厂运营。",
+    "Return to sign in": "返回登录",
     "Signed in": "已登录",
     "Signed in as {username}": "已登录：{username}",
     "Enter your username and password.": "请输入用户名和密码。",
@@ -81,13 +90,61 @@ def _show_error(error: Exception, language: str) -> None:
         st.error(_label(_ERROR_LABELS.get(code, fallback), language))
 
 
+@contextmanager
+def auth_page(render_preferences: Callable[[], None], *, notice: str | None = None):
+    """Place account controls in the dedicated signed-out view."""
+    language = shared_language(st.session_state)
+    st.html(Path(__file__).with_name("auth_page.css"))
+    with st.container(key="account_auth_page", horizontal_alignment="center"):
+        with st.container(
+            horizontal=True, horizontal_alignment="distribute", vertical_alignment="center"
+        ):
+            st.html(
+                '<div class="sc-brand"><span class="sc-mark" aria-hidden="true">SC</span>'
+                "<div><strong>SweaterCo</strong><small>OPERATIONS CO-PILOT</small></div></div>"
+            )
+            with st.container(
+                key="account_auth_preferences", horizontal=True, width="content", gap="small"
+            ):
+                render_preferences()
+
+        with st.container(key="account_auth_content", width=460):
+            st.markdown(":material/lock:", text_alignment="center")
+            st.markdown(
+                "# " + _label("Welcome back", language), text_alignment="center", anchors=False
+            )
+            st.markdown(
+                _label("Sign in to access your factory workspace", language),
+                text_alignment="center",
+            )
+            with st.container(key="account_auth_card", border=True):
+                if notice is not None:
+                    st.info(notice)
+                yield
+            st.markdown(
+                _label("Your factory operations, all in one place.", language),
+                text_alignment="center",
+            )
+
+
+def auth_retry() -> None:
+    st.button(_label("Return to sign in", shared_language(st.session_state)))
+
+
 def _credentials(form: str, action: str, language: str) -> tuple[str, str] | None:
-    with st.form(f"account_{form}", clear_on_submit=True):
-        username = st.text_input(_label("Username", language), key=f"account_{form}_username")
-        password = st.text_input(
-            _label("Password", language), type="password", key=f"account_{form}_password"
+    with st.form(f"account_{form}", clear_on_submit=True, border=False):
+        username = st.text_input(
+            _label("Username", language),
+            placeholder=_label("Enter your username", language),
+            key=f"account_{form}_username",
         )
-        submitted = st.form_submit_button(_label(action, language), type="primary")
+        password = st.text_input(
+            _label("Password", language),
+            type="password",
+            placeholder=_label("Enter your password", language),
+            key=f"account_{form}_password",
+        )
+        submitted = st.form_submit_button(_label(action, language), type="primary", width="stretch")
     if not submitted:
         return None
     if not username.strip() or not password:
@@ -135,6 +192,7 @@ def _render_signed_in(
     principal: Principal,
     language: str,
     on_identity: Callable[[Principal | None], None] | None,
+    signed_out: PanelContext,
 ) -> Principal | None:
     display = st.session_state.get(_DISPLAY_IDENTITY)
     if display and display[0] == principal:
@@ -150,11 +208,14 @@ def _render_signed_in(
     try:
         deletion = backend.logout(handle)
     except Exception as error:
-        _show_error(error, language)
         if isinstance(error, ConversationError) and error.code in _EXPIRED:
             st.session_state.pop(_DISPLAY_IDENTITY, None)
             _sync_identity(None, on_identity)
+            with signed_out():
+                _show_error(error, language)
+                auth_retry()
             return None
+        _show_error(error, language)
         return principal
 
     st.session_state.pop(_DISPLAY_IDENTITY, None)
@@ -162,7 +223,11 @@ def _render_signed_in(
     try:
         session.clear_cookie(deletion)
     except Exception:
-        st.error(_label("Could not clear the browser session. Your sign-in was revoked.", language))
+        with signed_out():
+            st.error(
+                _label("Could not clear the browser session. Your sign-in was revoked.", language)
+            )
+            auth_retry()
         return None
     st.rerun()
 
@@ -180,14 +245,20 @@ def render_account_panel(
     session: BrowserSession | None = None,
     *,
     on_identity: Callable[[Principal | None], None] | None = None,
+    signed_in: PanelContext | None = None,
+    signed_out: PanelContext | None = None,
 ) -> Principal | None:
     """Render controls and return only the identity verified by the backend."""
     language = shared_language(st.session_state)
-    st.subheader(_label("Account", language))
+    in_panel = signed_in or nullcontext
+    out_panel = signed_out or nullcontext
+    if signed_out is None:
+        st.subheader(_label("Account", language))
     if session is None:
         _sync_identity(None, on_identity)
         st.session_state.pop(_DISPLAY_IDENTITY, None)
-        st.info(_label("Secure browser sign-in is not configured.", language))
+        with out_panel():
+            st.info(_label("Secure browser sign-in is not configured.", language))
         return None
 
     try:
@@ -195,17 +266,27 @@ def render_account_panel(
     except Exception:
         _sync_identity(None, on_identity)
         st.session_state.pop(_DISPLAY_IDENTITY, None)
-        st.error(_label("Could not update the browser session. Please try again.", language))
+        with out_panel():
+            st.error(_label("Could not update the browser session. Please try again.", language))
         return None
+    session_error = None
     if handle:
         try:
             principal = backend.current_user(handle)
         except Exception as error:
-            _show_error(error, language)
+            session_error = error
         else:
-            return _render_signed_in(backend, session, handle, principal, language, on_identity)
+            with in_panel():
+                if signed_in is not None:
+                    st.subheader(_label("Account", language))
+                return _render_signed_in(
+                    backend, session, handle, principal, language, on_identity, out_panel
+                )
 
     _sync_identity(None, on_identity)
     st.session_state.pop(_DISPLAY_IDENTITY, None)
-    _render_signed_out(backend, session, language)
+    with out_panel():
+        if session_error is not None:
+            _show_error(session_error, language)
+        _render_signed_out(backend, session, language)
     return None

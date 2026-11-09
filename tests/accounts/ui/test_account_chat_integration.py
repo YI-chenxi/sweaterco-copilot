@@ -120,7 +120,10 @@ def test_unauthenticated_registration_and_login_gate_the_workspace(account):
     browser.handle = None
     app = _app(backend, browser)
     assert "Offline account test mode" in app.info[0].value
-    assert [tab.label for tab in app.tabs] == ["Sign in", "Register"]
+    assert [tab.label for tab in app.main.tabs] == ["Sign in", "Register"]
+    assert not app.sidebar.tabs and not app.sidebar.text_input
+    assert app.tabs[0].text_input(key="account_login_username").label == "Username"
+    assert app.tabs[1].text_input(key="account_register_username").label == "Username"
     assert not app.chat_input and not app.chat_message
     assert not backend.reads and not backend.sends
 
@@ -134,9 +137,49 @@ def test_unauthenticated_registration_and_login_gate_the_workspace(account):
     app.text_input(key="account_login_password").set_value("offline-only")
     _click(app, "Sign in")
     assert not app.tabs
+    assert not any("Welcome back" in item.value for item in app.main.markdown)
     assert app.chat_input[0].proto.disabled
     assert "Recent Chats" in [header.value for header in app.subheader]
     assert "Alice private thread" in [text.value for text in app.text]
+
+
+@pytest.mark.parametrize(
+    ("language", "heading", "subtitle", "footer", "tabs", "password_placeholder"),
+    [
+        (
+            "en",
+            "Welcome back",
+            "Sign in to access your factory workspace",
+            "Your factory operations, all in one place.",
+            ["Sign in", "Register"],
+            "Enter your password",
+        ),
+        (
+            "zh",
+            "欢迎回来",
+            "登录以进入你的工厂工作区",
+            "在一个地方管理工厂运营。",
+            ["登录", "注册"],
+            "请输入密码",
+        ),
+    ],
+)
+@pytest.mark.parametrize("theme", ["day", "green", "night"])
+def test_signed_out_page_localizes_and_retains_preferences(
+    account, language, heading, subtitle, footer, tabs, password_placeholder, theme
+):
+    backend, browser, _ = account
+    browser.handle = None
+    app = _app(backend, browser, language=language, theme=theme)
+    assert app.session_state["ui_theme"] == theme
+    assert app.main.selectbox(key="ui_language").value == language
+    assert all(app.main.button(key=f"theme_{mode}") for mode in ("day", "green", "night"))
+    assert "SweaterCo" in _html(app)
+    assert {f"# {heading}", subtitle, footer} <= {item.value for item in app.main.markdown}
+    assert [tab.label for tab in app.main.tabs] == tabs
+    password = app.main.text_input(key="account_login_password")
+    assert password.proto.placeholder == password_placeholder
+    assert not app.sidebar.text_input and not app.chat_input
 
 
 @pytest.mark.parametrize("language", ["en", "zh"])
@@ -292,6 +335,9 @@ def test_identity_transition_clears_history_evidence_and_account_drafts(account,
         assert "Bob private thread" in [text.value for text in app.text]
         _open(app, bob_thread)
 
+    if transition != "switch":
+        assert [tab.label for tab in app.main.tabs] == ["Sign in", "Register"]
+        assert any("Welcome back" in item.value for item in app.main.markdown)
     assert "Alice private thread" not in [text.value for text in app.text]
     assert _TEXT not in _html(app)
     assert not any("orders.csv" in element.value for element in app.caption)

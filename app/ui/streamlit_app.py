@@ -12,9 +12,10 @@ import inspect
 import logging
 import sys
 from datetime import date
+from functools import partial
 from importlib import reload
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import streamlit as st
 
@@ -32,6 +33,7 @@ from app.ui import localized_reply as reply_presentation  # noqa: E402
 from app.ui import result_cards as card_presentation  # noqa: E402
 from app.ui import themes as theme_presentation  # noqa: E402
 from app.ui import workflow_controls as workflow_presentation  # noqa: E402
+from app.ui.accounts.panels import auth_page, auth_retry  # noqa: E402
 from app.ui.accounts.real_backend import RealAccountMode  # noqa: E402
 from app.ui.accounts.recent_chats import render_recent_chats  # noqa: E402
 from app.ui.accounts.workspace import (  # noqa: E402
@@ -397,8 +399,8 @@ def _set_theme(mode: str) -> None:
     st.session_state["ui_theme"] = theme_presentation.mode_name(mode)
 
 
-def _theme_controls() -> None:
-    with st.container(key="theme_controls", horizontal=True, gap=None):
+def _theme_controls(width: int | Literal["stretch"] = "stretch") -> None:
+    with st.container(key="theme_controls", horizontal=True, gap=None, width=width):
         for theme in theme_presentation.MODES:
             label = _t(theme_presentation.MODE_LABELS[theme])
             st.button(
@@ -411,14 +413,20 @@ def _theme_controls() -> None:
             )
 
 
-def _language_control() -> None:
+def _language_control(width: int | Literal["stretch"] = "stretch") -> None:
     st.selectbox(
         "Language / 语言",
         ["en", "zh"],
         key="ui_language",
         format_func=lambda code: "中文" if code == "zh" else "English",
         label_visibility="collapsed",
+        width=width,
     )
+
+
+def _auth_preferences() -> None:
+    _theme_controls(width=90)
+    _language_control(width=112)
 
 
 def _nav_sidebar(chat_ready: bool) -> None:
@@ -1184,21 +1192,21 @@ def main(
     mode = real_account_mode if real_account_mode is not None else account_test_mode
     workspace = workspace_for(mode)
     if mode is not None:
-        with st.sidebar:
-            auth_panel = st.empty()
-        with auth_panel.container():
-            if workspace is None:
+        auth_panel = st.sidebar.empty()
+        notice = (
+            account_label("Offline account test mode. No real login or cloud storage.")
+            if isinstance(mode, AccountTestMode)
+            else None
+        )
+        signed_out = partial(auth_page, _auth_preferences, notice=notice)
+        if workspace is None:
+            with signed_out():
                 st.error(
                     account_label("Account service is not configured. Contact the app maintainer.")
                 )
-                signed_in = False
-            else:
-                signed_in = workspace.render_auth()
-            if not signed_in:
-                _theme_controls()
-                _language_control()
-        if not signed_in:
-            _header()
+            return
+        if not workspace.render_auth(signed_in=auth_panel.container, signed_out=signed_out):
+            auth_panel.empty()
             return
 
     _init_session()
@@ -1209,6 +1217,9 @@ def main(
     if workspace is not None:
         if workspace.owner is None:
             auth_panel.empty()
+            with auth_page(lambda: None, notice=notice):
+                st.warning(account_label("Your session ended. Sign in again."))
+                auth_retry()
             return
         workspace.sync_view()
     with st.container(key="workspace"):
