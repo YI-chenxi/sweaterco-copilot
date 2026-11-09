@@ -15,6 +15,7 @@ from datetime import date
 from importlib import reload
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 import streamlit as st
 
@@ -40,7 +41,7 @@ from app.ui.chat_state import (  # noqa: E402
     run_chat_turn,
     task_replies,
 )
-from app.ui.chat_titles import clean_request_text, conversation_title  # noqa: E402
+from app.ui.chat_titles import conversation_title  # noqa: E402
 from app.ui.context_panels import contextual_sections  # noqa: E402
 
 # Refresh only stateless UI presentation helpers. Agent sessions and cached
@@ -117,6 +118,7 @@ def _init_session() -> None:
     if "threads" not in state:
         state["threads"] = [{"id": 1, "title": "New conversation", "messages": []}]
     for thread in state["threads"]:
+        _migrate_speech_draft(thread)
         ensure_chat_session(thread)
         ensure_reply_ids(thread)
         thread["title"] = conversation_title(thread["messages"])
@@ -173,19 +175,14 @@ def _prepare_history(ready: bool) -> None:
     language = shared_language(st.session_state)
     cache = st.session_state.setdefault("text_translations", {})
     texts = []
-    for thread in st.session_state["threads"]:
-        texts.append(translate(conversation_title(thread["messages"], language=language), language))
-    messages = _thread()["messages"]
-    for index, message in enumerate(messages):
-        if message["role"] == "user":
-            following = messages[index + 1] if index + 1 < len(messages) else None
-            texts.append(clean_request_text(display_workflow_message(message, following, language)))
-        else:
-            reply = message["reply"]
-            texts.append(reply_presentation.localized_result_text(reply, language) or reply.text)
-            texts.extend(reply.warnings)
-            texts.extend(localized_assumptions(reply.assumptions, language))
-            texts.extend(item.detail for item in reply.evidence[:15])
+    for message in _thread()["messages"]:
+        if message["role"] != "assistant":
+            continue
+        reply = message["reply"]
+        texts.append(reply_presentation.localized_result_text(reply, language) or reply.text)
+        texts.extend(reply.warnings)
+        texts.extend(localized_assumptions(reply.assumptions, language))
+        texts.extend(item.detail for item in reply.evidence[:15])
     pending = [
         t for t in texts if needs_translation(t, language) and cache_key(t, language) not in cache
     ]
@@ -306,31 +303,41 @@ def _run_guided(workflow: str, language: str, values: dict[str, Any]) -> None:
         collapse_after_response(st.session_state)
 
 
-def _queue_chat_prompt() -> None:
-    """Show the user's question on the next render before starting model work."""
+def _queue_chat_prompt(thread_id: int) -> None:
+    """Queue text or bind a recording to the thread that rendered the composer."""
     value = st.session_state.get("chat_prompt")
     if value is None:
         return
     if isinstance(value, str):
-        _queue_text(value)
+        if _thread()["id"] == thread_id:
+            _queue_text(value)
         return
-    prompt = str(value.text or "").strip()
+    prompt = value.text or ""
     audio = getattr(value, "audio", None)
-    if audio is not None:
-        if st.session_state.get("pending_speech"):
-            return
-        st.session_state["pending_speech"] = {
-            "thread_id": _thread()["id"],
-            "audio": audio.getvalue(),
-            "typed_text": prompt,
-        }
+    if audio is None:
+        if _thread()["id"] == thread_id:
+            _queue_text(prompt)
         return
-    _queue_text(prompt)
+
+    thread = _speech_thread(thread_id)
+    if (
+        thread is None
+        or st.session_state.get("pending_speech")
+        or audio.file_id in st.session_state.get("handled_recordings", ())
+    ):
+        return
+    draft = thread.get("speech_draft")
+    st.session_state["pending_speech"] = {
+        "id": audio.file_id,
+        "thread_id": thread_id,
+        "audio": audio.getvalue(),
+        "typed_text": prompt,
+        "replace_draft_id": draft["id"] if draft and thread.get("speech_rerecord") else None,
+    }
 
 
 def _queue_text(prompt: str) -> None:
-    prompt = prompt.strip()
-    if not prompt or st.session_state.get("pending_chat"):
+    if not prompt.strip() or st.session_state.get("pending_chat"):
         return
     if not _chat_ready():
         st.session_state["chat_notice"] = _t(
@@ -342,63 +349,123 @@ def _queue_text(prompt: str) -> None:
 
 
 _SPEECH_ERRORS = {
-    "empty_audio": ("The recording is empty. Please record again.", "录音为空，请重新录制。"),
-    "invalid_audio": (
-        "The recording could not be read. Please record again.",
-        "无法读取录音，请重新录制。",
-    ),
-    "too_large": (
-        "Recording exceeds 5 MB. Please make it shorter.",
-        "录音超过 5 MB，请缩短录制时间。",
-    ),
-    "too_long": (
-        "Recording exceeds 60 seconds. Please make it shorter.",
-        "录音超过 60 秒，请缩短录制时间。",
-    ),
-    "no_speech": ("No clear speech was found. Please try again.", "未识别到有效语音，请重试。"),
-    "timeout": ("Transcription timed out. Please try again.", "语音转写超时，请重试。"),
-    "unavailable": (
-        "Transcription is unavailable. You can still type.",
-        "语音转写暂不可用，仍可输入文字。",
-    ),
+    "empty_audio": "The recording is empty. Please record again.",
+    "invalid_audio": "The recording could not be read. Please record again.",
+    "too_large": "Recording exceeds 5 MiB. Please make it shorter.",
+    "too_long": "Recording exceeds 60 seconds. Please make it shorter.",
+    "no_speech": "No clear speech was found. Please try again.",
+    "timeout": "Transcription timed out. Please try again.",
+    "unavailable": "Transcription is unavailable. You can still type.",
 }
 
 
-def _process_pending_speech() -> None:
-    pending = st.session_state.pop("pending_speech", None)
-    if not pending:
-        return
-    thread = next(
-        (item for item in st.session_state["threads"] if item["id"] == pending["thread_id"]),
+def _speech_thread(thread_id: int) -> dict[str, Any] | None:
+    return next(
+        (item for item in st.session_state["threads"] if item["id"] == thread_id),
         None,
     )
-    if thread is None:
+
+
+def _migrate_speech_draft(thread: dict[str, Any]) -> None:
+    """Preserve drafts from a retained session before rendering new widgets."""
+    if "speech_draft" not in thread:
         return
-    try:
-        with st.spinner(_t("Transcribing recording...")):
-            transcript = SpeechService.from_env().transcribe(pending["audio"])
-    except SpeechError as exc:
-        pair = _SPEECH_ERRORS.get(exc.code, _SPEECH_ERRORS["unavailable"])
-        thread["speech_error"] = pair[1] if shared_language(st.session_state) == "zh" else pair[0]
-    except Exception:
-        pair = _SPEECH_ERRORS["unavailable"]
-        thread["speech_error"] = pair[1] if shared_language(st.session_state) == "zh" else pair[0]
+    draft = thread["speech_draft"]
+    if isinstance(draft, dict):
+        text = draft.get("text")
+        draft_id = draft.get("id")
+        if isinstance(draft_id, str) and draft_id and isinstance(text, str):
+            return
+    elif isinstance(draft, str):
+        # The old widget held the last edits separately from the transcript.
+        edited = st.session_state.pop(f"speech_draft_{thread['id']}", None)
+        text = edited if isinstance(edited, str) else draft
     else:
-        typed = pending["typed_text"]
-        thread["speech_draft"] = (typed + "\n" + transcript).strip() if typed else transcript
-        st.session_state["speech_draft_" + str(thread["id"])] = thread["speech_draft"]
-        thread.pop("speech_error", None)
-    st.rerun()
+        text = None
+
+    if isinstance(text, str) and text.strip():
+        thread["speech_draft"] = {"id": f"legacy-{uuid4().hex}", "text": text}
+    else:
+        thread.pop("speech_draft")
 
 
-def _send_speech_draft() -> None:
-    thread = _thread()
-    draft = st.session_state.get("speech_draft_" + str(thread["id"]), "").strip()
-    if not draft or st.session_state.get("pending_chat"):
+def _speech_draft_key(thread_id: int, draft_id: str) -> str:
+    return f"speech_draft_{thread_id}_{draft_id}"
+
+
+def _process_pending_speech() -> None:
+    pending = st.session_state.get("pending_speech")
+    if not pending:
         return
-    _queue_text(draft)
-    if st.session_state.get("pending_chat"):
-        thread.pop("speech_draft", None)
+    submission_id = pending["id"]
+    handled = st.session_state.setdefault("handled_recordings", set())
+    thread = _speech_thread(pending["thread_id"])
+    if submission_id in handled or thread is None:
+        st.session_state.pop("pending_speech", None)
+        return
+
+    with st.spinner(_t("Transcribing recording..."), show_time=True):
+        st.session_state.pop("pending_speech", None)
+        handled.add(submission_id)
+        _transcribe_speech_draft(thread, pending)
+
+
+def _transcribe_speech_draft(thread: dict[str, Any], pending: dict[str, Any]) -> None:
+    typed = pending["typed_text"]
+    draft = thread.get("speech_draft")
+    prior_text = draft["text"] if draft else ""
+    thread.pop("speech_rerecord", None)
+    try:
+        transcript = SpeechService.from_env().transcribe(pending["audio"])
+    except SpeechError as exc:
+        thread["speech_error"] = exc.code
+        transcript = ""
+    except Exception:
+        thread["speech_error"] = "unavailable"
+        transcript = ""
+    else:
+        thread.pop("speech_error", None)
+        if draft and draft["id"] == pending["replace_draft_id"]:
+            prior_text = ""
+
+    # Keep the reviewed draft and recover any text submitted with failed audio.
+    if transcript or typed.strip():
+        thread["speech_draft"] = {
+            "id": pending["id"],
+            "text": "\n".join(part for part in (prior_text, typed, transcript) if part),
+        }
+
+
+def _save_speech_draft(thread_id: int, draft_id: str) -> None:
+    thread = _speech_thread(thread_id)
+    draft = thread.get("speech_draft") if thread else None
+    if draft and draft["id"] == draft_id:
+        key = _speech_draft_key(thread_id, draft_id)
+        draft["text"] = st.session_state.get(key, draft["text"])
+
+
+def _finish_speech_draft(thread_id: int, draft_id: str, *, send: bool) -> None:
+    thread = _thread()
+    draft = thread.get("speech_draft")
+    if thread["id"] != thread_id or not draft or draft["id"] != draft_id:
+        return
+    if send:
+        _save_speech_draft(thread_id, draft_id)
+        if st.session_state.get("pending_chat"):
+            return
+        _queue_text(draft["text"])
+        if not st.session_state.get("pending_chat"):
+            return
+    thread.pop("speech_draft")
+    thread.pop("speech_rerecord", None)
+    thread.pop("speech_error", None)
+    st.session_state.pop(_speech_draft_key(thread_id, draft_id), None)
+
+
+def _toggle_speech_rerecord(thread_id: int) -> None:
+    thread = _thread()
+    if thread["id"] == thread_id:
+        thread["speech_rerecord"] = not thread.get("speech_rerecord", False)
 
 
 def _process_pending_chat() -> None:
@@ -492,16 +559,14 @@ def _nav_sidebar(chat_ready: bool) -> None:
                     hover = _t("New conversation")
                 else:
                     following = messages[first + 1] if first + 1 < len(messages) else None
-                    hover = clean_request_text(
-                        display_workflow_message(messages[first], following, language)
-                    )
+                    hover = display_workflow_message(messages[first], following, language)
                 st.button(
-                    active + _display_text(_t(title)),
+                    active + _t(title),
                     key=f"thread_{thread['id']}",
                     use_container_width=True,
                     on_click=_select_thread,
                     args=(thread["id"],),
-                    help=_display_text(hover),
+                    help=hover,
                 )
         with st.container(key="sidebar_footer"):
             st.markdown('<div class="sc-side-rule"></div>', unsafe_allow_html=True)
@@ -809,19 +874,18 @@ def _conversation() -> None:
         with st.chat_message(message["role"]):
             if message["role"] == "user":
                 following = messages[index + 1] if index + 1 < len(messages) else None
-                pending = st.session_state.get("pending_chat")
-                if pending and index == len(messages) - 1:
-                    st.write(clean_request_text(message["content"]))
-                    continue
-                st.write(
-                    _display_text(
-                        clean_request_text(
-                            display_workflow_message(
-                                message, following, shared_language(st.session_state)
-                            )
-                        )
-                    )
+                content = message["content"]
+                label = display_workflow_message(
+                    message, following, shared_language(st.session_state)
                 )
+                if message.get("ui_workflow_request") or label != content:
+                    st.write(label)
+                else:
+                    st.html(
+                        '<div style="white-space: pre-wrap; overflow-wrap: anywhere;">'
+                        + _safe(content)
+                        + "</div>"
+                    )
             else:
                 identity = message["ui_reply_id"]
                 marker = "sc-evidence-selected" if chosen is message else "sc-answer-reference"
@@ -910,31 +974,86 @@ def _composer() -> None:
     at the bottom of the surface in new, empty and populated conversations.
     """
     thread = _thread()
-    if thread.get("speech_error"):
-        st.warning(thread.pop("speech_error"))
-    if thread.get("speech_draft"):
-        st.text_area(
-            _t("Review transcription before sending"),
-            key="speech_draft_" + str(thread["id"]),
-        )
-        send, discard = st.columns(2)
-        send.button(
-            _t("Send reviewed text"),
-            key="send_speech_" + str(thread["id"]),
-            on_click=_send_speech_draft,
-        )
-        if discard.button(_t("Discard transcription"), key="discard_speech_" + str(thread["id"])):
-            thread.pop("speech_draft", None)
-            st.rerun()
+    _render_speech_draft(thread)
     st.chat_input(
         _t("Ask about orders, production, risks or feasibility..."),
         key="chat_prompt",
         on_submit=_queue_chat_prompt,
+        args=(thread["id"],),
         accept_audio=True,
     )
+    with st.expander(_t("Microphone help")):
+        st.caption(
+            _t("Use the microphone to start and stop recording, then submit it for transcription.")
+        )
+        st.caption(
+            _t(
+                "If the microphone is blocked, allow access in your browser’s site settings. "
+                "You can still type."
+            )
+        )
     notice = st.session_state.pop("chat_notice", None)
     if notice:
         st.warning(notice)
+
+
+def _render_speech_draft(thread: dict[str, Any]) -> None:
+    draft = thread.get("speech_draft")
+    error = thread.get("speech_error")
+    if not draft and not error:
+        return
+
+    thread_id = thread["id"]
+    rerecord = thread.get("speech_rerecord", False)
+    with st.container(key="voice_draft_panel", border=True):
+        if error:
+            st.warning(_t(_SPEECH_ERRORS.get(error, _SPEECH_ERRORS["unavailable"])))
+        if draft:
+            draft_id = draft["id"]
+            key = _speech_draft_key(thread_id, draft_id)
+            st.session_state.setdefault(key, draft["text"])
+            st.text_area(
+                _t("Review transcription before sending"),
+                key=key,
+                on_change=_save_speech_draft,
+                args=(thread_id, draft_id),
+                height=100,
+            )
+            if rerecord:
+                st.info(
+                    _t("Use the microphone below. A successful recording will replace this draft.")
+                )
+            else:
+                st.caption(
+                    _t("New recordings are added to this draft unless you choose Re-record.")
+                )
+        elif rerecord:
+            st.info(_t("Use the microphone below to record again."))
+
+        with st.container(horizontal=True, gap="small"):
+            if draft:
+                st.button(
+                    _t("Send reviewed text"),
+                    key=f"send_speech_{thread_id}_{draft_id}",
+                    on_click=_finish_speech_draft,
+                    args=(thread_id, draft_id),
+                    kwargs={"send": True},
+                    type="primary",
+                    disabled=not st.session_state[key].strip(),
+                )
+                st.button(
+                    _t("Discard transcription"),
+                    key=f"discard_speech_{thread_id}_{draft_id}",
+                    on_click=_finish_speech_draft,
+                    args=(thread_id, draft_id),
+                    kwargs={"send": False},
+                )
+            st.button(
+                _t("Cancel re-record" if rerecord else "Re-record"),
+                key=f"rerecord_speech_{thread_id}",
+                on_click=_toggle_speech_rerecord,
+                args=(thread_id,),
+            )
 
 
 def _scroll_container(key: str, height: int):
