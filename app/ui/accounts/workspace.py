@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
@@ -39,6 +39,7 @@ _CONTEXT_KEYS = (
     "proactive_ui",
     "proactive_scope",
     "ui_page",
+    "active_composer",
 )
 _LABELS = {
     "Account service is not configured. Contact the app maintainer.": (
@@ -101,6 +102,8 @@ class AccountWorkspace:
         self.thread = {"id": None, "messages": []}
         self.thread_drafts: dict[str, dict[str, Any]] = {}
         self.proactive_application = None
+        self.creation_needs_verification = False
+        self.title_snapshots = {}
         self._snapshot = None
         self.preview: tuple[str, dict[str, Any], AgentReply, str] | None = None
         self.notice: str | None = None
@@ -118,7 +121,7 @@ class AccountWorkspace:
         prefix = self.widget("")
         self.scope = uuid4().hex
         for key in list(st.session_state):
-            if key.startswith(prefix):
+            if key.startswith(prefix) or key.startswith("evidence_" + prefix):
                 st.session_state.pop(key, None)
         if self.thread["id"] is not None:
             st.session_state.pop(f"follow_bridge_{self.thread['id']}", None)
@@ -127,6 +130,8 @@ class AccountWorkspace:
         self.thread = {"id": None, "messages": []}
         self.thread_drafts = {}
         self.proactive_application = None
+        self.creation_needs_verification = False
+        self.title_snapshots = {}
         for key in list(st.session_state):
             if key.startswith("pa_field_"):
                 st.session_state.pop(key, None)
@@ -187,11 +192,14 @@ class AccountWorkspace:
             return
         self._snapshot = view
         thread_id = view.thread_id if view is not None else None
-        if self.thread["id"] != thread_id:
+        switched = self.thread["id"] != thread_id
+        if switched:
             if self.thread["id"] is not None:
+                self.thread["workflow_preview"] = self.preview
                 self.thread_drafts[self.thread["id"]] = self.thread
             st.session_state.pop(f"follow_bridge_{self.thread['id']}", None)
             self.thread = self.thread_drafts.get(thread_id, {"id": thread_id, "messages": []})
+            self.preview = self.thread.get("workflow_preview")
             st.session_state["workflow"] = None
         self.thread["messages"] = (
             [
@@ -207,10 +215,23 @@ class AccountWorkspace:
             else []
         )
         if view is not None:
+            self.title_snapshots[view.thread_id] = view
             self.thread["agent_session"] = view.agent_state
+            self.creation_needs_verification = False
+            for index in range(0, len(self.thread["messages"]) - 1, 2):
+                answer = self.thread["messages"][index + 1]
+                reply = answer.get("reply")
+                request = reply.metadata.get("ui_workflow_request") if reply is not None else None
+                if isinstance(request, dict):
+                    self.thread["messages"][index]["ui_workflow_request"] = request
+                    answer["origin"] = "Quick Workflows"
+            self.thread["messages"] = _visible_messages(self.thread["messages"])
+            if switched:
+                st.session_state["workflow_panel_expanded"] = not bool(self.thread["messages"])
 
     def set_preview(self, workflow: str, values: dict[str, Any], reply: AgentReply) -> None:
         self.preview = (workflow, dict(values), reply, uuid4().hex)
+        self.thread["selected_reply_id"] = self.preview[3]
 
     def _show_failure(self, error: ConversationError) -> None:
         if error.code in _SESSION_ERRORS:
@@ -238,7 +259,89 @@ class AccountWorkspace:
                 self._show_failure(error)
         return None
 
-    def process_queued(self) -> bool:
+    def queue_guided(self, workflow, values, language):
+        from app.accounts.conversation.guided import prepare_guided
+
+        prepare_guided(workflow, values, language)
+        handle = self.current_handle()
+        if not handle:
+            raise ConversationError("UNAUTHENTICATED")
+        if self.chat.selected is None:
+            if self.creation_needs_verification:
+                raise ConversationError("STORAGE_OUTCOME_UNKNOWN")
+            self.creation_needs_verification = True
+            thread = self.backend.create_thread(handle, "New conversation")
+            view = self.chat.open_thread(handle, thread.thread_id)
+            if not self.current_handle():
+                raise ConversationError("UNAUTHENTICATED")
+            history = st.session_state.get("account_recent_chats")
+            if history is None or history.owner != self.owner:
+                raise ConversationError("IDENTITY_CHANGED")
+            history.select(view)
+            self.sync_view()
+        event_key = self.chat.submission_key
+        if event_key is None:
+            raise ConversationError("REQUEST_IN_PROGRESS")
+        return self.chat.queue_guided(handle, event_key, workflow, values, language)
+
+    def can_reuse_empty(self, thread_id):
+        thread = (
+            self.thread if self.thread["id"] == thread_id else self.thread_drafts.get(thread_id, {})
+        )
+        recording = st.session_state.get("pending_speech", {})
+        return not (
+            self.chat.has_submission(thread_id)
+            or any(
+                thread.get(key)
+                for key in ("speech_draft", "speech_error", "composer_draft", "workflow_preview")
+            )
+            or (thread_id == self.thread["id"] and self.preview is not None)
+            or recording.get("thread_id") == thread_id
+        )
+
+    def chat_label(self, thread):
+        """Keep approved first-exchange titles while respecting explicit account renames."""
+        from app.ui.chat_titles import clean_request_text, conversation_title
+        from app.ui.language import translate
+        from app.ui.workflow_controls import display_workflow_message
+
+        if thread.title not in {"New conversation", "新对话", "New Chat", "新建聊天"}:
+            return thread.title, thread.title
+        language = shared_language(st.session_state)
+        view = self.chat.selected
+        if view is None or view.thread_id != thread.thread_id:
+            view = self.title_snapshots.get(thread.thread_id)
+            if view is None:
+                handle = self.current_handle()
+                if not handle:
+                    raise ConversationError("UNAUTHENTICATED")
+                view = self.backend.open_thread(handle, thread.thread_id)
+                if not self.current_handle():
+                    raise ConversationError("UNAUTHENTICATED")
+                self.title_snapshots[thread.thread_id] = view
+        messages = [
+            {
+                "role": message.role,
+                "content": getattr(message, "text", getattr(message, "content", "")),
+                "reply": message.reply,
+            }
+            for message in view.messages
+        ]
+        for index in range(0, len(messages) - 1, 2):
+            reply = messages[index + 1]["reply"]
+            request = reply.metadata.get("ui_workflow_request")
+            if isinstance(request, dict):
+                messages[index]["ui_workflow_request"] = request
+        messages = _visible_messages(messages)
+        title = translate(conversation_title(messages, language=language), language)
+        first = next((i for i, m in enumerate(messages) if m["role"] == "user"), None)
+        if first is None:
+            return title, title
+        following = messages[first + 1] if first + 1 < len(messages) else None
+        hover = clean_request_text(display_workflow_message(messages[first], following, language))
+        return title, hover
+
+    def process_queued(self, *, show_spinner=True) -> bool:
         request = self.chat.submission
         if request is None or request.phase != "queued":
             return False
@@ -246,7 +349,11 @@ class AccountWorkspace:
         if not handle:
             st.rerun()
         try:
-            with st.spinner(label("Sending and saving your message…")):
+            with (
+                st.spinner(label("Sending and saving your message…"))
+                if show_spinner
+                else nullcontext()
+            ):
                 return self.chat.process_queued(handle, request.request_id) is not None
         except ConversationError as error:
             self._show_failure(error)
@@ -302,6 +409,16 @@ class AccountWorkspace:
         except ConversationError as error:
             self._show_failure(error)
         st.rerun()
+
+
+def _visible_messages(messages):
+    # Keep an in-flight user message even though its assistant result is not stored yet.
+    hidden = set()
+    for index in range(0, len(messages) - 1, 2):
+        reply = messages[index + 1].get("reply")
+        if reply is not None and reply.metadata.get("ui_control") == "reset_request":
+            hidden.update((index, index + 1))
+    return [message for index, message in enumerate(messages) if index not in hidden]
 
 
 def workspace_for(mode: AccountTestMode | RealAccountMode | None) -> AccountWorkspace | None:

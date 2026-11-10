@@ -76,6 +76,7 @@ class Submission:
     text: str = field(repr=False)
     phase: Phase = "queued"
     committed_revision: int | None = None
+    guided: dict | None = field(default=None, repr=False)
 
 
 def _thread_view(snapshot: OpenedConversation) -> ThreadView:
@@ -121,6 +122,9 @@ class PersistentChat:
     @property
     def submission(self) -> Submission | None:
         return self._submissions.get(self._selected_id) if self._selected_id else None
+
+    def has_submission(self, thread_id: str) -> bool:
+        return thread_id in self._submissions
 
     @property
     def submission_key(self) -> str | None:
@@ -306,6 +310,17 @@ class PersistentChat:
             return None
         return self._send(handle, request)
 
+    def queue_guided(self, handle, event_key, workflow, values, language):
+        from app.accounts.conversation.guided import prepare_guided
+
+        prepared = prepare_guided(workflow, values, language)
+        request_id = self.queue_text(handle, event_key, prepared.title)
+        if request_id is not None:
+            self._submissions[self._selected_id] = replace(
+                self.submission, guided=prepared.document()
+            )
+        return request_id
+
     def retry(self, handle: str, request_id: str, event_key: str) -> ThreadView | None:
         """Explicitly retry a recoverable storage error, after a read-only refresh."""
         self._require_owner(handle)
@@ -332,7 +347,19 @@ class PersistentChat:
         thread_id = request.thread_id
         self._submissions[thread_id] = replace(request, phase="sending")
         try:
-            saved = self._backend.handle_turn(handle, thread_id, request.text, request.request_id)
+            if request.guided is not None:
+                saved = self._backend.handle_guided_turn(
+                    handle,
+                    thread_id,
+                    request.guided["workflow"],
+                    deepcopy(request.guided["values"]),
+                    request.guided["language"],
+                    request.request_id,
+                )
+            else:
+                saved = self._backend.handle_turn(
+                    handle, thread_id, request.text, request.request_id
+                )
         except ConversationError as error:
             self._check_scope(scope)
             if error.code in _SESSION_ERRORS | _ACCESS_ERRORS:

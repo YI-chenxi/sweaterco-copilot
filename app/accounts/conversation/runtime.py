@@ -23,12 +23,13 @@ class LoginResult:
 class AccountBackend:
     """One UI-facing entry point; caller supplies a cookie token, never identity IDs."""
 
-    def __init__(self, auth, sessions, identity, repository, agent):
+    def __init__(self, auth, sessions, identity, repository, agent, *, guided_orchestrator=None):
         self._auth = auth
         self._sessions = sessions
         self._identity = identity
         self._repository = repository
         self._conversation = PersistentConversationService(agent, repository, identity)
+        self._guided_orchestrator = guided_orchestrator
 
     def register(self, username: str, password: str):
         """Registration commits an account; it does not silently create a login."""
@@ -102,6 +103,21 @@ class AccountBackend:
         request_id: str,
     ):
         return self._conversation.handle_turn(session_handle, thread_id, text, request_id)
+
+    def handle_guided_turn(self, session_handle, thread_id, workflow, values, language, request_id):
+        """Execute on the server; atomically save answer, evidence and Agent state."""
+        self.current_user(session_handle)
+        from app.agent.orchestrator import AgentOrchestrator
+
+        from .guided import GuidedTurnAgent, prepare_guided
+
+        request = prepare_guided(workflow, values, language)
+        agent = GuidedTurnAgent(request, self._guided_orchestrator or AgentOrchestrator())
+        conversation = PersistentConversationService(agent, self._repository, self._identity)
+        saved = conversation.handle_turn(session_handle, thread_id, request.title, request_id)
+        if saved.reply.metadata.get("ui_workflow_request") != request.document():
+            raise ConversationError("CONFLICT")
+        return saved
 
 
 def compose_account_backend(*, agent, connection_factory, account_secret: bytes) -> AccountBackend:

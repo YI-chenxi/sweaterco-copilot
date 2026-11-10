@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 from app.agent.llm_client import MockLLMClient
 from app.agent.speech import SpeechService
+from app.ui.composer_draft import apply_draft_event
 from tests.accounts.ui.test_account_chat_integration import (
     FakeBrowser,
     FakeWorkspaceBackend,
@@ -25,7 +26,6 @@ def _record(app, monkeypatch):
         "thread_id": _workspace(app).thread["id"],
         "audio": wav(),
         "typed_text": "",
-        "replace_draft_id": None,
     }
     _run(app)
 
@@ -35,13 +35,13 @@ def test_account_voice_is_only_submitted_after_review(monkeypatch):
     backend.add_thread()
     app = _app(backend, browser)
     thread = backend.list_threads("alice")[0].thread_id
-    _open(app, thread)
+    assert _workspace(app).thread["id"] == thread
+    assert not app.chat_input[0].proto.disabled and app.chat_input[0].proto.accept_audio
     before = len(backend.sends)
     _record(app, monkeypatch)
     assert len(backend.sends) == before
-    draft_key = next(w.key for w in app.text_area if "speech_draft" in w.key)
-    app.text_area(key=draft_key).set_value("Check ORD-058")
-    _click(app, "Send reviewed text")
+    assert app.chat_input[0].proto.value == "Check ORD-057" and not app.text_area
+    _send(app, "Check ORD-058")
     assert len(backend.sends) == before + 1
     assert _workspace(app).thread.get("speech_draft") is None
     assert any(m["content"] == "Check ORD-058" for m in _workspace(app).thread["messages"])
@@ -58,11 +58,21 @@ def test_voice_drafts_survive_thread_switch_but_never_account_switch(monkeypatch
     _run(app)
     _open(app, first)
     _record(app, monkeypatch)
+    thread = _workspace(app).thread
+    assert apply_draft_event(
+        thread,
+        {
+            "thread": first,
+            "token": thread["composer_token"],
+            "sequence": 1,
+            "text": "Edited private draft",
+        },
+    )
     _open(app, second)
     assert not app.text_area
     _open(app, first)
-    assert any(w.value == "Check ORD-057" for w in app.text_area)
-    previous_key = app.text_area[0].key
+    assert app.chat_input[0].proto.value == "Edited private draft" and not app.text_area
+    previous_key = app.chat_input[0].key
     browser.handle = "bob"
     _run(app)
     assert not app.text_area
@@ -104,11 +114,36 @@ def test_new_chat_returns_to_untouched_private_chat_without_creating_another():
     app = _app(backend, browser)
     _click(app, "New Chat")
     identifier = _workspace(app).thread["id"]
+    assert any(b.label == "＋  New conversation" for b in app.button)
+    for _ in range(3):
+        _click(app, "New Chat")
+        assert _workspace(app).thread["id"] == identifier
+        assert len(backend.list_threads("alice")) == 1
     _click(app, "Morning Briefing")
     _click(app, "New Chat")
     assert _workspace(app).thread["id"] == identifier
     assert len(backend.list_threads("alice")) == 1
     assert app.session_state["ui_page"] == "copilot"
+
+
+def test_private_answer_uses_approved_evidence_style_hook_and_native_question_text():
+    from html import escape
+
+    backend, browser = FakeWorkspaceBackend(), FakeBrowser("alice")
+    thread = backend.add_thread()
+    app = _open(_app(backend, browser), thread)
+    text = "Check ORD-057\nKeep <b>literal</b> text"
+    _send(app, text)
+    user = app.chat_message[0]
+    assert not user.get("html")
+    assert any(escape(text) in item.value for item in user.markdown)
+    reply_id = _workspace(app).thread["messages"][-1]["ui_reply_id"]
+    evidence = next(b for b in app.button if b.label == "View Evidence")
+    assert evidence.key.startswith("evidence_")
+    evidence.click()
+    _run(app)
+    assert _workspace(app).thread["selected_reply_id"] == reply_id
+    assert backend.snapshots[thread].messages[0].content == text
 
 
 def test_saved_proactive_reply_opens_review_and_returns_to_uuid_chat(monkeypatch, tmp_path):

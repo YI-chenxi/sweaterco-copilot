@@ -1,5 +1,8 @@
 /* Bright satin silver: neutral reflected light rather than a flat grey fill. */
 :root{
+ --sc-account-submit-bg:#ffffff;--sc-account-submit-hover:#ffffff;
+ --sc-account-submit-ink:#303030;--sc-account-submit-line:#aaaaaa;
+ --sc-account-submit-shadow:0 2px 6px #0000000d;
  --sc-nav-selected:linear-gradient(120deg,#ffffff 0%,#e8e8e8 55%,#f9f9f9 100%);
  --sc-nav-selected-line:#c3c3c3;--sc-nav-text:#303030;
  --sc-control-hover:linear-gradient(145deg,#ffffff,#ededed);

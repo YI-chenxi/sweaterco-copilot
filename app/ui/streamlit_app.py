@@ -11,6 +11,7 @@ import html
 import inspect
 import logging
 import sys
+from contextlib import nullcontext
 from datetime import date
 from functools import partial
 from importlib import reload
@@ -37,7 +38,10 @@ from app.ui import themes as theme_presentation  # noqa: E402
 from app.ui import workflow_controls as workflow_presentation  # noqa: E402
 from app.ui.accounts.panels import auth_page, auth_retry  # noqa: E402
 from app.ui.accounts.real_backend import RealAccountMode  # noqa: E402
-from app.ui.accounts.recent_chats import render_recent_chats  # noqa: E402
+from app.ui.accounts.recent_chats import (  # noqa: E402
+    render_chat_management_dialog,
+    render_recent_chats,
+)
 from app.ui.accounts.workspace import (  # noqa: E402
     AccountTestMode,
     current_workspace,
@@ -51,7 +55,7 @@ from app.ui.chat_state import (  # noqa: E402
     run_chat_turn,
     task_replies,
 )
-from app.ui.chat_titles import conversation_title  # noqa: E402
+from app.ui.chat_titles import clean_request_text, conversation_title  # noqa: E402
 from app.ui.context_panels import contextual_sections  # noqa: E402
 
 # Refresh only stateless UI presentation helpers. Agent sessions and cached
@@ -192,13 +196,29 @@ def _reply_text(reply: AgentReply) -> str:
 def _prepare_history(ready: bool) -> None:
     from app.ui.history_translation import cache_key, needs_translation, prepare
 
-    if st.session_state.get("pending_chat"):
+    workspace = current_workspace()
+    if st.session_state.get("pending_chat") or (
+        workspace is not None and workspace.chat.submission is not None
+    ):
+        return
+    if workspace is not None and not _thread()["messages"]:
         return
     language = shared_language(st.session_state)
     cache = st.session_state.setdefault("text_translations", {})
     texts = []
-    for message in _thread()["messages"]:
-        if message["role"] != "assistant":
+    if current_workspace() is None:
+        for thread in st.session_state["threads"]:
+            texts.append(
+                translate(conversation_title(thread["messages"], language=language), language)
+            )
+    messages = _thread()["messages"]
+    for index, message in enumerate(messages):
+        if message["role"] == "user":
+            if current_workspace() is None and not message.get("ui_voice_request"):
+                following = messages[index + 1] if index + 1 < len(messages) else None
+                texts.append(
+                    clean_request_text(display_workflow_message(message, following, language))
+                )
             continue
         reply = message["reply"]
         texts.append(reply_presentation.localized_result_text(reply, language) or reply.text)
@@ -295,6 +315,11 @@ def _account_widget(key: str) -> str:
     return workspace.widget(key) if workspace is not None else key
 
 
+def _evidence_widget(identity: str) -> str:
+    key = "evidence_" + identity
+    return "evidence_" + _account_widget(key) if current_workspace() is not None else key
+
+
 def _view_evidence(reply_id: str) -> None:
     workspace = current_workspace()
     if workspace is not None and not workspace.current_handle():
@@ -330,19 +355,20 @@ def _set_analysis_open(value: bool) -> None:
 
 
 def _run_guided(workflow: str, language: str, values: dict[str, Any]) -> None:
+    workspace = current_workspace()
+    if workspace is not None:
+        workspace.queue_guided(workflow, values, language)
+        collapse_after_response(st.session_state)
+        return
     display = workflow_title(workflow, values, language=language)
     decision = guided_decision(GUIDED_NAMES[workflow], language=language, **values)
     reply = guided_orchestrator().handle(decision)
-    workspace = current_workspace()
-    if workspace is not None:
-        workspace.set_preview(workflow, values, reply)
-    else:
-        _append_user(display)
-        _thread()["messages"][-1]["ui_workflow_request"] = {
-            "workflow": workflow,
-            "values": dict(values),
-        }
-        _append_reply(reply, "Quick Workflows")
+    _append_user(display)
+    _thread()["messages"][-1]["ui_workflow_request"] = {
+        "workflow": workflow,
+        "values": dict(values),
+    }
+    _append_reply(reply, "Quick Workflows")
     if not reply.needs_clarification and reply.metadata.get("status") not in {
         "failed",
         "invalid",
@@ -382,13 +408,13 @@ def _queue_recording(value, thread_id: int | str) -> None:
         or audio.file_id in st.session_state.get("handled_recordings", ())
     ):
         return
-    draft = thread.get("speech_draft")
+    thread["composer_token"] = uuid4().hex
+    thread.pop("composer_sequence", None)
     st.session_state["pending_speech"] = {
         "id": audio.file_id,
         "thread_id": thread_id,
         "audio": audio.getvalue(),
         "typed_text": value.text or "",
-        "replace_draft_id": draft["id"] if draft and thread.get("speech_rerecord") else None,
     }
 
 
@@ -401,13 +427,19 @@ def _queue_text(prompt: str) -> bool:
         if event_key is None:
             return False
         rejected = workspace.queue_text(event_key, prompt)
-        return rejected is None and workspace.chat.submission is not None
+        accepted = rejected is None and workspace.chat.submission is not None
+        if accepted:
+            _clear_composer(_thread())
+        return accepted
     if not _chat_ready():
         st.session_state["chat_notice"] = _t(
             "AI Chat needs a model key. Check AI Configure or use Quick Workflows."
         )
         return False
     _append_user(prompt)
+    if _thread().get("speech_draft"):
+        _thread()["messages"][-1]["ui_voice_request"] = True
+    _clear_composer(_thread())
     st.session_state["pending_chat"] = {"thread_id": _thread()["id"], "prompt": prompt}
     return True
 
@@ -439,14 +471,18 @@ def _speech_thread(thread_id: int | str) -> dict[str, Any] | None:
 
 def _migrate_speech_draft(thread: dict[str, Any]) -> None:
     """Preserve drafts from a retained session before rendering new widgets."""
-    if "speech_draft" not in thread:
+    if "speech_draft" not in thread or "composer_draft" in thread:
         return
     draft = thread["speech_draft"]
     if isinstance(draft, dict):
         text = draft.get("text")
         draft_id = draft.get("id")
         if isinstance(draft_id, str) and draft_id and isinstance(text, str):
-            return
+            edited = st.session_state.get(
+                _account_widget(f"speech_draft_{thread['id']}_{draft_id}")
+            )
+            if isinstance(edited, str):
+                text = edited
     elif isinstance(draft, str):
         # The old widget held the last edits separately from the transcript.
         edited = st.session_state.pop(f"speech_draft_{thread['id']}", None)
@@ -455,13 +491,16 @@ def _migrate_speech_draft(thread: dict[str, Any]) -> None:
         text = None
 
     if isinstance(text, str) and text.strip():
-        thread["speech_draft"] = {"id": f"legacy-{uuid4().hex}", "text": text}
+        thread["speech_draft"] = {
+            "id": str(draft.get("id", uuid4().hex))
+            if isinstance(draft, dict)
+            else f"legacy-{uuid4().hex}",
+            "text": text,
+        }
+        thread["composer_draft"] = text
+        thread["composer_prefill"] = True
     else:
         thread.pop("speech_draft")
-
-
-def _speech_draft_key(thread_id: int | str, draft_id: str) -> str:
-    return _account_widget(f"speech_draft_{thread_id}_{draft_id}")
 
 
 def _process_pending_speech() -> None:
@@ -483,8 +522,6 @@ def _process_pending_speech() -> None:
 
 def _transcribe_speech_draft(thread: dict[str, Any], pending: dict[str, Any]) -> None:
     typed = pending["typed_text"]
-    draft = thread.get("speech_draft")
-    prior_text = draft["text"] if draft else ""
     thread.pop("speech_rerecord", None)
     try:
         transcript = SpeechService.from_env().transcribe(pending["audio"])
@@ -496,46 +533,28 @@ def _transcribe_speech_draft(thread: dict[str, Any], pending: dict[str, Any]) ->
         transcript = ""
     else:
         thread.pop("speech_error", None)
-        if draft and draft["id"] == pending["replace_draft_id"]:
-            prior_text = ""
 
-    # Keep the reviewed draft and recover any text submitted with failed audio.
-    if transcript or typed.strip():
+    # The recording carries the entire current input, including manual edits/deletions.
+    text = "\n".join(part for part in (typed, transcript) if part)
+    thread["composer_draft"] = text
+    thread["composer_prefill"] = True
+    thread["composer_token"] = uuid4().hex
+    thread.pop("composer_sequence", None)
+    if text.strip():
         thread["speech_draft"] = {
             "id": pending["id"],
-            "text": "\n".join(part for part in (prior_text, typed, transcript) if part),
+            "text": text,
         }
+    else:
+        thread.pop("speech_draft", None)
 
 
-def _save_speech_draft(thread_id: int, draft_id: str) -> None:
-    thread = _speech_thread(thread_id)
-    draft = thread.get("speech_draft") if thread else None
-    if draft and draft["id"] == draft_id:
-        key = _speech_draft_key(thread_id, draft_id)
-        draft["text"] = st.session_state.get(key, draft["text"])
-
-
-def _finish_speech_draft(thread_id: int, draft_id: str, *, send: bool) -> None:
-    thread = _thread()
-    draft = thread.get("speech_draft")
-    if thread["id"] != thread_id or not draft or draft["id"] != draft_id:
-        return
-    if send:
-        _save_speech_draft(thread_id, draft_id)
-        if st.session_state.get("pending_chat"):
-            return
-        if not _queue_text(draft["text"]):
-            return
-    thread.pop("speech_draft")
-    thread.pop("speech_rerecord", None)
-    thread.pop("speech_error", None)
-    st.session_state.pop(_speech_draft_key(thread_id, draft_id), None)
-
-
-def _toggle_speech_rerecord(thread_id: int) -> None:
-    thread = _thread()
-    if thread["id"] == thread_id:
-        thread["speech_rerecord"] = not thread.get("speech_rerecord", False)
+def _clear_composer(thread):
+    for key in ("speech_draft", "speech_rerecord", "speech_error", "composer_prefill"):
+        thread.pop(key, None)
+    thread["composer_draft"] = ""
+    thread["composer_token"] = uuid4().hex
+    thread.pop("composer_sequence", None)
 
 
 def _process_pending_chat() -> None:
@@ -596,6 +615,7 @@ def _set_theme(mode: str) -> None:
 
 
 def _select_page(page: str) -> None:
+    st.session_state.pop("active_composer", None)
     st.session_state["ui_page"] = page
     st.session_state["workflow"] = None
     st.session_state.get("proactive_ui", {}).pop("return_target", None)
@@ -658,26 +678,27 @@ def _nav_sidebar(chat_ready: bool) -> None:
         st.markdown(
             '<div class="sc-side-title">' + _t("MAIN NAVIGATION") + "</div>", unsafe_allow_html=True
         )
-        for page, icon, label in (
-            ("copilot", "forum", "AI Co-Pilot"),
-            ("briefings", "wb_sunny", "Morning Briefing"),
-            ("watches", "notifications", "Watches & Alerts"),
-            ("actions", "fact_check", "Actions"),
-        ):
-            active = st.session_state["ui_page"] == page
-            count = st.session_state.get("proactive_ui", {}).get("pending_count")
-            shown_label = proactive_tr(label, st.session_state)
-            if page == "actions" and isinstance(count, int) and count > 0:
-                shown_label += " · " + str(count)
-            st.button(
-                shown_label,
-                icon=f":material/{icon}:",
-                key="pa_nav_" + page,
-                on_click=_select_page,
-                args=(page,),
-                type="primary" if active else "secondary",
-                use_container_width=True,
-            )
+        with st.container(key="main_navigation_items"):
+            for page, icon, label in (
+                ("copilot", "forum", "AI Co-Pilot"),
+                ("briefings", "wb_sunny", "Morning Briefing"),
+                ("watches", "notifications", "Watches & Alerts"),
+                ("actions", "fact_check", "Actions"),
+            ):
+                active = st.session_state["ui_page"] == page
+                count = st.session_state.get("proactive_ui", {}).get("pending_count")
+                shown_label = proactive_tr(label, st.session_state)
+                if page == "actions" and isinstance(count, int) and count > 0:
+                    shown_label += " · " + str(count)
+                st.button(
+                    shown_label,
+                    icon=f":material/{icon}:",
+                    key="pa_nav_" + page,
+                    on_click=_select_page,
+                    args=(page,),
+                    type="primary" if active else "secondary",
+                    use_container_width=True,
+                )
         if workspace is not None:
             private_chats = st.empty()
             with private_chats.container():
@@ -689,13 +710,20 @@ def _nav_sidebar(chat_ready: bool) -> None:
                     on_session_error=lambda: workspace.sync_owner(None),
                     compact=True,
                     new_chat_panel=account_new_chat.container,
+                    chat_label=workspace.chat_label,
+                    can_reuse=workspace.can_reuse_empty,
                     reuse_current=lambda: (
-                        workspace.chat.selected is not None
-                        and not workspace.chat.selected.messages
-                        and workspace.chat.selected.pending is None
-                        and workspace.chat.submission is None
-                        and not workspace.thread.get("speech_draft")
-                        and not st.session_state.get("pending_speech")
+                        workspace.chat.selected.thread_id
+                        if (
+                            workspace.chat.selected is not None
+                            and not workspace.chat.selected.messages
+                            and workspace.chat.selected.pending is None
+                            and workspace.chat.submission is None
+                            and not workspace.thread.get("speech_draft")
+                            and workspace.preview is None
+                            and not st.session_state.get("pending_speech")
+                        )
+                        else None
                     ),
                 )
             if workspace.owner is not None and not workspace.current_handle():
@@ -708,7 +736,7 @@ def _nav_sidebar(chat_ready: bool) -> None:
                 return
         else:
             st.markdown(
-                '<div class="sc-side-rule"></div><div class="sc-side-title">'
+                '<div class="sc-side-rule sc-recent-rule"></div><div class="sc-side-title">'
                 + _t("RECENT CHATS")
                 + "</div>",
                 unsafe_allow_html=True,
@@ -957,7 +985,11 @@ def _structured_helper() -> None:
                     key=_account_widget(prefix + "_date"),
                 ).isoformat()
         saved.update(values)
-        if st.button(_t("Run analysis →"), key=_account_widget("run_workflow"), type="primary"):
+        with st.container(key="run_workflow") if current_workspace() is not None else nullcontext():
+            run = st.button(
+                _t("Run analysis →"), key=_account_widget("run_workflow"), type="primary"
+            )
+        if run:
             succeeded = False
             try:
                 if flow == "Order Status" and not values["order_id"].strip():
@@ -1012,7 +1044,7 @@ def _reply_view(reply: AgentReply, identity: str) -> None:
         st.button(
             _t("View Evidence"),
             icon=":material/manage_search:",
-            key=_account_widget("evidence_" + identity),
+            key=_evidence_widget(identity),
             on_click=_view_evidence,
             args=(identity,),
             help=_t("Show only this answer's evidence, warnings and assumptions"),
@@ -1053,12 +1085,10 @@ def _conversation() -> None:
     for index, message in enumerate(messages):
         with st.chat_message(message["role"]):
             if message["role"] == "user":
-                if account_mode:
-                    st.html(
-                        '<div style="white-space: pre-wrap; overflow-wrap: anywhere;">'
-                        + _safe(message["content"])
-                        + "</div>"
-                    )
+                if (account_mode and not message.get("ui_workflow_request")) or message.get(
+                    "ui_voice_request"
+                ):
+                    _user_message(message["content"])
                     continue
                 following = messages[index + 1] if index + 1 < len(messages) else None
                 content = message["content"]
@@ -1068,11 +1098,7 @@ def _conversation() -> None:
                 if message.get("ui_workflow_request") or label != content:
                     st.write(label)
                 else:
-                    st.html(
-                        '<div style="white-space: pre-wrap; overflow-wrap: anywhere;">'
-                        + _safe(content)
-                        + "</div>"
-                    )
+                    st.write(_display_text(clean_request_text(label)))
             else:
                 identity = message["ui_reply_id"]
                 marker = "sc-evidence-selected" if chosen is message else "sc-answer-reference"
@@ -1086,6 +1112,14 @@ def _conversation() -> None:
                     f'<span id="sc-answer-end-{_safe(identity)}" aria-hidden="true"></span>',
                     unsafe_allow_html=True,
                 )
+
+
+def _user_message(text: str) -> None:
+    # Native Markdown belongs to the host palette; isolated HTML did not inherit it.
+    st.markdown(
+        '<p style="white-space: pre-wrap; overflow-wrap: anywhere;">' + _safe(text) + "</p>",
+        unsafe_allow_html=True,
+    )
 
 
 def _request_context() -> None:
@@ -1152,8 +1186,13 @@ def _request_context() -> None:
                     else " · " + _t("Needs clarification")
                 )
             )
-        if not account_mode and st.button(_t("Start a fresh request"), key="reset_chat_request"):
-            clear_chat_request(_thread())
+        if st.button(_t("Start a fresh request"), key="reset_chat_request"):
+            if account_mode:
+                current_workspace().queue_guided(
+                    "Start a fresh request", {}, shared_language(st.session_state)
+                )
+            else:
+                clear_chat_request(_thread())
             st.rerun()
 
 
@@ -1171,6 +1210,8 @@ def _queue_account_prompt(widget_key: str, event_key: str | None) -> None:
         rejected = workspace.queue_text(event_key, text)
         if rejected is not None:
             st.session_state[widget_key] = rejected
+        elif workspace.chat.submission is not None:
+            _clear_composer(workspace.thread)
 
 
 def _composer() -> None:
@@ -1180,13 +1221,14 @@ def _composer() -> None:
     at the bottom of the surface in new, empty and populated conversations.
     """
     thread = _thread()
-    _render_speech_draft(thread)
+    _migrate_speech_draft(thread)
+    if thread.get("speech_error"):
+        st.warning(_t(_SPEECH_ERRORS.get(thread["speech_error"], _SPEECH_ERRORS["unavailable"])))
     workspace = current_workspace()
     if workspace is not None:
-        if workspace.thread["id"] is None and workspace.chat.submission is None:
-            st.info(account_label("Open or create a chat in Recent Chats to start."))
         event_key = workspace.chat.submission_key
         widget_key = workspace.widget(f"prompt_{event_key or 'disabled'}")
+        _prime_composer(thread, widget_key)
         st.chat_input(
             _t("Ask about orders, production, risks or feasibility..."),
             key=widget_key,
@@ -1195,8 +1237,8 @@ def _composer() -> None:
             disabled=event_key is None,
             accept_audio=True,
         )
-        _microphone_help()
         return
+    _prime_composer(thread, "chat_prompt")
     st.chat_input(
         _t("Ask about orders, production, risks or feasibility..."),
         key="chat_prompt",
@@ -1204,82 +1246,42 @@ def _composer() -> None:
         args=(thread["id"],),
         accept_audio=True,
     )
-    _microphone_help()
     notice = st.session_state.pop("chat_notice", None)
     if notice:
         st.warning(notice)
 
 
-def _microphone_help() -> None:
-    with st.expander(_t("Microphone help")):
-        st.caption(
-            _t("Use the microphone to start and stop recording, then submit it for transcription.")
-        )
-        st.caption(
-            _t(
-                "If the microphone is blocked, allow access in your browser’s site settings. "
-                "You can still type."
-            )
-        )
+def _prime_composer(thread, widget_key):
+    thread.setdefault("composer_token", uuid4().hex)
+    identity = (thread["id"], widget_key)
+    if (
+        thread.pop("composer_prefill", False)
+        or st.session_state.get("active_composer") != identity
+        or widget_key not in st.session_state
+    ):
+        st.session_state[widget_key] = thread.get("composer_draft", "")
+    st.session_state["active_composer"] = identity
+    thread["composer_widget_key"] = widget_key
 
 
-def _render_speech_draft(thread: dict[str, Any]) -> None:
-    draft = thread.get("speech_draft")
-    error = thread.get("speech_error")
-    if not draft and not error:
+@st.fragment
+def _composer_draft_bridge():
+    from app.ui.composer_draft import apply_draft_event, mount_draft_bridge
+
+    workspace = current_workspace()
+    thread = _thread()
+    if not thread.get("composer_widget_key"):
         return
+    owner, scope = (workspace.owner, workspace.scope) if workspace is not None else (None, None)
+    key = _account_widget(f"composer_bridge_{thread['id']}")
 
-    thread_id = thread["id"]
-    rerecord = thread.get("speech_rerecord", False)
-    with st.container(key="voice_draft_panel", border=True):
-        if error:
-            st.warning(_t(_SPEECH_ERRORS.get(error, _SPEECH_ERRORS["unavailable"])))
-        if draft:
-            draft_id = draft["id"]
-            key = _speech_draft_key(thread_id, draft_id)
-            st.session_state.setdefault(key, draft["text"])
-            st.text_area(
-                _t("Review transcription before sending"),
-                key=key,
-                on_change=_save_speech_draft,
-                args=(thread_id, draft_id),
-                height=100,
-            )
-            if rerecord:
-                st.info(
-                    _t("Use the microphone below. A successful recording will replace this draft.")
-                )
-            else:
-                st.caption(
-                    _t("New recordings are added to this draft unless you choose Re-record.")
-                )
-        elif rerecord:
-            st.info(_t("Use the microphone below to record again."))
+    def save():
+        if workspace is not None and (workspace.owner != owner or workspace.scope != scope):
+            return
+        if _thread()["id"] == thread["id"]:
+            apply_draft_event(thread, st.session_state.get(key, {}).get("draft"))
 
-        with st.container(horizontal=True, gap="small"):
-            if draft:
-                st.button(
-                    _t("Send reviewed text"),
-                    key=_account_widget(f"send_speech_{thread_id}_{draft_id}"),
-                    on_click=_finish_speech_draft,
-                    args=(thread_id, draft_id),
-                    kwargs={"send": True},
-                    type="primary",
-                    disabled=not st.session_state[key].strip(),
-                )
-                st.button(
-                    _t("Discard transcription"),
-                    key=_account_widget(f"discard_speech_{thread_id}_{draft_id}"),
-                    on_click=_finish_speech_draft,
-                    args=(thread_id, draft_id),
-                    kwargs={"send": False},
-                )
-            st.button(
-                _t("Cancel re-record" if rerecord else "Re-record"),
-                key=_account_widget(f"rerecord_speech_{thread_id}"),
-                on_click=_toggle_speech_rerecord,
-                args=(thread_id,),
-            )
+    mount_draft_bridge(thread, thread["composer_widget_key"], key, save)
 
 
 def _scroll_container(key: str, height: int):
@@ -1359,6 +1361,10 @@ def _analysis_fragment() -> None:
     ):
         st.rerun(scope="app")
     message, number = selected_answer(_thread())
+    preview = workspace.preview if workspace is not None else None
+    if preview is not None and _thread().get("selected_reply_id") == preview[3]:
+        _details(preview[2], (number or 0) + 1, preview[3])
+        return
     _details(
         message["reply"] if message else None, number, message["ui_reply_id"] if message else None
     )
@@ -1412,11 +1418,7 @@ def _analysis_body(reply: AgentReply | None, reply_id: str | None, *, key_prefix
                         else f"Showing 15 of {len(rows)} source references."
                     )
                 workspace = current_workspace()
-                if workspace is not None and isinstance(workspace.mode, RealAccountMode):
-                    st.caption(
-                        account_label("Evidence CSV export is unavailable for private chats.")
-                    )
-                else:
+                if workspace is None or workspace.current_handle():
                     st.download_button(
                         _t("Export full evidence CSV"),
                         data=evidence_csv(reply).encode("utf-8-sig"),
@@ -1556,22 +1558,6 @@ def _proactive_application():
     return workspace.proactive_application
 
 
-def _workflow_preview() -> None:
-    workspace = current_workspace()
-    if workspace is None or workspace.preview is None:
-        return
-    workflow, values, reply, identity = workspace.preview
-    language = shared_language(st.session_state)
-    with st.expander(
-        account_label("Session-only workflow preview · Not saved to chat history"), expanded=True
-    ):
-        st.text(workflow_title(workflow, values, language=language))
-        st.markdown(_reply_text(reply))
-        for metric in metrics_for_reply(reply, language=language):
-            st.metric(metric.label, metric.value, help=metric.detail)
-        _analysis_body(reply, identity, key_prefix="preview_")
-
-
 def main(
     account_test_mode: AccountTestMode | None = None,
     *,
@@ -1610,6 +1596,8 @@ def main(
                 auth_retry()
             return
         workspace.sync_view()
+        if page == "copilot":
+            _prepare_history(ready)
     if not st.session_state["analysis_open"]:
         st.button(
             _t("Show analysis panel"),
@@ -1633,17 +1621,39 @@ def main(
                     with st.container(key="workflow_dock"):
                         _workflow_launchpad()
                     if workspace is not None:
-                        if workspace.process_queued():
+                        request = workspace.chat.submission
+                        waiting = st.empty()
+                        if request is not None and request.phase == "queued":
+                            with waiting.container():
+                                _conversation()
+                                if (
+                                    not request.guided
+                                    or request.guided["workflow"] != "Start a fresh request"
+                                ):
+                                    with st.chat_message("user"):
+                                        _user_message(request.text)
+                                with st.chat_message("assistant"):
+                                    st.markdown(
+                                        '<div class="sc-thinking" role="status" aria-live="polite">'
+                                        '<span class="sc-thinking-ring" aria-hidden="true"></span>'
+                                        "<span>" + _t("I’m thinking…") + "</span></div>",
+                                        unsafe_allow_html=True,
+                                    )
+                        processed = workspace.process_queued(show_spinner=False)
+                        waiting.empty()
+                        if processed:
                             workspace.sync_view()
                             if workspace.thread["messages"]:
-                                reply = workspace.thread["messages"][-1].get("reply")
+                                answer = workspace.thread["messages"][-1]
+                                workspace.thread["selected_reply_id"] = answer["ui_reply_id"]
+                                workspace.thread["scroll_to_answer"] = answer["ui_reply_id"]
+                                reply = answer.get("reply")
                                 if reply is not None:
                                     _capture_proactive_reply(reply)
                             collapse_after_response(st.session_state)
                             st.rerun()
                         workspace.sync_view()
                         workspace.render_status()
-                        _workflow_preview()
                     _conversation()
                     if workspace is None:
                         _process_pending_chat()
@@ -1672,13 +1682,29 @@ def main(
 
         mount_workflow_dock(_thread()["id"], st.session_state["workflow_panel_expanded"])
     _workflow_dialog()
+    if page == "copilot":
+        with st.container(key="composer_bridge_slot"):
+            _composer_draft_bridge()
+    chat_dialog_open = False
+    if workspace is not None and not st.session_state["workflow"]:
+        chat_dialog_open = render_chat_management_dialog(
+            workspace.backend,
+            workspace.mode.session,
+            workspace.owner,
+            chat_label=workspace.chat_label,
+            on_session_error=lambda: workspace.sync_owner(None),
+        )
     from app.ui.proactive.navigation import mount_navigation
 
     mount_navigation()
     if (
-        st.session_state.get("proactive_ui", {}).get("review_dialog")
-        or st.session_state.get("proactive_ui", {}).get("input_error")
-    ) and not st.session_state["workflow"]:
+        (
+            st.session_state.get("proactive_ui", {}).get("review_dialog")
+            or st.session_state.get("proactive_ui", {}).get("input_error")
+        )
+        and not st.session_state["workflow"]
+        and not chat_dialog_open
+    ):
         from app.ui.proactive.journey import render_review_dialog
 
         application = _proactive_application()

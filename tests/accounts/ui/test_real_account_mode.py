@@ -145,6 +145,20 @@ def _register_and_login(mode, browser, username="alice"):
     return login
 
 
+def test_repeated_new_conversation_reuses_the_same_uuid_with_actual_p4_services(account):
+    mode, browser, agent, _ = account
+    login = _register_and_login(mode, browser)
+    thread = mode.backend.create_thread(login.cookie.value, "New conversation")
+    app = _app(mode)
+    for page in ("Morning Briefing", "Watches & Alerts", "AI Co-Pilot"):
+        _click(app, page)
+        for _ in range(2):
+            _click(app, "New Chat")
+            assert _workspace(app).thread["id"] == thread.thread_id
+            assert len(mode.backend.list_threads(login.cookie.value)) == 1
+    assert agent.calls == 0
+
+
 def test_initialization_uses_p4_factory_with_injected_configuration(dependencies):
     _, factory, _ = dependencies
     browser = FakeBrowser()
@@ -234,8 +248,8 @@ def test_real_p4_register_login_list_open_send_and_logout_from_the_main_ui(accou
     assert saved.session.next_task_number == 2
     assert _TEXT in _html(app)
     assert any("orders.csv" in item.value for item in app.caption)
-    assert not app.get("download_button")
-    assert any("CSV export is unavailable" in item.value for item in app.caption)
+    assert app.get("download_button")
+    assert not any("CSV export is unavailable" in item.value for item in app.caption)
     _run(app)
     assert agent.calls == 1
 
@@ -281,7 +295,16 @@ def test_session_transition_clears_private_workspace(
     assert "Alice private thread" not in _visible_labels(app)
     assert _TEXT not in _html(app)
     assert not app.chat_message and not app.get("download_button")
-    assert workspace.chat.selected is None and workspace.chat.submission is None
+    assert workspace.chat.submission is None
+    if transition == "switch":
+        selected = workspace.chat.selected
+        assert selected is not None and not selected.messages
+        assert selected.thread_id in {
+            item.thread_id for item in mode.backend.list_threads(bob.cookie.value)
+        }
+        assert selected.thread_id != thread.thread_id
+    else:
+        assert workspace.chat.selected is None
     assert old_key not in app.session_state and draft_key not in app.session_state
     assert agent.calls == 1
     if transition == "switch":
@@ -319,7 +342,7 @@ def test_refresh_and_new_ui_session_only_read_unknown_outcome(account, failure, 
     assert mode.backend.open_thread(login.cookie.value, thread_id).revision == revision
 
 
-def test_evidence_export_stays_disabled_in_real_mode_session_only_preview(account):
+def test_guided_result_is_saved_in_real_mode_without_running_the_llm(account):
     mode, browser, agent, _ = account
     _register_and_login(mode, browser)
     app = _app(mode)
@@ -327,9 +350,13 @@ def test_evidence_export_stays_disabled_in_real_mode_session_only_preview(accoun
     _run(app)
     _click(app, "Run analysis →")
 
-    assert any("Not saved to chat history" in item.label for item in app.expander)
-    assert any("CSV export is unavailable" in item.value for item in app.caption)
-    assert not app.get("download_button") and agent.calls == 0
+    assert not any("Not saved to chat history" in item.label for item in app.expander)
+    assert len(app.chat_message) == 2
+    selected = _workspace(app).chat.selected
+    assert selected.revision == 1 and len(selected.messages) == 2
+    assert selected.messages[1].reply.evidence
+    assert not any("CSV export is unavailable" in item.value for item in app.caption)
+    assert app.get("download_button") and agent.calls == 0
 
 
 def _replaceable_page(modes):

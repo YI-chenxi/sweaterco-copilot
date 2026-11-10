@@ -19,7 +19,7 @@ def reusable_empty_thread(threads, active_id):
         t
         for t in threads
         if not t.get("messages")
-        and not any(t.get(key) for key in ("speech_draft", "speech_error", "speech_rerecord"))
+        and not any(t.get(key) for key in ("speech_draft", "speech_error", "composer_draft"))
         and not getattr(getattr(t.get("agent_session"), "state", None), "tasks", [])
     ]
     return next(

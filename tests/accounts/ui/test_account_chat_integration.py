@@ -64,6 +64,32 @@ class FakeWorkspaceBackend(FakeAccountBackend):
         del self.owners[thread_id]
         del self.snapshots[thread_id]
 
+    def rename_thread(self, handle, thread_id, title):
+        self._check_thread(handle, thread_id)
+        self.titles[thread_id] = title.strip()
+
+    def handle_guided_turn(self, handle, thread_id, workflow, values, language, request_id):
+        from app.accounts.conversation.guided import GuidedTurnAgent, prepare_guided
+        from app.agent.orchestrator import AgentOrchestrator
+
+        prepared = prepare_guided(workflow, values, language)
+        self.sends.append((handle, thread_id, prepared.title, request_id))
+        result = GuidedTurnAgent(prepared, AgentOrchestrator()).handle_turn(
+            prepared.title,
+            self.snapshots[thread_id].session,
+        )
+        saved = self.save(handle, thread_id, prepared.title, request_id)
+        snapshot = self.snapshots[thread_id]
+        self.snapshots[thread_id] = replace(
+            snapshot,
+            session=result.session,
+            messages=(
+                *snapshot.messages[:-1],
+                replace(snapshot.messages[-1], content=result.reply.text, reply=result.reply),
+            ),
+        )
+        return replace(saved, reply=result.reply)
+
 
 def _page(backend, browser):
     from app.ui.accounts.workspace import AccountTestMode
@@ -86,6 +112,8 @@ def _app(backend, browser, *, language="en", theme="green"):
 
 
 def _click(app, label):
+    if label == "New Chat":
+        label = "＋  New conversation"
     next(button for button in app.button if button.label == label).click()
     return _run(app)
 
@@ -100,7 +128,11 @@ def _workspace(app):
 
 
 def _html(app):
-    return "\n".join(element.proto.body for element in app.get("html"))
+    return (
+        "\n".join(element.proto.body for element in app.get("html"))
+        + "\n"
+        + "\n".join(element.value for element in app.markdown)
+    )
 
 
 def _visible_labels(app):
@@ -142,7 +174,7 @@ def test_unauthenticated_registration_and_login_gate_the_workspace(account):
     _click(app, "Sign in")
     assert not app.tabs
     assert not any("Welcome back" in item.value for item in app.main.markdown)
-    assert app.chat_input[0].proto.disabled
+    assert not app.chat_input[0].proto.disabled
     assert any("RECENT CHATS" in item.value for item in app.markdown)
     assert any("Alice private thread" in button.label for button in app.button)
 
@@ -198,7 +230,7 @@ def test_account_sidebar_and_composer_use_existing_language_and_theme(account, l
         ("RECENT CHATS" if language == "en" else "最近会话") in item.value for item in app.markdown
     )
     assert len(app.chat_input) == 1
-    assert app.chat_input[0].proto.disabled
+    assert not app.chat_input[0].proto.disabled
 
 
 def test_open_history_preserves_original_text_and_selects_evidence_by_saved_id(account):
@@ -210,9 +242,11 @@ def test_open_history_preserves_original_text_and_selects_evidence_by_saved_id(a
     backend.snapshots[thread_id] = replace(
         backend.snapshots[thread_id], messages=first + second, revision=2
     )
-    app = _open(_app(backend, browser), thread_id)
+    app = _app(backend, browser)
+    initial_reads = len(backend.reads)
+    _open(app, thread_id)
 
-    assert backend.reads == [("alice", thread_id)]
+    assert backend.reads[initial_reads:] == [("alice", thread_id)]
     assert _workspace(app).thread["id"] == thread_id
     assert _TEXT in _html(app)
     assert len(app.chat_message) == 4
@@ -232,10 +266,11 @@ def test_keyboard_send_reloads_p4_history_and_reruns_do_not_duplicate(account):
     backend, browser, thread_id = account
     app = _open(_app(backend, browser), thread_id)
     old_key = app.chat_input[0].key
+    initial_reads = len(backend.reads)
     _send(app, _TEXT)
     assert len(backend.sends) == 1
     assert backend.sends[0][:3] == ("alice", thread_id, _TEXT)
-    assert backend.reads == [("alice", thread_id)] * 2
+    assert backend.reads[initial_reads:] == [("alice", thread_id)]
     assert _workspace(app).thread["messages"][0]["content"] == _TEXT
     assert len(app.chat_message) == 2 and _TEXT in _html(app)
     assert app.chat_input[0].key != old_key
@@ -248,11 +283,82 @@ def test_new_chat_and_confirmed_delete_update_active_uuid(account):
     app = _click(_app(backend, browser), "New Chat")
     thread_id = _workspace(app).thread["id"]
     assert thread_id in backend.owners and not app.chat_input[0].proto.disabled
-    _click(app, "Delete Chat")
+    next(button for button in app.button if button.key.endswith(f"{thread_id}_delete")).click()
+    _run(app)
     assert thread_id in backend.owners
     _click(app, "Confirm deletion")
     assert thread_id not in backend.owners
-    assert _workspace(app).thread["id"] is None and app.chat_input[0].proto.disabled
+    assert _workspace(app).thread["id"] != thread_id and not app.chat_input[0].proto.disabled
+    assert len(backend.list_threads("alice")) == 1
+
+
+def test_new_conversation_reuses_an_existing_empty_chat_after_fresh_login():
+    backend, browser = FakeWorkspaceBackend(), FakeBrowser("alice")
+    existing = backend.add_thread(title="New conversation")
+    backend.add_thread(_BOB, "Bob empty chat")
+    app = _app(backend, browser)
+    assert _workspace(app).chat.selected.thread_id == existing
+    for page in ("Morning Briefing", "Watches & Alerts", "Actions", "AI Co-Pilot"):
+        _click(app, page)
+        _click(app, "New Chat")
+        assert _workspace(app).thread["id"] == existing
+        assert len(backend.list_threads("alice")) == 1
+    fresh = _app(backend, browser)
+    _click(fresh, "New Chat")
+    assert _workspace(fresh).thread["id"] == existing
+    assert len(backend.list_threads("alice")) == 1 and not backend.sends
+
+
+def test_login_is_ready_for_typing_and_audio_without_creating_duplicate_empty_chats():
+    backend, browser = FakeWorkspaceBackend(), FakeBrowser("alice")
+    app = _app(backend, browser)
+    assert not app.chat_input[0].proto.disabled and app.chat_input[0].proto.accept_audio
+    assert not any("Open or create a chat" in item.value for item in app.info)
+    assert not any(item.label == "Microphone help" for item in app.expander)
+    thread_id = _workspace(app).thread["id"]
+    for _ in range(3):
+        _run(app)
+        assert _workspace(app).thread["id"] == thread_id
+        assert len(backend.list_threads("alice")) == 1
+    restored = _app(backend, browser)
+    assert _workspace(restored).thread["id"] == thread_id
+    assert not restored.chat_input[0].proto.disabled and len(backend.owners) == 1
+    assert not backend.sends
+    _send(restored, "Check ORD-057")
+    assert len(backend.sends) == 1 and len(restored.chat_message) == 2
+    assert backend.sends[0][1] == thread_id
+
+
+def test_row_menu_can_rename_and_cancel_delete_without_switching_the_open_chat(account):
+    backend, browser, selected = account
+    other = backend.add_thread(title="Another chat")
+    app = _open(_app(backend, browser), selected)
+    assert not any(expander.label == "Manage chat" for expander in app.expander)
+    next(button for button in app.button if button.key.endswith(f"{other}_rename")).click()
+    _run(app)
+    assert app.get("dialog")
+    app.text_input[0].set_value("Renamed from its own menu")
+    _click(app, "Save title")
+    assert backend.titles[other] == "Renamed from its own menu"
+    assert _workspace(app).thread["id"] == selected and not app.get("dialog")
+    next(button for button in app.button if button.key.endswith(f"{other}_delete")).click()
+    _run(app)
+    assert app.get("dialog") and not app.warning
+    _click(app, "Cancel")
+    assert other in backend.owners and _workspace(app).thread["id"] == selected
+    assert not app.get("dialog")
+
+
+def test_empty_chat_with_a_voice_draft_is_not_reused_for_a_new_conversation():
+    backend, browser = FakeWorkspaceBackend(), FakeBrowser("alice")
+    existing = backend.add_thread(title="New conversation")
+    app = _open(_app(backend, browser), existing)
+    _workspace(app).thread["speech_draft"] = {"id": "draft", "text": "Unsent spoken question"}
+    _click(app, "New Chat")
+    assert _workspace(app).thread["id"] != existing
+    assert (
+        _workspace(app).thread_drafts[existing]["speech_draft"]["text"] == "Unsent spoken question"
+    )
 
 
 @pytest.mark.parametrize(
@@ -270,8 +376,9 @@ def test_pending_snapshot_blocks_send_and_refresh_is_read_only(account, status, 
     app = _open(_app(backend, browser), thread_id)
     assert app.chat_input[0].proto.disabled and _TEXT in _html(app)
     assert any(banner in item.value for item in [*app.info, *app.warning])
+    initial_reads = len(backend.reads)
     _click(app, "Refresh chat")
-    assert backend.reads == [("alice", thread_id)] * 2
+    assert backend.reads[initial_reads:] == [("alice", thread_id)]
     assert not backend.sends
 
 
@@ -352,18 +459,73 @@ def test_identity_transition_clears_history_evidence_and_account_drafts(account,
     assert not backend.sends
 
 
-def test_workflow_result_is_an_explicit_preview_and_never_enters_persisted_history(account):
+def test_workflow_result_is_saved_and_uses_the_original_chat_renderer(account):
     backend, browser, thread_id = account
     app = _open(_app(backend, browser), thread_id)
     app.button(key="center_Order_Status").click()
     _run(app)
     _click(app, "Run analysis →")
 
-    assert any("Not saved to chat history" in element.label for element in app.expander)
-    assert backend.snapshots[thread_id].messages == ()
-    assert not backend.sends and not app.chat_message
-    assert _workspace(app).preview[2].evidence
+    assert not any("Not saved to chat history" in element.label for element in app.expander)
+    assert len(backend.snapshots[thread_id].messages) == 2
+    assert len(backend.sends) == 1 and len(app.chat_message) == 2
+    assert backend.snapshots[thread_id].messages[-1].reply.evidence
     assert any("orders.csv" in element.value for element in app.caption)
+    _run(app)
+    assert len(backend.sends) == 1
+    restored = _open(_app(backend, browser), thread_id)
+    assert len(restored.chat_message) == 2
+    assert any("orders.csv" in element.value for element in restored.caption)
+    assert len(backend.sends) == 1
+
+
+def test_first_quick_workflow_creates_one_saved_chat_and_restores_the_original_title():
+    backend, browser = FakeWorkspaceBackend(), FakeBrowser("alice")
+    app = _app(backend, browser)
+    app.button(key="center_Check_Feasibility").click()
+    _run(app)
+    pieces = next(item for item in app.number_input if item.label == "Quantity (pieces)")
+    pieces.set_value(800)
+    _run(app)
+    _click(app, "Run analysis →")
+    assert len(backend.owners) == 1 and len(backend.sends) == 1
+    assert len(app.chat_message) == 2
+    _run(app)
+    recent = next(button for button in app.button if button.key.endswith("_open"))
+    assert "800 TOPS" in recent.label and "feasibility" in recent.label
+    assert "by " in recent.proto.help
+    assert "Structured workflow" not in recent.proto.help
+    thread_id = next(iter(backend.owners))
+    restored = _open(_app(backend, browser), thread_id)
+    assert len(restored.chat_message) == 2 and len(backend.sends) == 1
+    bob = _app(backend, FakeBrowser("bob"))
+    assert not bob.chat_message
+    assert not any("800 TOPS" in button.label for button in bob.button)
+
+
+def test_original_start_fresh_control_survives_reopening_the_account_chat(account):
+    from app.agent.enhancement.conversation.memory import add_task
+    from app.agent.intents import Intent, IntentDecision
+    from app.agent.turn_service import ChatSession
+
+    backend, browser, thread_id = account
+    session = ChatSession(active_task_ids=["task-001"], next_task_number=5)
+    session.state = add_task(session.state, IntentDecision(Intent.ORDER_STATUS), "task-001")
+    backend.snapshots[thread_id] = replace(
+        backend.snapshots[thread_id],
+        session=session,
+        messages=_pair(_id()),
+        revision=1,
+    )
+    app = _open(_app(backend, browser), thread_id)
+    assert any(button.label == "Start a fresh request" for button in app.button)
+    _click(app, "Start a fresh request")
+    assert len(app.chat_message) == 2
+    assert not any(button.label == "Start a fresh request" for button in app.button)
+    restored = _open(_app(backend, browser), thread_id)
+    assert len(restored.chat_message) == 2
+    assert _workspace(restored).chat.selected.agent_state.state.tasks == []
+    assert len(backend.sends) == 1
 
 
 def test_sidebar_session_rejection_hides_the_existing_private_workspace(account):
