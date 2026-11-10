@@ -129,7 +129,7 @@ def test_reply_translation_preserves_user_text_selection_and_cache(screen, monke
     app.button(key="full_" + identity).click().run()
     assert not app.exception
     assert any(m.value == "请查看产能限制。" for m in app.markdown)
-    assert "What needs attention?" in app.chat_message[0].get("html")[0].proto.body
+    assert "What needs attention?" in app.chat_message[0].get("markdown")[0].value
     assert all(
         "What needs attention?" not in call.args[0] for call in translator.translate.call_args_list
     )
@@ -138,7 +138,7 @@ def test_reply_translation_preserves_user_text_selection_and_cache(screen, monke
     count = translator.translate.call_count
     for language in ("en", "zh"):
         app.selectbox(key="ui_language").set_value(language).run()
-        assert "What needs attention?" in app.chat_message[0].get("html")[0].proto.body
+        assert "What needs attention?" in app.chat_message[0].get("markdown")[0].value
     assert translator.translate.call_count == count
     assert thread["messages"] == snapshot
     assert thread["selected_reply_id"] == identity
@@ -171,7 +171,7 @@ def test_keyboard_message_preserves_exact_text_across_language_switches(
     for language in ("en", "zh"):
         app.selectbox(key="ui_language").set_value(language).run()
         assert not app.exception
-        assert escape(submitted) in app.chat_message[0].get("html")[0].proto.body
+        assert escape(submitted) in app.chat_message[0].get("markdown")[0].value
         assert app.session_state["threads"][0]["messages"] == original
     assert all(
         text.strip() != submitted.strip()

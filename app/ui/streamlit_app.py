@@ -55,7 +55,7 @@ from app.ui.chat_state import (  # noqa: E402
     run_chat_turn,
     task_replies,
 )
-from app.ui.chat_titles import clean_request_text, conversation_title  # noqa: E402
+from app.ui.chat_titles import conversation_title  # noqa: E402
 from app.ui.context_panels import contextual_sections  # noqa: E402
 
 # Refresh only stateless UI presentation helpers. Agent sessions and cached
@@ -206,19 +206,10 @@ def _prepare_history(ready: bool) -> None:
     language = shared_language(st.session_state)
     cache = st.session_state.setdefault("text_translations", {})
     texts = []
-    if current_workspace() is None:
-        for thread in st.session_state["threads"]:
-            texts.append(
-                translate(conversation_title(thread["messages"], language=language), language)
-            )
     messages = _thread()["messages"]
-    for index, message in enumerate(messages):
+    for message in messages:
         if message["role"] == "user":
-            if current_workspace() is None and not message.get("ui_voice_request"):
-                following = messages[index + 1] if index + 1 < len(messages) else None
-                texts.append(
-                    clean_request_text(display_workflow_message(message, following, language))
-                )
+            # Preserve user wording; generated workflow labels are localized locally.
             continue
         reply = message["reply"]
         texts.append(reply_presentation.localized_result_text(reply, language) or reply.text)
@@ -754,12 +745,12 @@ def _nav_sidebar(chat_ready: bool) -> None:
                         following = messages[first + 1] if first + 1 < len(messages) else None
                         hover = display_workflow_message(messages[first], following, language)
                     st.button(
-                        active + _display_text(_t(title)),
+                        active + _t(title),
                         key=f"thread_{thread['id']}",
                         use_container_width=True,
                         on_click=_select_thread,
                         args=(thread["id"],),
-                        help=_display_text(hover),
+                        help=hover,
                     )
         with st.container(key="sidebar_footer"):
             st.markdown('<div class="sc-side-rule"></div>', unsafe_allow_html=True)
@@ -1098,7 +1089,7 @@ def _conversation() -> None:
                 if message.get("ui_workflow_request") or label != content:
                     st.write(label)
                 else:
-                    st.write(_display_text(clean_request_text(label)))
+                    _user_message(content)
             else:
                 identity = message["ui_reply_id"]
                 marker = "sc-evidence-selected" if chosen is message else "sc-answer-reference"

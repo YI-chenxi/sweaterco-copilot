@@ -5,6 +5,20 @@ for `integration/intent-enhancement`. This document also describes the local
 review harness, which is not a Cloud deployment entry point. Publishing the code
 does not wire the production cookie transport or deploy a scheduler.
 
+## Release validation on 2026-11-11
+
+- Full repository regression: **1584 passed, 13 skipped**. The skipped checks require
+  dedicated PostgreSQL test configuration; no new live database validation is claimed.
+- Ruff checks and formatting checks passed for the changed Python files; Git whitespace
+  checks passed. No local secrets or runtime data are included in the release.
+- Preserve exact typed/voice user wording in both account and anonymous conversations.
+  Workflow-generated labels still use the selected UI language; answer translation,
+  evidence, copy content and stored originals retain their existing checks.
+- Update the legacy navigation check to verify empty-chat reuse, then creation after
+  a real workflow exchange, while retaining the selected language.
+- Merge the approved UI and its required account/voice/proactive dependencies into
+  `integration/intent-enhancement` without replacing the shared branch's existing history.
+
 ## Sources checked on 2026-11-10
 
 - Reviewed proactive UI baseline: `3f60a8e` (backend B base `073b086`).
