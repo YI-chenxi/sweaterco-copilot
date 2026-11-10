@@ -20,8 +20,10 @@ def scroll_script(identity):
         const region = document.querySelector('.st-key-conversation_scroll');
         const target = document.getElementById(targetId);
         if (region && target && region.contains(target)) {
+          const dock = region.querySelector('.st-key-workflow_dock:has(.st-key-expand_workflows)');
+          const dockHeight = dock ? dock.getBoundingClientRect().height : 0;
           const top = region.scrollTop + target.getBoundingClientRect().top
-                    - region.getBoundingClientRect().top - 12;
+                    - region.getBoundingClientRect().top - dockHeight - 12;
           stable = Math.abs(top - previous) < 1 ? stable + 1 : 0;
           previous = top;
           if (stable >= 4) {

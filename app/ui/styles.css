@@ -10,7 +10,8 @@
 html,body,[class*="css"]{font-family:"Segoe UI",Inter,Arial,sans-serif!important}
 [data-testid="stAppViewContainer"]{background:var(--sc-light);color:var(--sc-ink)}
 /* Hide Streamlit chrome while retaining the sidebar reopen control. */
-[data-testid="stHeader"]{background:transparent;height:0;min-height:0;pointer-events:none}
+[data-testid="stHeader"]{background:transparent;height:0;min-height:0;pointer-events:none;
+ position:fixed!important;top:0!important;overflow:visible!important;z-index:1000000!important}
 [data-testid="stAppDeployButton"],[data-testid="stToolbarActions"],
 [data-testid="stMainMenu"]{display:none!important}
 [data-testid="stExpandSidebarButton"]{pointer-events:auto;background:#eaf5f1;border-radius:10px}
@@ -22,7 +23,12 @@ button[aria-label="Collapse sidebar"],[data-testid="stExpandSidebarButton"]{
 [data-testid="stSidebarContent"] button[aria-label="Collapse sidebar"]{
  position:absolute!important;left:auto!important;right:16px!important;
 }
-[data-testid="stExpandSidebarButton"]{left:12px!important}
+[data-testid="stExpandSidebarButton"]{
+ left:12px!important;top:12px!important;width:36px!important;height:32px!important;
+ border:1px solid var(--sc-line)!important;border-radius:10px!important;
+ background:var(--sc-side)!important;box-shadow:0 2px 7px #0000000d;
+ visibility:visible!important;opacity:1!important;
+}
 [data-testid="stSidebarCollapseButton"],button[aria-label="Collapse sidebar"]{
  visibility:visible!important;opacity:1!important;pointer-events:auto!important;
 }
@@ -221,6 +227,12 @@ button[kind="primary"]:hover{background:#04635e!important;border-color:#04635e!i
 .st-key-sidebar_layout .sc-brand{margin-bottom:.6rem}
 .st-key-sidebar_layout .sc-nav-future{padding-top:.4rem;padding-bottom:.4rem}
 .st-key-sidebar_layout .sc-side-title{margin-top:.8rem}
+.st-key-main_navigation_items{height:176px;min-height:176px;box-sizing:border-box;
+ padding:.875rem 0 .125rem;justify-content:space-between!important;gap:0!important}
+.st-key-main_navigation_items>[data-testid="stElementContainer"]{flex:0 0 auto}
+.st-key-sidebar_layout .sc-recent-rule{margin:.3rem 0 .8rem}
+.st-key-composer_bridge_slot{position:fixed!important;left:0;bottom:0;height:0!important;
+ min-height:0!important;overflow:hidden!important;pointer-events:none}
 .st-key-sidebar_layout>[data-testid="stLayoutWrapper"]:has(>.st-key-recent_chats){
  height:auto!important;min-height:0!important;flex:1 1 0!important;overflow:hidden;
 }
@@ -240,6 +252,33 @@ button[kind="primary"]:hover{background:#04635e!important;border-color:#04635e!i
  white-space:normal!important;overflow:visible!important;text-overflow:clip!important;
  overflow-wrap:anywhere;line-height:1.4!important;-webkit-line-clamp:unset!important;
 }
+/* A quiet per-chat menu lives inside the existing rounded history row. */
+.st-key-recent_chats [class*="st-key-chat_row_"]{position:relative;gap:0!important}
+.st-key-recent_chats [class*="st-key-chat_row_"]>[data-testid="stLayoutWrapper"]:has(>[data-testid="stPopover"]){
+ position:absolute!important;right:8px;top:50%;transform:translateY(-50%);width:28px!important;
+ z-index:2;overflow:visible!important;
+}
+.st-key-recent_chats [class*="st-key-chat_row_"]>[data-testid="stElementContainer"]:has([data-testid="stButton"]) button{
+ padding-right:2.6rem!important;
+}
+.st-key-recent_chats [data-testid="stPopover"] button{
+ width:28px!important;min-width:28px!important;height:28px!important;min-height:28px!important;
+ border:0!important;background:transparent!important;box-shadow:none!important;
+ padding:0!important;border-radius:8px!important;color:var(--sc-gray)!important;
+}
+.st-key-recent_chats [data-testid="stPopover"] button p{font-size:1.3rem!important;line-height:1!important}
+.st-key-recent_chats [data-testid="stPopover"] button svg,
+.st-key-recent_chats [data-testid="stPopover"] button [aria-hidden="true"]{display:none}
+.st-key-recent_chats [data-testid="stPopover"] button:hover{background:var(--sc-pale)!important;color:var(--sc-ink)!important}
+[data-testid="stPopoverBody"]:has([class*="st-key-chat_menu_contents_"]){
+ min-width:148px!important;width:160px!important;padding:.35rem!important;
+}
+[class*="st-key-chat_menu_contents_"]{gap:.15rem!important}
+[class*="st-key-chat_menu_contents_"] button{
+ border:0!important;background:transparent!important;box-shadow:none!important;
+ justify-content:flex-start!important;min-height:2.35rem!important;padding:.35rem .65rem!important;
+}
+[class*="st-key-chat_menu_contents_"] button:hover{background:var(--sc-pale)!important}
 .st-key-workspace [data-testid="stButton"] button p{
  white-space:normal;overflow:visible;text-overflow:clip;
 }
@@ -288,6 +327,8 @@ button[kind="primary"]:hover{background:#04635e!important;border-color:#04635e!i
 [data-testid="stChatInput"]:hover::after{border-color:#3a9b93}
 [data-testid="stChatInput"]:focus-within{box-shadow:0 0 0 4px #0a9c8e24,0 8px 25px #123d5412}
 [data-testid="stChatInput"]:focus-within::after{border:2px solid #087f78}
+[data-testid="stChatInputMicButton"]{color:var(--sc-ink)!important}
+[data-testid="stChatInputMicButton"] svg{color:inherit!important;fill:currentColor!important}
 [data-testid="stChatInputTextArea"]{background:transparent!important;min-height:2.3rem}
 [data-testid="stChatInputSubmitButton"]{border-radius:50%!important;transition:background .18s ease}
 [data-testid="stChatInputSubmitButton"]:not(:disabled){background:#087f78!important;color:#fff!important}
@@ -357,9 +398,11 @@ button[kind="primary"]:hover{background:#04635e!important;border-color:#04635e!i
  box-sizing:border-box}
 .sc-workflow-dialog>h2{flex:0 0 auto;cursor:grab;touch-action:none;user-select:none;
  margin-bottom:0!important;padding:1rem .5rem .5rem 1.5rem!important}
+.sc-workflow-dialog>h2 *{cursor:grab;touch-action:none;user-select:none}
 .sc-workflow-dialog>h2:focus-visible{outline:2px solid #087f78;outline-offset:-5px;border-radius:12px}
 .sc-workflow-dialog>div{flex:1 1 auto;min-height:0;overflow-y:auto;
  padding-top:.25rem!important;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#a9cdbb transparent}
+.sc-workflow-dialog>div>[data-testid="stVerticalBlock"]{height:auto!important;min-height:0!important}
 .sc-workflow-dialog .sc-label{margin:0 0 .45rem}
 .sc-dialog-adjusting,.sc-dialog-adjusting *{user-select:none!important}
 .sc-dialog-adjusting .sc-dialog-drag-title{cursor:grabbing}
@@ -408,6 +451,19 @@ button[kind="primary"]:hover{background:#04635e!important;border-color:#04635e!i
 .st-key-follow_evidence [data-testid="stWidgetLabel"]{display:flex;align-items:center;min-height:2rem}
 .st-key-follow_evidence [data-testid="stWidgetLabel"] p{margin:0!important}
 /* A generous close target sits above resize handles and never becomes a drag surface. */
+.st-key-account_menu{border-top:1px solid var(--sc-line);padding-top:.5rem;gap:.5rem!important}
+.st-key-account_menu>[data-testid="stElementContainer"]:has(h3){display:none!important}
+.st-key-account_menu [data-testid="stText"]{font-size:.75rem;color:var(--sc-gray);overflow-wrap:anywhere}
+.st-key-account_menu [data-testid="stText"] *{color:var(--sc-gray)!important}
+.st-key-account_menu button{min-height:2rem!important;padding:.2rem .5rem!important;white-space:nowrap}
+.st-key-account_menu button p{font-size:.75rem!important}
+/* The personal-history adapter adds nested containers; let only its list scroll. */
+.st-key-sidebar_layout:has(.st-key-account_menu) [data-testid="stLayoutWrapper"]:has(.st-key-recent_chats){
+ flex:1 1 0!important;height:0!important;min-height:0!important;overflow:hidden;
+}
+.st-key-sidebar_layout:has(.st-key-account_menu) [data-testid="stLayoutWrapper"]:has(.st-key-recent_chats)>[data-testid="stVerticalBlock"]{
+ flex:1 1 auto!important;height:100%!important;min-height:0!important;
+}
 .sc-workflow-dialog>button{position:absolute!important;top:8px!important;right:8px!important;
  width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important;
  display:flex!important;align-items:center;justify-content:center;border-radius:50%!important;
@@ -415,6 +471,20 @@ button[kind="primary"]:hover{background:#04635e!important;border-color:#04635e!i
 .sc-workflow-dialog>button:hover{background:#dceee4!important}
 .sc-workflow-dialog>button svg{width:14px;height:14px;pointer-events:none}
 .sc-workflow-dialog>h2{margin-right:64px!important;padding-right:.5rem!important}
+[data-testid="stElementContainer"]:has(.sc-account-dialog-marker){display:none!important}
+.sc-workflow-dialog:has(.sc-account-dialog-marker) button[kind^="primary"]{
+ background:var(--sc-account-submit-bg,var(--sc-teal))!important;
+ color:var(--sc-account-submit-ink,#ffffff)!important;
+ border:1px solid var(--sc-account-submit-line,var(--sc-teal))!important;
+ box-shadow:var(--sc-account-submit-shadow,0 4px 10px #087f7818)!important;filter:none!important;
+}
+.sc-workflow-dialog:has(.sc-account-dialog-marker) button[kind^="primary"]:hover{
+ background:var(--sc-account-submit-hover,var(--sc-teal-dark))!important;
+}
+.sc-workflow-dialog:has(.sc-account-dialog-marker) button[kind^="primary"] p,
+.sc-workflow-dialog:has(.sc-account-dialog-marker) button[kind^="primary"] [data-testid="stMarkdownContainer"]{
+ color:var(--sc-account-submit-ink,#ffffff)!important;
+}
 @media(max-width:600px){
  [class*="st-key-answer_summary_"] .sc-assessment{padding-right:6.9rem}
  [class*="st-key-answer_summary_"]>[class*="st-key-evidence_"]{max-width:6.7rem}

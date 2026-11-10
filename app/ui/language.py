@@ -10,6 +10,35 @@ from typing import Any
 HISTORICAL_COMPARISON = "Recorded production performance versus the established baseline."
 
 ZH = {
+    "Instant Briefing": "即时晨报",
+    "Transcribing recording...": "正在转写录音…",
+    "Review transcription before sending": "请检查并编辑识别文字，再发送",
+    "Send reviewed text": "发送检查后的文字",
+    "Discard transcription": "丢弃识别文字",
+    "Re-record": "重新录制",
+    "Cancel re-record": "取消重录",
+    "Microphone help": "麦克风帮助",
+    "Use the microphone to start and stop recording, then submit it for transcription.": (
+        "点击麦克风开始和结束录音，然后提交录音进行转写。"
+    ),
+    (
+        "If the microphone is blocked, allow access in your browser’s site settings. "
+        "You can still type."
+    ): "如果麦克风被阻止，请在浏览器的网站设置中允许访问。你仍可输入文字。",
+    "Use the microphone below. A successful recording will replace this draft.": (
+        "请使用下方的麦克风。新录音成功转写后会替换此草稿。"
+    ),
+    "New recordings are added to this draft unless you choose Re-record.": (
+        "新录音会追加到草稿。若要替换草稿，请选择重新录制。"
+    ),
+    "Use the microphone below to record again.": "请使用下方的麦克风重新录制。",
+    "The recording is empty. Please record again.": "录音为空，请重新录制。",
+    "The recording could not be read. Please record again.": "无法读取录音，请重新录制。",
+    "Recording exceeds 5 MiB. Please make it shorter.": "录音超过 5 MiB，请缩短录制时间。",
+    "Recording exceeds 60 seconds. Please make it shorter.": "录音超过 60 秒，请缩短录制时间。",
+    "No clear speech was found. Please try again.": "未识别到有效语音，请重试。",
+    "Transcription timed out. Please try again.": "语音转写超时，请重试。",
+    "Transcription is unavailable. You can still type.": "语音转写暂不可用，仍可输入文字。",
     "Daily mode": "日常模式",
     "Eye comfort mode": "护眼模式",
     "Night mode": "黑夜模式",

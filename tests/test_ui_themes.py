@@ -8,9 +8,8 @@ import pytest
 
 from app.ui.themes import MODES, theme_styles
 from tests.test_ui_evidence_selection import execute
+from tests.test_ui_workflow_language import screen as screen
 from tests.ui_events import dismiss_workflow_dialog
-
-pytest_plugins = ["tests.test_ui_workflow_language"]
 
 
 @pytest.mark.parametrize("mode", MODES)

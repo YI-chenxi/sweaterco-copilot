@@ -2,6 +2,7 @@
 
 import json
 from copy import deepcopy
+from html import escape
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -10,6 +11,8 @@ import pytest
 from app.agent.contracts import AgentReply, Evidence
 from app.agent.settings import LLMSettings
 from app.ui.history_translation import HistoryTranslator, cache_key, display, mask, prepare, restore
+from tests.test_streamlit_chat_integration import screen as chat_screen
+from tests.test_streamlit_chat_integration import send
 from tests.test_ui_evidence_selection import execute
 from tests.ui_events import analysis_copy_payloads
 
@@ -90,7 +93,7 @@ def test_settings_loader_never_reads_dotenv(monkeypatch):
     load.assert_called_once_with(load_dotenv_file=False)
 
 
-def test_free_text_translation_preserves_history_selection_and_uses_cache(screen, monkeypatch):
+def test_reply_translation_preserves_user_text_selection_and_cache(screen, monkeypatch):
     from app.ui import history_translation
 
     app, guided, service = screen
@@ -109,12 +112,10 @@ def test_free_text_translation_preserves_history_selection_and_uses_cache(screen
     snapshot = deepcopy(thread["messages"])
     identity = thread["selected_reply_id"]
     translations = {
-        "What needs attention?": "哪些情况需要关注？",
         "Review the capacity constraint.": "请查看产能限制。",
         "Capacity requires review.": "产能需要复核。",
         "No additional overtime.": "没有额外加班。",
         "Recorded order detail.": "已记录的订单详情。",
-        "Capacity discussion": "产能讨论",
     }
     translator = Mock()
     translator.translate.side_effect = lambda texts, target: [translations[t] for t in texts]
@@ -128,15 +129,52 @@ def test_free_text_translation_preserves_history_selection_and_uses_cache(screen
     app.button(key="full_" + identity).click().run()
     assert not app.exception
     assert any(m.value == "请查看产能限制。" for m in app.markdown)
-    assert any(m.value == "哪些情况需要关注？" for m in app.markdown)
+    assert "What needs attention?" in app.chat_message[0].get("markdown")[0].value
+    assert all(
+        "What needs attention?" not in call.args[0] for call in translator.translate.call_args_list
+    )
     assert analysis_copy_payloads(app) == {identity: {"text": "请查看产能限制。", "language": "zh"}}
     assert any(w.value == "产能需要复核。" for w in app.warning)
     count = translator.translate.call_count
     for language in ("en", "zh"):
         app.selectbox(key="ui_language").set_value(language).run()
+        assert "What needs attention?" in app.chat_message[0].get("markdown")[0].value
     assert translator.translate.call_count == count
     assert thread["messages"] == snapshot
     assert thread["selected_reply_id"] == identity
     assert thread["expanded_answers"][identity]
     assert guided.call_count == 1
     service.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("initial_language", "submitted"),
+    [
+        ("en", "  请不要取消 ORD-057。\n请保留 800 件，交期 2026-04-25。  "),
+        ("zh", "  Do not cancel ORD-057.\nKeep **800 TOPS** by 2026-04-25 <check>.  "),
+    ],
+)
+def test_keyboard_message_preserves_exact_text_across_language_switches(
+    monkeypatch, initial_language, submitted
+):
+    from app.ui import history_translation
+
+    translator = Mock()
+    translator.translate.side_effect = lambda texts, target: texts
+    monkeypatch.setattr(history_translation, "HistoryTranslator", Mock(return_value=translator))
+    app, _, _ = chat_screen(monkeypatch)
+    app.selectbox(key="ui_language").set_value(initial_language).run()
+    send(app, submitted)
+    original = deepcopy(app.session_state["threads"][0]["messages"])
+    assert original[0]["content"] == submitted
+
+    for language in ("en", "zh"):
+        app.selectbox(key="ui_language").set_value(language).run()
+        assert not app.exception
+        assert escape(submitted) in app.chat_message[0].get("markdown")[0].value
+        assert app.session_state["threads"][0]["messages"] == original
+    assert all(
+        text.strip() != submitted.strip()
+        for call in translator.translate.call_args_list
+        for text in call.args[0]
+    )

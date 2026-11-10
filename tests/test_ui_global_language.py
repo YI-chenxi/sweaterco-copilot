@@ -56,8 +56,19 @@ def test_language_stays_selected_when_creating_and_opening_conversations(screen)
     assert not app.exception
     assert app.selectbox(key="ui_language").value == "zh"
     assert app.session_state["active_thread"] == 1
-    assert len(app.session_state["threads"]) == 2
+    assert len(app.session_state["threads"]) == 1
     guided.assert_not_called()
+    app.button(key="center_Order_Status").click().run()
+    app.button(key="run_workflow").click().run()
+    app.button(key="new_chat").click().run()
+    assert not app.exception
+    assert app.selectbox(key="ui_language").value == "zh"
+    assert app.session_state["active_thread"] == 2
+    app.button(key="thread_1").click().run()
+    assert app.selectbox(key="ui_language").value == "zh"
+    assert app.session_state["active_thread"] == 1
+    assert len(app.session_state["threads"]) == 2
+    assert guided.call_count == 1
 
 
 def test_existing_process_refreshes_catalog_without_clearing_state(screen, monkeypatch):

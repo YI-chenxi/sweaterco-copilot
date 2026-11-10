@@ -14,6 +14,19 @@ def ensure_chat_session(thread: dict[str, Any]) -> ChatSession:
     return thread["agent_session"]
 
 
+def reusable_empty_thread(threads, active_id):
+    candidates = [
+        t
+        for t in threads
+        if not t.get("messages")
+        and not any(t.get(key) for key in ("speech_draft", "speech_error", "composer_draft"))
+        and not getattr(getattr(t.get("agent_session"), "state", None), "tasks", [])
+    ]
+    return next(
+        (t for t in candidates if t["id"] == active_id), candidates[0] if candidates else None
+    )
+
+
 def run_chat_turn(thread: dict[str, Any], text: str, service: AgentService) -> AgentReply:
     """Commit the new session only after the complete turn returns successfully."""
 

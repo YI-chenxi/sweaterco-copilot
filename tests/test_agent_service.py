@@ -93,3 +93,22 @@ def test_chinese_feasibility_assumptions_are_preserved_in_chinese():
     assert reply.assumptions[0] == "Sunday（周日）不计生产日"
     assert "有条件可行" in reply.text
     assert "CONDITIONAL" not in reply.text
+
+
+def test_proactive_request_is_routed_before_existing_agent_pipeline():
+    class ProactiveStub:
+        def handle_text(self, _text):
+            return {
+                "handled": True,
+                "ok": True,
+                "status": "pending_confirmation",
+                "id": "proposal-id",
+                "data": {},
+            }
+
+    service = service_for(payload(intent="morning_briefing"))
+    service.proactive_application = ProactiveStub()
+    reply = service.handle_text("schedule a morning briefing every day")
+    assert reply.metadata["intent"] == "proactive"
+    assert reply.metadata["status"] == "pending_confirmation"
+    assert reply.metadata["proactive"]["id"] == "proposal-id"

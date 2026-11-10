@@ -1,0 +1,25 @@
+:host{display:block;font:14px/1.5 "Segoe UI",Arial,sans-serif;color:var(--sc-ink,#163c43)}
+*{box-sizing:border-box}
+.date-label{display:block;margin:0 0 7px}
+.date-open{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:40px;
+ padding:8px 12px;border:1px solid var(--sc-line,#b6d6d0);border-radius:12px;
+ background:var(--sc-control-soft,#f5faf7);color:inherit;font:inherit;cursor:pointer}
+.date-open svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6;opacity:.75}
+button:focus-visible,select:focus-visible{outline:2px solid var(--sc-teal,#087f78);outline-offset:2px}
+.calendar{position:fixed;inset:auto;margin:0;padding:14px;width:310px;max-width:calc(100vw - 20px);
+ border:1px solid var(--sc-line,#b6d6d0);border-radius:18px;color:var(--sc-ink,#163c43);
+ background:var(--sc-control,#ffffff);box-shadow:0 12px 36px #00000026;font:14px/1.5 "Segoe UI",Arial,sans-serif}
+.calendar::backdrop{background:transparent}
+.calendar header{display:flex;align-items:center;justify-content:space-between;gap:5px;margin-bottom:12px}
+.calendar button,.calendar select{font:inherit;color:inherit;cursor:pointer}
+.calendar header button{width:30px;height:30px;border:0;border-radius:8px;background:transparent;font-size:22px}
+.calendar select{max-width:120px;border:0;border-radius:6px;background:var(--sc-control-soft,#f5faf7);padding:4px}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.weekday{text-align:center;color:var(--sc-gray,#547079);font-size:12px;padding:4px 0}
+.day{border:1px solid transparent;background:transparent;border-radius:9px;min-height:32px}
+.day:hover,.calendar header button:hover{background:var(--sc-copy-hover,#e5f2eb)}
+.day[aria-selected="true"]{background:var(--sc-teal,#087f78);color:var(--sc-calendar-on,#ffffff);font-weight:650}
+.day.today{border-color:var(--sc-line,#b6d6d0)}
+.calendar footer{display:flex;justify-content:flex-end;margin-top:9px}
+.calendar footer button{background:transparent;border:0;border-radius:8px;padding:5px 9px}
+.calendar footer button:hover{background:var(--sc-copy-hover,#e5f2eb)}

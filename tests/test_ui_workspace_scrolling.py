@@ -2,11 +2,33 @@
 
 from copy import deepcopy
 
+import pytest
+
 from app.agent.contracts import AgentReply, Evidence
 from tests.test_ui_evidence_selection import execute
 from tests.ui_events import dismiss_workflow_dialog
 
 pytest_plugins = ["tests.test_ui_workflow_language"]
+
+
+@pytest.mark.parametrize("mode", ("green", "day", "night"))
+def test_workflow_dock_follows_greeting_and_rail_control_stays_outside_surface(screen, mode):
+    app, guided, _ = screen
+    execute(app)
+    original = deepcopy(app.session_state["threads"][0]["messages"])
+    app.button(key="theme_" + mode).click().run()
+    app.button(key="hide_analysis").click().run()
+    scroll = app.get_by_key("conversation_scroll")
+    assert scroll.get_by_key("workflow_dock").get_by_key("expand_workflows")
+    assert app.get_by_key("show_analysis")
+    assert "show_analysis" not in {e.key for e in app.get_by_key("conversation_surface").button}
+    assert len([b for b in app.button if b.key == "expand_workflows"]) == 1
+    app.button(key="expand_workflows").click().run()
+    assert app.get_by_key("conversation_scroll").get_by_key("center_Order_Status")
+    app.button(key="show_analysis").click().run()
+    assert not app.exception
+    assert app.session_state["threads"][0]["messages"] == original
+    guided.assert_called_once()
 
 
 def test_ten_messages_retain_order_data_and_explicit_selection_after_reruns(screen):
