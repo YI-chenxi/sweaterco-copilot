@@ -12,9 +12,10 @@ import inspect
 import logging
 import sys
 from datetime import date
+from functools import partial
 from importlib import reload
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import streamlit as st
 
@@ -32,6 +33,15 @@ from app.ui import localized_reply as reply_presentation  # noqa: E402
 from app.ui import result_cards as card_presentation  # noqa: E402
 from app.ui import themes as theme_presentation  # noqa: E402
 from app.ui import workflow_controls as workflow_presentation  # noqa: E402
+from app.ui.accounts.panels import auth_page, auth_retry  # noqa: E402
+from app.ui.accounts.real_backend import RealAccountMode  # noqa: E402
+from app.ui.accounts.recent_chats import render_recent_chats  # noqa: E402
+from app.ui.accounts.workspace import (  # noqa: E402
+    AccountTestMode,
+    current_workspace,
+    workspace_for,
+)
+from app.ui.accounts.workspace import label as account_label  # noqa: E402
 from app.ui.analysis_selection import ensure_reply_ids, selected_answer  # noqa: E402
 from app.ui.chat_state import (  # noqa: E402
     clear_chat_request,
@@ -68,21 +78,25 @@ from app.ui.workflow_controls import (  # noqa: E402
     workflow_title,
 )
 
-st.set_page_config(
-    page_title="SweaterCo | Operations Co-Pilot",
-    page_icon="🏭",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
-css = Path(__file__).with_name("styles.css").read_text(encoding="utf-8")
-css += Path(__file__).with_name("proactive.css").read_text(encoding="utf-8")
-mode = theme_presentation.mode_name(st.session_state.get("ui_theme", "green"))
-css = theme_presentation.theme_styles(css, mode) + theme_presentation.native_styles(mode)
-css += Path(__file__).with_name("theme_controls.css").read_text(encoding="utf-8")
-css += (
-    f".st-key-theme_{mode} button{{outline:1px solid var(--sc-teal)!important;outline-offset:3px}}"
-)
-st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+
+def _configure_page() -> None:
+    st.set_page_config(
+        page_title="SweaterCo | Operations Co-Pilot",
+        page_icon="🏭",
+        layout="wide",
+        initial_sidebar_state="expanded",
+    )
+    css = Path(__file__).with_name("styles.css").read_text(encoding="utf-8")
+    css += Path(__file__).with_name("proactive.css").read_text(encoding="utf-8")
+    mode = theme_presentation.mode_name(st.session_state.get("ui_theme", "green"))
+    css = theme_presentation.theme_styles(css, mode) + theme_presentation.native_styles(mode)
+    css += Path(__file__).with_name("theme_controls.css").read_text(encoding="utf-8")
+    css += (
+        f".st-key-theme_{mode} button{{"
+        "outline:1px solid var(--sc-teal)!important;outline-offset:3px}"
+    )
+    st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+
 
 WORKFLOWS = ("Order Status", "Production Health", "Morning Briefing", "Check Feasibility")
 GUIDED_NAMES = {
@@ -117,14 +131,15 @@ def _init_session() -> None:
     from app.ui.proactive.state import init_state
 
     init_state(state)
-    if "threads" not in state:
-        state["threads"] = [{"id": 1, "title": "New conversation", "messages": []}]
-    for thread in state["threads"]:
-        ensure_chat_session(thread)
-        ensure_reply_ids(thread)
-        thread["title"] = conversation_title(thread["messages"])
-    state.setdefault("active_thread", 1)
-    state.setdefault("next_thread", 2)
+    if current_workspace() is None:
+        if "threads" not in state:
+            state["threads"] = [{"id": 1, "title": "New conversation", "messages": []}]
+        for thread in state["threads"]:
+            ensure_chat_session(thread)
+            ensure_reply_ids(thread)
+            thread["title"] = conversation_title(thread["messages"])
+        state.setdefault("active_thread", 1)
+        state.setdefault("next_thread", 2)
     state.setdefault("workflow", None)
     state.setdefault("ui_language", shared_language(state))
     state.setdefault("ui_theme", "green")
@@ -137,6 +152,9 @@ def _init_session() -> None:
 
 
 def _thread() -> dict[str, Any]:
+    workspace = current_workspace()
+    if workspace is not None:
+        return workspace.thread
     for thread in st.session_state["threads"]:
         if thread["id"] == st.session_state["active_thread"]:
             return thread
@@ -272,21 +290,34 @@ def _append_reply(reply: AgentReply, origin: str) -> None:
     thread["title"] = conversation_title(thread["messages"])
 
 
+def _account_widget(key: str) -> str:
+    workspace = current_workspace()
+    return workspace.widget(key) if workspace is not None else key
+
+
 def _view_evidence(reply_id: str) -> None:
+    workspace = current_workspace()
+    if workspace is not None and not workspace.current_handle():
+        return
     _thread()["selected_reply_id"] = reply_id
     st.session_state["analysis_open"] = True
 
 
-def _follow_evidence_event(thread_id: int) -> None:
+def _follow_evidence_event(thread_id: int | str) -> None:
     from app.ui.evidence_follow import apply_follow_event
 
+    workspace = current_workspace()
+    if workspace is not None and not workspace.current_handle():
+        return
     event = st.session_state.get("follow_bridge_" + str(thread_id), {}).get("visible_answer")
     apply_follow_event(
         _thread(),
         event,
         enabled=st.session_state["follow_evidence"],
         panel_open=st.session_state["analysis_open"],
-        active_thread=st.session_state["active_thread"],
+        active_thread=_thread()["id"]
+        if workspace is not None
+        else st.session_state["active_thread"],
     )
 
 
@@ -302,12 +333,16 @@ def _run_guided(workflow: str, language: str, values: dict[str, Any]) -> None:
     display = workflow_title(workflow, values, language=language)
     decision = guided_decision(GUIDED_NAMES[workflow], language=language, **values)
     reply = guided_orchestrator().handle(decision)
-    _append_user(display)
-    _thread()["messages"][-1]["ui_workflow_request"] = {
-        "workflow": workflow,
-        "values": dict(values),
-    }
-    _append_reply(reply, "Quick Workflows")
+    workspace = current_workspace()
+    if workspace is not None:
+        workspace.set_preview(workflow, values, reply)
+    else:
+        _append_user(display)
+        _thread()["messages"][-1]["ui_workflow_request"] = {
+            "workflow": workflow,
+            "values": dict(values),
+        }
+        _append_reply(reply, "Quick Workflows")
     if not reply.needs_clarification and reply.metadata.get("status") not in {
         "failed",
         "invalid",
@@ -392,20 +427,52 @@ def _select_page(page: str) -> None:
     st.session_state.get("proactive_ui", {}).pop("pending_decision", None)
 
 
+def _theme_controls(width: int | Literal["stretch"] = "stretch") -> None:
+    with st.container(key="theme_controls", horizontal=True, gap=None, width=width):
+        for theme in theme_presentation.MODES:
+            label = _t(theme_presentation.MODE_LABELS[theme])
+            st.button(
+                label,
+                key="theme_" + theme,
+                help=label,
+                on_click=_set_theme,
+                args=(theme,),
+                width=24,
+            )
+
+
+def _language_control(width: int | Literal["stretch"] = "stretch") -> None:
+    st.selectbox(
+        "Language / 语言",
+        ["en", "zh"],
+        key="ui_language",
+        format_func=lambda code: "中文" if code == "zh" else "English",
+        label_visibility="collapsed",
+        width=width,
+    )
+
+
+def _auth_preferences() -> None:
+    _theme_controls(width=90)
+    _language_control(width=112)
+
+
 def _nav_sidebar(chat_ready: bool) -> None:
+    workspace = current_workspace()
     with st.sidebar, st.container(key="sidebar_layout"):
         st.markdown(
             '<div class="sc-brand"><span class="sc-mark">SC</span>'
             "<div><strong>SweaterCo</strong><small>OPERATIONS CO-PILOT</small></div></div>",
             unsafe_allow_html=True,
         )
-        st.button(
-            "＋  " + _t("New conversation"),
-            key="new_chat",
-            use_container_width=True,
-            type="primary",
-            on_click=_new_thread,
-        )
+        if workspace is None:
+            st.button(
+                "＋  " + _t("New conversation"),
+                key="new_chat",
+                use_container_width=True,
+                type="primary",
+                on_click=_new_thread,
+            )
         from app.ui.proactive.locale import tr as proactive_tr
 
         st.markdown(
@@ -431,34 +498,50 @@ def _nav_sidebar(chat_ready: bool) -> None:
                 type="primary" if active else "secondary",
                 use_container_width=True,
             )
-        st.markdown(
-            '<div class="sc-side-rule"></div><div class="sc-side-title">'
-            + _t("RECENT CHATS")
-            + "</div>",
-            unsafe_allow_html=True,
-        )
-        language = shared_language(st.session_state)
-        with st.container(height=300, border=False, key="recent_chats"):
-            for thread in st.session_state["threads"]:
-                title = conversation_title(thread["messages"], language=language)
-                active = "● " if thread["id"] == st.session_state["active_thread"] else "◦ "
-                messages = thread["messages"]
-                first = next((i for i, m in enumerate(messages) if m["role"] == "user"), None)
-                if first is None:
-                    hover = _t("New conversation")
-                else:
-                    following = messages[first + 1] if first + 1 < len(messages) else None
-                    hover = clean_request_text(
-                        display_workflow_message(messages[first], following, language)
-                    )
-                st.button(
-                    active + _display_text(_t(title)),
-                    key=f"thread_{thread['id']}",
-                    use_container_width=True,
-                    on_click=_select_thread,
-                    args=(thread["id"],),
-                    help=_display_text(hover),
+        if workspace is not None:
+            private_chats = st.empty()
+            with private_chats.container():
+                selected = render_recent_chats(
+                    workspace.backend,
+                    workspace.mode.session,
+                    expected_owner=workspace.owner,
+                    open_thread=workspace.chat.open_thread,
+                    on_session_error=lambda: workspace.sync_owner(None),
                 )
+            if workspace.owner is not None and not workspace.current_handle():
+                private_chats.empty()
+                st.warning(account_label("Your session ended. Sign in again."))
+            if selected is None:
+                workspace.chat.deselect()
+        else:
+            st.markdown(
+                '<div class="sc-side-rule"></div><div class="sc-side-title">'
+                + _t("RECENT CHATS")
+                + "</div>",
+                unsafe_allow_html=True,
+            )
+            language = shared_language(st.session_state)
+            with st.container(height=300, border=False, key="recent_chats"):
+                for thread in st.session_state["threads"]:
+                    title = conversation_title(thread["messages"], language=language)
+                    active = "● " if thread["id"] == st.session_state["active_thread"] else "◦ "
+                    messages = thread["messages"]
+                    first = next((i for i, m in enumerate(messages) if m["role"] == "user"), None)
+                    if first is None:
+                        hover = _t("New conversation")
+                    else:
+                        following = messages[first + 1] if first + 1 < len(messages) else None
+                        hover = clean_request_text(
+                            display_workflow_message(messages[first], following, language)
+                        )
+                    st.button(
+                        active + _display_text(_t(title)),
+                        key=f"thread_{thread['id']}",
+                        use_container_width=True,
+                        on_click=_select_thread,
+                        args=(thread["id"],),
+                        help=_display_text(hover),
+                    )
         with st.container(key="sidebar_footer"):
             st.markdown('<div class="sc-side-rule"></div>', unsafe_allow_html=True)
             with st.container(key="workspace_heading"):
@@ -466,17 +549,7 @@ def _nav_sidebar(chat_ready: bool) -> None:
                     '<div class="sc-side-title">' + _t("WORKSPACE") + "</div>",
                     unsafe_allow_html=True,
                 )
-                with st.container(key="theme_controls", horizontal=True, gap=None):
-                    for theme in theme_presentation.MODES:
-                        label = _t(theme_presentation.MODE_LABELS[theme])
-                        st.button(
-                            label,
-                            key="theme_" + theme,
-                            help=label,
-                            on_click=_set_theme,
-                            args=(theme,),
-                            width=24,
-                        )
+                _theme_controls()
             state_class = "online" if chat_ready else "offline"
             state_label = _t("Configured" if chat_ready else "Not configured")
             st.markdown(
@@ -494,13 +567,7 @@ def _nav_sidebar(chat_ready: bool) -> None:
                 + "</span></div>",
                 unsafe_allow_html=True,
             )
-            st.selectbox(
-                "Language / 语言",
-                ["en", "zh"],
-                key="ui_language",
-                format_func=lambda code: "中文" if code == "zh" else "English",
-                label_visibility="collapsed",
-            )
+            _language_control()
             if any(v is None for v in st.session_state.get("text_translations", {}).values()):
                 st.button(
                     _t("Retry translation"),
@@ -593,8 +660,13 @@ def _workflow_dialog() -> None:
     # Keep the invisible geometry bridge out of the dialog's form layout.
     mount_dialog_layout(shared_language(st.session_state))
 
+    workspace = current_workspace()
+    scope = workspace.scope if workspace is not None else None
+
     @st.dialog(_t(flow), width="medium", on_dismiss=_dismiss_workflow)
     def parameters() -> None:
+        if workspace is not None and (workspace.scope != scope or not workspace.current_handle()):
+            st.rerun(scope="app")
         _structured_helper()
 
     parameters()
@@ -627,7 +699,7 @@ def _structured_helper() -> None:
                 _t("Order ID"),
                 value=saved.get("order_id", "ORD-057"),
                 placeholder=_t("Enter an order ID, e.g. ORD-057"),
-                key=prefix + "_order_id",
+                key=_account_widget(prefix + "_order_id"),
             )
         elif flow == "Production Health":
             stages = ["KNITTING", "ASSEMBLY", "WASHING", "PACKING"]
@@ -635,7 +707,7 @@ def _structured_helper() -> None:
                 _t("Production stage"),
                 stages,
                 index=stages.index(saved.get("stage", "ASSEMBLY")),
-                key=prefix + "_stage",
+                key=_account_widget(prefix + "_stage"),
             )
         elif flow == "Morning Briefing":
             values["top_n"] = int(
@@ -645,7 +717,7 @@ def _structured_helper() -> None:
                     20,
                     saved.get("top_n", 3),
                     step=1,
-                    key=prefix + "_top_n",
+                    key=_account_widget(prefix + "_top_n"),
                 )
             )
         elif flow == "Check Feasibility":
@@ -656,7 +728,7 @@ def _structured_helper() -> None:
                     _t("Category"),
                     categories,
                     index=categories.index(saved.get("category", "TOPS")),
-                    key=prefix + "_category",
+                    key=_account_widget(prefix + "_category"),
                 )
             with cc[1]:
                 values["pieces"] = int(
@@ -665,7 +737,7 @@ def _structured_helper() -> None:
                         1,
                         100000,
                         saved.get("pieces", 800),
-                        key=prefix + "_pieces",
+                        key=_account_widget(prefix + "_pieces"),
                     )
                 )
             with cc[2]:
@@ -673,10 +745,10 @@ def _structured_helper() -> None:
                     _t("Required delivery date"),
                     value=date.fromisoformat(saved.get("requested_delivery_date", "2026-04-25")),
                     min_value=date(2026, 4, 2),
-                    key=prefix + "_date",
+                    key=_account_widget(prefix + "_date"),
                 ).isoformat()
         saved.update(values)
-        if st.button(_t("Run analysis →"), key="run_workflow", type="primary"):
+        if st.button(_t("Run analysis →"), key=_account_widget("run_workflow"), type="primary"):
             succeeded = False
             try:
                 if flow == "Order Status" and not values["order_id"].strip():
@@ -704,6 +776,9 @@ def _structured_helper() -> None:
 
 
 def _toggle_analysis(identity: str) -> None:
+    workspace = current_workspace()
+    if workspace is not None and not workspace.current_handle():
+        return
     states = _thread().setdefault("expanded_answers", {})
     states[identity] = not states.get(identity, False)
 
@@ -728,7 +803,7 @@ def _reply_view(reply: AgentReply, identity: str) -> None:
         st.button(
             _t("View Evidence"),
             icon=":material/manage_search:",
-            key="evidence_" + identity,
+            key=_account_widget("evidence_" + identity),
             on_click=_view_evidence,
             args=(identity,),
             help=_t("Show only this answer's evidence, warnings and assumptions"),
@@ -748,7 +823,7 @@ def _reply_view(reply: AgentReply, identity: str) -> None:
     expanded = _thread().setdefault("expanded_answers", {}).get(identity, False)
     st.button(
         _t("Hide full analysis" if expanded else "Show full analysis"),
-        key="full_" + identity,
+        key=_account_widget("full_" + identity),
         on_click=_toggle_analysis,
         args=(identity,),
         use_container_width=True,
@@ -764,10 +839,18 @@ def _reply_view(reply: AgentReply, identity: str) -> None:
 
 def _conversation() -> None:
     chosen, _ = selected_answer(_thread())
+    account_mode = current_workspace() is not None
     messages = _thread()["messages"]
     for index, message in enumerate(messages):
         with st.chat_message(message["role"]):
             if message["role"] == "user":
+                if account_mode:
+                    st.html(
+                        '<div style="white-space: pre-wrap; overflow-wrap: anywhere;">'
+                        + _safe(message["content"])
+                        + "</div>"
+                    )
+                    continue
                 following = messages[index + 1] if index + 1 < len(messages) else None
                 pending = st.session_state.get("pending_chat")
                 if pending and index == len(messages) - 1:
@@ -798,7 +881,10 @@ def _conversation() -> None:
 
 
 def _request_context() -> None:
-    session = ensure_chat_session(_thread())
+    account_mode = current_workspace() is not None
+    session = _thread().get("agent_session") if account_mode else ensure_chat_session(_thread())
+    if session is None:
+        return
     pending = [task for task in session.state.tasks if task.status.value == "pending"]
     if not pending and not session.global_issues:
         return
@@ -858,9 +944,18 @@ def _request_context() -> None:
                     else " · " + _t("Needs clarification")
                 )
             )
-        if st.button(_t("Start a fresh request"), key="reset_chat_request"):
+        if not account_mode and st.button(_t("Start a fresh request"), key="reset_chat_request"):
             clear_chat_request(_thread())
             st.rerun()
+
+
+def _queue_account_prompt(widget_key: str, event_key: str | None) -> None:
+    workspace = current_workspace()
+    text = st.session_state.get(widget_key)
+    if workspace is not None and event_key is not None and isinstance(text, str):
+        rejected = workspace.queue_text(event_key, text)
+        if rejected is not None:
+            st.session_state[widget_key] = rejected
 
 
 def _composer() -> None:
@@ -869,6 +964,20 @@ def _composer() -> None:
     The sibling scroll container owns long conversations, so this input stays
     at the bottom of the surface in new, empty and populated conversations.
     """
+    workspace = current_workspace()
+    if workspace is not None:
+        if workspace.thread["id"] is None and workspace.chat.submission is None:
+            st.info(account_label("Open or create a chat in Recent Chats to start."))
+        event_key = workspace.chat.submission_key
+        widget_key = workspace.widget(f"prompt_{event_key or 'disabled'}")
+        st.chat_input(
+            _t("Ask about orders, production, risks or feasibility..."),
+            key=widget_key,
+            on_submit=_queue_account_prompt,
+            args=(widget_key, event_key),
+            disabled=event_key is None,
+        )
+        return
     st.chat_input(
         _t("Ask about orders, production, risks or feasibility..."),
         key="chat_prompt",
@@ -950,17 +1059,21 @@ def _analysis_fragment() -> None:
 
     from app.ui.evidence_follow import mount_follow
 
-    if not st.session_state["analysis_open"]:
+    workspace = current_workspace()
+    if not st.session_state["analysis_open"] or (
+        workspace is not None and not workspace.current_handle()
+    ):
         st.rerun(scope="app")
     message, number = selected_answer(_thread())
     _details(
         message["reply"] if message else None, number, message["ui_reply_id"] if message else None
     )
-    mount_follow(
-        _thread(),
-        st.session_state["follow_evidence"] and st.session_state["workflow"] not in WORKFLOWS,
-        partial(_follow_evidence_event, _thread()["id"]),
-    )
+    if _thread()["id"] is not None:
+        mount_follow(
+            _thread(),
+            st.session_state["follow_evidence"] and st.session_state["workflow"] not in WORKFLOWS,
+            partial(_follow_evidence_event, _thread()["id"]),
+        )
 
 
 def _themed_dataframe(data, **options) -> None:
@@ -970,9 +1083,9 @@ def _themed_dataframe(data, **options) -> None:
     )
 
 
-def _analysis_body(reply: AgentReply | None, reply_id: str | None) -> None:
+def _analysis_body(reply: AgentReply | None, reply_id: str | None, *, key_prefix: str = "") -> None:
     if reply is None:
-        with st.container(border=True, key="detail_empty"):
+        with st.container(border=True, key=key_prefix + "detail_empty"):
             st.markdown("**" + _t("Evidence & context") + "**")
             st.caption(
                 _t(
@@ -983,7 +1096,7 @@ def _analysis_body(reply: AgentReply | None, reply_id: str | None) -> None:
         return
     intent = str(reply.metadata.get("intent", "unknown"))
     rows = evidence_rows(reply)
-    with st.container(border=True, key="detail_evidence"):
+    with st.container(border=True, key=key_prefix + "detail_evidence"):
         st.markdown(f"**◈ {_t('Supporting Evidence')}** · {len(rows)} {_t('records')}")
         if rows:
             sources = sorted({r["Source"] for r in rows})
@@ -1004,23 +1117,29 @@ def _analysis_body(reply: AgentReply | None, reply_id: str | None) -> None:
                         if shared_language(st.session_state) == "zh"
                         else f"Showing 15 of {len(rows)} source references."
                     )
-                st.download_button(
-                    _t("Export full evidence CSV"),
-                    data=evidence_csv(reply).encode("utf-8-sig"),
-                    mime="text/csv",
-                    file_name="sweaterco_evidence.csv",
-                    key=f"export_{_thread()['id']}_{reply_id}",
-                )
+                workspace = current_workspace()
+                if workspace is not None and isinstance(workspace.mode, RealAccountMode):
+                    st.caption(
+                        account_label("Evidence CSV export is unavailable for private chats.")
+                    )
+                else:
+                    st.download_button(
+                        _t("Export full evidence CSV"),
+                        data=evidence_csv(reply).encode("utf-8-sig"),
+                        mime="text/csv",
+                        file_name="sweaterco_evidence.csv",
+                        key=_account_widget(f"{key_prefix}export_{_thread()['id']}_{reply_id}"),
+                    )
         else:
             st.caption(_t("No evidence was provided for this answer."))
 
     if reply.warnings:
-        with st.container(border=True, key="detail_warnings"):
+        with st.container(border=True, key=key_prefix + "detail_warnings"):
             st.markdown(f"**⚠ {_t('Risk Warnings')}** · {len(reply.warnings)}")
             for w in reply.warnings:
                 st.warning(_display_text(w))
     if reply.assumptions:
-        with st.container(border=True, key="detail_assumptions"):
+        with st.container(border=True, key=key_prefix + "detail_assumptions"):
             st.markdown(f"**◇ {_t('Key Assumptions')}** · {len(reply.assumptions)}")
             shown_assumptions = localized_assumptions(
                 reply.assumptions, shared_language(st.session_state)
@@ -1059,7 +1178,7 @@ def _analysis_body(reply: AgentReply | None, reply_id: str | None) -> None:
     for index, section in enumerate(
         contextual_sections(reply, language=shared_language(st.session_state))
     ):
-        with st.container(border=True, key=f"detail_context_{index}"):
+        with st.container(border=True, key=f"{key_prefix}detail_context_{index}"):
             st.markdown(f"**{section['title']}**")
             if section.get("description"):
                 st.caption(section["description"])
@@ -1111,13 +1230,62 @@ def _proactive_details(details) -> None:
         render_context(details, _analysis_body)
 
 
-def main() -> None:
+def _workflow_preview() -> None:
+    workspace = current_workspace()
+    if workspace is None or workspace.preview is None:
+        return
+    workflow, values, reply, identity = workspace.preview
+    language = shared_language(st.session_state)
+    with st.expander(
+        account_label("Session-only workflow preview · Not saved to chat history"), expanded=True
+    ):
+        st.text(workflow_title(workflow, values, language=language))
+        st.markdown(_reply_text(reply))
+        for metric in metrics_for_reply(reply, language=language):
+            st.metric(metric.label, metric.value, help=metric.detail)
+        _analysis_body(reply, identity, key_prefix="preview_")
+
+
+def main(
+    account_test_mode: AccountTestMode | None = None,
+    *,
+    real_account_mode: RealAccountMode | None = None,
+) -> None:
+    _configure_page()
+    mode = real_account_mode if real_account_mode is not None else account_test_mode
+    workspace = workspace_for(mode)
+    if mode is not None:
+        auth_panel = st.sidebar.empty()
+        notice = (
+            account_label("Offline account test mode. No real login or cloud storage.")
+            if isinstance(mode, AccountTestMode)
+            else None
+        )
+        signed_out = partial(auth_page, _auth_preferences, notice=notice)
+        if workspace is None:
+            with signed_out():
+                st.error(
+                    account_label("Account service is not configured. Contact the app maintainer.")
+                )
+            return
+        if not workspace.render_auth(signed_in=auth_panel.container, signed_out=signed_out):
+            auth_panel.empty()
+            return
+
     _init_session()
-    ready = _chat_ready()
+    ready = _chat_ready() if workspace is None else False
     page = st.session_state["ui_page"]
-    if page == "copilot":
+    if workspace is None and page == "copilot":
         _prepare_history(ready)
     _nav_sidebar(ready)
+    if workspace is not None:
+        if workspace.owner is None:
+            auth_panel.empty()
+            with auth_page(lambda: None, notice=notice):
+                st.warning(account_label("Your session ended. Sign in again."))
+                auth_retry()
+            return
+        workspace.sync_view()
     if not st.session_state["analysis_open"]:
         st.button(
             _t("Show analysis panel"),
@@ -1140,8 +1308,16 @@ def main() -> None:
                     # Normal document flow until this launcher reaches the top.
                     with st.container(key="workflow_dock"):
                         _workflow_launchpad()
+                    if workspace is not None:
+                        if workspace.process_queued():
+                            collapse_after_response(st.session_state)
+                            st.rerun()
+                        workspace.sync_view()
+                        workspace.render_status()
+                        _workflow_preview()
                     _conversation()
-                    _process_pending_chat()
+                    if workspace is None:
+                        _process_pending_chat()
                     _request_context()
                 else:
                     from app.ui.proactive.pages import render_page
@@ -1168,7 +1344,7 @@ def main() -> None:
         from app.ui.workflow_dock import mount_workflow_dock
 
         mount_workflow_dock(
-            st.session_state["active_thread"], st.session_state["workflow_panel_expanded"]
+            _thread()["id"], st.session_state["workflow_panel_expanded"]
         )
     _workflow_dialog()
     from app.ui.proactive.navigation import mount_navigation

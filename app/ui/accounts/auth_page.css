@@ -1,0 +1,83 @@
+:root:has(.st-key-account_auth_page) :is(
+  [data-testid="stSidebar"], [data-testid="stExpandSidebarButton"]
+) {
+  display: none !important;
+}
+
+main#stMain:has(.st-key-account_auth_page) {
+  overflow-y: auto;
+}
+
+.block-container:has(.st-key-account_auth_page) {
+  height: auto;
+  min-height: 100dvh;
+}
+
+.st-key-account_auth_page .sc-brand {
+  margin: 0;
+}
+
+.st-key-account_auth_content {
+  margin: clamp(0.75rem, 4vh, 2.5rem) 0 1rem;
+}
+
+.st-key-account_auth_content [aria-label="lock icon"] {
+  font-size: 2rem;
+  color: var(--sc-teal);
+}
+
+.st-key-account_auth_content h1 {
+  color: var(--sc-ink);
+  font-size: clamp(1.6rem, 4vw, 2rem);
+  padding: 0;
+}
+
+.st-key-account_auth_content > [data-testid="stElementContainer"] p {
+  color: var(--sc-gray);
+}
+
+.st-key-account_auth_card {
+  border: 1px solid var(--sc-line);
+  border-radius: 1.25rem;
+  background: var(--sc-side);
+  padding: clamp(0.75rem, 3vw, 1.25rem);
+}
+
+.st-key-account_auth_card [role="tab"] {
+  flex: 1;
+  justify-content: center;
+  border-radius: 0.7rem;
+  padding: 0.65rem 0.5rem;
+}
+
+.st-key-account_auth_card [role="tab"][aria-selected="true"] {
+  background: var(--sc-pale);
+}
+
+.st-key-account_auth_card [data-testid="stForm"] {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.st-key-account_auth_card [data-testid="stAlertContainer"] {
+  background: color-mix(in srgb, currentColor 8%, var(--sc-side));
+}
+
+.st-key-account_auth_card [data-testid="stTextInputRootElement"] button {
+  color: var(--sc-ink);
+}
+
+.st-key-account_auth_card [data-testid="stFormSubmitButton"] button {
+  min-height: 2.8rem;
+  border-radius: 0.8rem;
+}
+
+.st-key-account_auth_card [data-testid="stFormSubmitButton"] button {
+  background: var(--sc-teal);
+  border-color: var(--sc-teal);
+}
+
+.st-key-account_auth_card [data-testid="stFormSubmitButton"] button p {
+  color: var(--sc-light);
+}
