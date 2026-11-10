@@ -10,7 +10,8 @@
 html,body,[class*="css"]{font-family:"Segoe UI",Inter,Arial,sans-serif!important}
 [data-testid="stAppViewContainer"]{background:var(--sc-light);color:var(--sc-ink)}
 /* Hide Streamlit chrome while retaining the sidebar reopen control. */
-[data-testid="stHeader"]{background:transparent;height:0;min-height:0;pointer-events:none}
+[data-testid="stHeader"]{background:transparent;height:0;min-height:0;pointer-events:none;
+ position:fixed!important;top:0!important;overflow:visible!important;z-index:1000000!important}
 [data-testid="stAppDeployButton"],[data-testid="stToolbarActions"],
 [data-testid="stMainMenu"]{display:none!important}
 [data-testid="stExpandSidebarButton"]{pointer-events:auto;background:#eaf5f1;border-radius:10px}
@@ -22,7 +23,12 @@ button[aria-label="Collapse sidebar"],[data-testid="stExpandSidebarButton"]{
 [data-testid="stSidebarContent"] button[aria-label="Collapse sidebar"]{
  position:absolute!important;left:auto!important;right:16px!important;
 }
-[data-testid="stExpandSidebarButton"]{left:12px!important}
+[data-testid="stExpandSidebarButton"]{
+ left:12px!important;top:12px!important;width:36px!important;height:32px!important;
+ border:1px solid var(--sc-line)!important;border-radius:10px!important;
+ background:var(--sc-side)!important;box-shadow:0 2px 7px #0000000d;
+ visibility:visible!important;opacity:1!important;
+}
 [data-testid="stSidebarCollapseButton"],button[aria-label="Collapse sidebar"]{
  visibility:visible!important;opacity:1!important;pointer-events:auto!important;
 }
@@ -357,9 +363,11 @@ button[kind="primary"]:hover{background:#04635e!important;border-color:#04635e!i
  box-sizing:border-box}
 .sc-workflow-dialog>h2{flex:0 0 auto;cursor:grab;touch-action:none;user-select:none;
  margin-bottom:0!important;padding:1rem .5rem .5rem 1.5rem!important}
+.sc-workflow-dialog>h2 *{cursor:grab;touch-action:none;user-select:none}
 .sc-workflow-dialog>h2:focus-visible{outline:2px solid #087f78;outline-offset:-5px;border-radius:12px}
 .sc-workflow-dialog>div{flex:1 1 auto;min-height:0;overflow-y:auto;
  padding-top:.25rem!important;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#a9cdbb transparent}
+.sc-workflow-dialog>div>[data-testid="stVerticalBlock"]{height:auto!important;min-height:0!important}
 .sc-workflow-dialog .sc-label{margin:0 0 .45rem}
 .sc-dialog-adjusting,.sc-dialog-adjusting *{user-select:none!important}
 .sc-dialog-adjusting .sc-dialog-drag-title{cursor:grabbing}

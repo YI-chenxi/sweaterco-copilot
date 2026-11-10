@@ -1,6 +1,7 @@
 /* Native widgets share the active palette; no geometry is changed here. */
 :root{color-scheme:__SCHEME__;--sc-control:__SURFACE__;--sc-control-soft:__SOFT__;
- --sc-copy-ink:__MUTED__;--sc-copy-hover:__ACTIVE__;--sc-copy-active:__ACCENT__;}
+ --sc-copy-ink:__MUTED__;--sc-copy-hover:__ACTIVE__;--sc-copy-active:__ACCENT__;
+ --sc-field-bg:__SOFT__;}
 [data-testid="stApp"], [data-testid="stAppViewContainer"], [data-testid="stMain"]{color:__INK__}
 [data-testid="stMarkdownContainer"], [data-testid="stWidgetLabel"],
 [data-testid="stText"], [data-testid="stHeading"]{color:__INK__}
@@ -9,8 +10,13 @@
 [data-testid="stSelectbox"] button,[data-testid="stTextInputRootElement"],
 [data-testid="stNumberInputContainer"], [data-testid="stDateInput"] [role="group"],
 [data-testid="stDateInput"] input,[data-testid="stTextInput"] input,
+[data-testid="stTimeInput"] input,[data-testid="stTimeInput"] [role="group"],
+[data-testid="stTimeInputTimeDisplay"],
+[data-testid="stTimeInputField"],[data-testid="stTimeInputField"]>div,
+[data-testid="stTimeInput"] button,
 [data-testid="stNumberInput"] input,[data-testid="stTextArea"] textarea{
  background:__SOFT__!important;color:__INK__!important;border-color:__LINE__!important}
+[data-testid="stTimeInput"] [role="spinbutton"]{color:__INK__!important}
 [data-testid="stSelectbox"] svg{color:__MUTED__}
 input::placeholder,textarea::placeholder{color:__MUTED__!important;opacity:1}
 [data-testid="stChatInput"]{background:__SOFT__!important}
@@ -67,6 +73,8 @@ button[aria-label="Collapse sidebar"] *, [data-testid="stExpandSidebarButton"] *
 [data-testid="stTooltipIcon"] button[aria-label^="Help"]{color:__MUTED__!important}
 
 [data-testid="stDialog"]{background:__BACKDROP__!important}
+[data-testid="stDialog"] [role="dialog"],
+[data-testid="stDialog"] [role="dialog"] h2{color:__INK__!important}
 .sc-workflow-dialog>button{color:__INK__!important}
 
 [data-testid="stDownloadButton"] button{background:__SOFT__!important;

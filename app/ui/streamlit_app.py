@@ -75,6 +75,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 css = Path(__file__).with_name("styles.css").read_text(encoding="utf-8")
+css += Path(__file__).with_name("proactive.css").read_text(encoding="utf-8")
 mode = theme_presentation.mode_name(st.session_state.get("ui_theme", "green"))
 css = theme_presentation.theme_styles(css, mode) + theme_presentation.native_styles(mode)
 css += Path(__file__).with_name("theme_controls.css").read_text(encoding="utf-8")
@@ -113,6 +114,9 @@ def _safe(value: Any) -> str:
 
 def _init_session() -> None:
     state = st.session_state
+    from app.ui.proactive.state import init_state
+
+    init_state(state)
     if "threads" not in state:
         state["threads"] = [{"id": 1, "title": "New conversation", "messages": []}]
     for thread in state["threads"]:
@@ -212,10 +216,17 @@ def _retry_translations() -> None:
 
 
 def _new_thread() -> None:
-    n = st.session_state["next_thread"]
-    st.session_state["next_thread"] = n + 1
-    st.session_state["threads"].insert(0, {"id": n, "title": "New conversation", "messages": []})
-    ensure_chat_session(st.session_state["threads"][0])
+    from app.ui.chat_state import reusable_empty_thread
+
+    st.session_state["ui_page"] = "copilot"
+    empty = reusable_empty_thread(st.session_state["threads"], st.session_state["active_thread"])
+    if empty is None:
+        n = st.session_state["next_thread"]
+        st.session_state["next_thread"] = n + 1
+        empty = {"id": n, "title": "New conversation", "messages": []}
+        st.session_state["threads"].insert(0, empty)
+    n = empty["id"]
+    ensure_chat_session(empty)
     st.session_state["active_thread"] = n
     st.session_state["workflow"] = None
     st.session_state["chat_prompt"] = ""
@@ -223,6 +234,7 @@ def _new_thread() -> None:
 
 
 def _select_thread(thread_id: int) -> None:
+    st.session_state["ui_page"] = "copilot"
     st.session_state["active_thread"] = thread_id
     st.session_state["workflow"] = None
     st.session_state["chat_prompt"] = ""
@@ -356,12 +368,28 @@ def _process_pending_chat() -> None:
     thread["selected_reply_id"] = thread["messages"][-1]["ui_reply_id"]
     thread["scroll_to_answer"] = thread["selected_reply_id"]
     thread["title"] = conversation_title(thread["messages"])
+    if isinstance(reply.metadata.get("proactive"), dict):
+        from app.ui.proactive.journey import capture_proposal, refresh_pending
+        from app.ui.proactive.state import bind_scope
+
+        application = getattr(agent_service(), "proactive_application", None)
+        bind_scope(st.session_state, application)
+        capture_proposal(reply.metadata["proactive"])
+        refresh_pending(application)
     collapse_after_response(st.session_state)
     st.rerun()
 
 
 def _set_theme(mode: str) -> None:
     st.session_state["ui_theme"] = theme_presentation.mode_name(mode)
+
+
+def _select_page(page: str) -> None:
+    st.session_state["ui_page"] = page
+    st.session_state["workflow"] = None
+    st.session_state.get("proactive_ui", {}).pop("return_target", None)
+    st.session_state.get("proactive_ui", {}).pop("preparing_request", None)
+    st.session_state.get("proactive_ui", {}).pop("pending_decision", None)
 
 
 def _nav_sidebar(chat_ready: bool) -> None:
@@ -378,21 +406,31 @@ def _nav_sidebar(chat_ready: bool) -> None:
             type="primary",
             on_click=_new_thread,
         )
-        navigation = (
-            '<div class="sc-side-title">' + _t("MAIN NAVIGATION") + "</div>"
-            '<div class="sc-nav-active">◈ &nbsp; ' + _t("AI Co-Pilot") + "</div>"
+        from app.ui.proactive.locale import tr as proactive_tr
+
+        st.markdown(
+            '<div class="sc-side-title">' + _t("MAIN NAVIGATION") + "</div>", unsafe_allow_html=True
         )
-        for icon, label in (
-            ("▥", "Dashboards"),
-            ("▤", "Data Hub"),
-            ("▧", "Reports"),
-            ("⚙", "Integrations"),
+        for page, icon, label in (
+            ("copilot", "forum", "AI Co-Pilot"),
+            ("briefings", "wb_sunny", "Morning Briefing"),
+            ("watches", "notifications", "Watches & Alerts"),
+            ("actions", "fact_check", "Actions"),
         ):
-            navigation += (
-                f'<div class="sc-nav-future">{icon} &nbsp; {_t(label)} '
-                f"<span>{_t('Planned')}</span></div>"
+            active = st.session_state["ui_page"] == page
+            count = st.session_state.get("proactive_ui", {}).get("pending_count")
+            shown_label = proactive_tr(label, st.session_state)
+            if page == "actions" and isinstance(count, int) and count > 0:
+                shown_label += " · " + str(count)
+            st.button(
+                shown_label,
+                icon=f":material/{icon}:",
+                key="pa_nav_" + page,
+                on_click=_select_page,
+                args=(page,),
+                type="primary" if active else "secondary",
+                use_container_width=True,
             )
-        st.markdown(navigation, unsafe_allow_html=True)
         st.markdown(
             '<div class="sc-side-rule"></div><div class="sc-side-title">'
             + _t("RECENT CHATS")
@@ -524,7 +562,6 @@ def _workflow_launchpad() -> None:
         st.button(
             "▴ " + _t("Collapse"),
             key="collapse_workflows",
-            use_container_width=True,
             on_click=_toggle_workflow_panel,
         )
     cols = st.columns(4, gap="small")
@@ -532,7 +569,7 @@ def _workflow_launchpad() -> None:
     for col, label, icon in zip(cols, WORKFLOWS, icons, strict=True):
         with col:
             st.button(
-                f"{icon}  {_t(label)}",
+                f"{icon}  {_t('Instant Briefing' if label == 'Morning Briefing' else label)}",
                 key="center_" + label.replace(" ", "_"),
                 type="primary" if st.session_state["workflow"] == label else "secondary",
                 use_container_width=True,
@@ -572,7 +609,7 @@ def _structured_helper() -> None:
     saved = _thread().setdefault("workflow_inputs", {}).setdefault(flow, {})
     prefix = f"wf_{_thread()['id']}_{flow.replace(' ', '_')}"
     st.markdown(
-        '<div class="sc-label">'
+        '<div class="sc-label"><span class="sc-resizable-dialog-marker"></span>'
         + _t("INTERPRETED REQUEST")
         + " <span>"
         + _t("Review explicit fields before running")
@@ -672,6 +709,11 @@ def _toggle_analysis(identity: str) -> None:
 
 
 def _reply_view(reply: AgentReply, identity: str) -> None:
+    if isinstance(reply.metadata.get("proactive"), dict):
+        from app.ui.proactive.pages import render_chat_result
+
+        render_chat_result(reply.metadata["proactive"], identity)
+        return
     from app.ui.result_cards import card_summary
 
     _, _, tone, conclusion, metrics = card_summary(
@@ -1048,11 +1090,43 @@ def _analysis_body(reply: AgentReply | None, reply_id: str | None) -> None:
         )
 
 
+def _proactive_details(details) -> None:
+    from app.ui.proactive.pages import render_context, t
+
+    with st.container(key="analysis_header"):
+        with st.container(key="analysis_heading"):
+            st.markdown(
+                '<div class="sc-details-title">' + _t("ANALYSIS DETAILS") + "</div>",
+                unsafe_allow_html=True,
+            )
+            st.button(
+                _t("Hide"),
+                icon=":material/chevron_right:",
+                key="hide_analysis",
+                on_click=_set_analysis_open,
+                args=(False,),
+            )
+        st.caption(t("Selected item"))
+    with _scroll_container("analysis_scroll_proactive", 500):
+        render_context(details, _analysis_body)
+
+
 def main() -> None:
     _init_session()
     ready = _chat_ready()
-    _prepare_history(ready)
+    page = st.session_state["ui_page"]
+    if page == "copilot":
+        _prepare_history(ready)
     _nav_sidebar(ready)
+    if not st.session_state["analysis_open"]:
+        st.button(
+            _t("Show analysis panel"),
+            icon=":material/keyboard_double_arrow_left:",
+            key="show_analysis",
+            help=_t("Show analysis panel"),
+            on_click=_set_analysis_open,
+            args=(True,),
+        )
     with st.container(key="workspace"):
         columns = st.columns(
             [3.25, 1.55] if st.session_state["analysis_open"] else [1],
@@ -1061,29 +1135,56 @@ def main() -> None:
         )
         with columns[0], st.container(key="conversation_surface"):
             with _scroll_container("conversation_scroll", 500):
-                if not st.session_state["analysis_open"]:
-                    st.button(
-                        _t("Show analysis panel"),
-                        icon=":material/chevron_left:",
-                        key="show_analysis",
-                        on_click=_set_analysis_open,
-                        args=(True,),
-                    )
-                _header()
-                _workflow_launchpad()
-                _conversation()
-                _process_pending_chat()
-                _request_context()
-            _composer()
+                if page == "copilot":
+                    _header()
+                    # Normal document flow until this launcher reaches the top.
+                    with st.container(key="workflow_dock"):
+                        _workflow_launchpad()
+                    _conversation()
+                    _process_pending_chat()
+                    _request_context()
+                else:
+                    from app.ui.proactive.pages import render_page
+
+                    try:
+                        application = getattr(agent_service(), "proactive_application", None)
+                    except Exception:
+                        application = None
+                    details = render_page(page, application, guided_orchestrator())
+            if page == "copilot":
+                _composer()
         if st.session_state["analysis_open"]:
             with columns[1], st.container(key="analysis_workspace"):
-                _analysis_fragment()
+                if page == "copilot":
+                    _analysis_fragment()
+                else:
+                    _proactive_details(details)
     from app.ui.answer_scroll import consume_scroll_target, scroll_script
 
-    target = consume_scroll_target(_thread())
+    target = consume_scroll_target(_thread()) if page == "copilot" else None
     if target:
         st.html(scroll_script(target), unsafe_allow_javascript=True)
+    if page == "copilot":
+        from app.ui.workflow_dock import mount_workflow_dock
+
+        mount_workflow_dock(
+            st.session_state["active_thread"], st.session_state["workflow_panel_expanded"]
+        )
     _workflow_dialog()
+    from app.ui.proactive.navigation import mount_navigation
+
+    mount_navigation()
+    if (
+        st.session_state.get("proactive_ui", {}).get("review_dialog")
+        or st.session_state.get("proactive_ui", {}).get("input_error")
+    ) and not st.session_state["workflow"]:
+        from app.ui.proactive.journey import render_review_dialog
+
+        try:
+            application = getattr(agent_service(), "proactive_application", None)
+        except Exception:
+            application = None
+        render_review_dialog(application)
 
 
 if __name__ == "__main__":

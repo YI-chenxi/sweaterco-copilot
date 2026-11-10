@@ -10,6 +10,7 @@ from typing import Any
 HISTORICAL_COMPARISON = "Recorded production performance versus the established baseline."
 
 ZH = {
+    "Instant Briefing": "即时晨报",
     "Daily mode": "日常模式",
     "Eye comfort mode": "护眼模式",
     "Night mode": "黑夜模式",

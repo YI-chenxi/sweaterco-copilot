@@ -1,4 +1,16 @@
 /* Bright satin silver: neutral reflected light rather than a flat grey fill. */
+:root{
+ --sc-nav-selected:linear-gradient(120deg,#ffffff 0%,#e8e8e8 55%,#f9f9f9 100%);
+ --sc-nav-selected-line:#c3c3c3;--sc-nav-text:#303030;
+ --sc-control-hover:linear-gradient(145deg,#ffffff,#ededed);
+ --sc-control-hover-line:#aaaaaa;
+ --sc-control-shadow:inset 0 2px 2px #ffffff,0 7px 16px #0000001a;
+ --sc-control-pressed-shadow:inset 0 2px 5px #00000025,0 2px 6px #00000012;
+ --sc-dock-bg:#f8f8f8;
+ --sc-create-bg:#ffffff;
+ --sc-create-ink:#303030;--sc-create-line:#aaaaaa;
+ --sc-create-shadow:0 2px 6px #0000000d;
+}
 [data-testid="stAppViewContainer"]{
  background:linear-gradient(125deg,#fafafa 0%,#f1f1f1 42%,#f8f8f8 100%);
 }
