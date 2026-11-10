@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 from uuid import uuid4
@@ -164,9 +165,24 @@ def _render_threads(
     language: str,
     open_thread: Callable[[str, str], OpenedConversation | ThreadView],
     verify_identity: Callable[[], None],
+    *,
+    compact=False,
+    new_chat_panel=None,
+    reuse_current=None,
 ) -> OpenedConversation | ThreadView | None:
     prefix = history.widget_prefix
-    if st.button(_label("New Chat", language), key=f"{prefix}new"):
+    with (new_chat_panel or nullcontext)():
+        create = st.button(
+            _label("New Chat", language),
+            key=f"{prefix}new",
+            type="primary" if compact else "secondary",
+            use_container_width=compact,
+        )
+    if create:
+        if compact:
+            st.session_state["ui_page"] = "copilot"
+        if reuse_current is not None and history.opened is not None and reuse_current():
+            st.rerun()
         history.select(None)
         with st.spinner(_label("Creating chat…", language)):
             verify_identity()
@@ -179,26 +195,48 @@ def _render_threads(
         st.rerun()
 
     if not threads:
-        st.info(_label("No conversations yet.", language))
+        (st.caption if compact else st.info)(_label("No conversations yet.", language))
 
     by_id = {thread.thread_id: thread for thread in threads}
     if history.opened is not None and history.opened.thread_id not in by_id:
         history.select(None)
-    for thread in threads:
-        title, action = st.columns([3, 2])
-        title.text(thread.title)
-        if action.button(_label("Open Chat", language), key=f"{prefix}{thread.thread_id}_open"):
-            history.select(None)
-            with st.spinner(_label("Opening chat…", language)):
-                verify_identity()
-                opened = open_thread(handle, thread.thread_id)
-                verify_identity()
-                history.select(opened)
+    with st.container(height=250, border=False, key="recent_chats") if compact else nullcontext():
+        for thread in threads:
+            if compact:
+                selected = (
+                    history.opened is not None and history.opened.thread_id == thread.thread_id
+                )
+                clicked = st.button(
+                    ("● " if selected else "◦ ") + thread.title,
+                    key=f"{prefix}{thread.thread_id}_open",
+                    help=thread.title,
+                    use_container_width=True,
+                )
+            else:
+                title, action = st.columns([3, 2])
+                title.text(thread.title)
+                clicked = action.button(
+                    _label("Open Chat", language), key=f"{prefix}{thread.thread_id}_open"
+                )
+            if clicked:
+                history.select(None)
+                with st.spinner(_label("Opening chat…", language)):
+                    verify_identity()
+                    opened = open_thread(handle, thread.thread_id)
+                    verify_identity()
+                    history.select(opened)
+                if compact:
+                    st.session_state["ui_page"] = "copilot"
 
     if history.opened is not None:
-        _manage_open_chat(
-            backend, handle, history, by_id[history.opened.thread_id], language, verify_identity
-        )
+        with (
+            st.expander("Manage chat" if language == "en" else "管理聊天")
+            if compact
+            else nullcontext()
+        ):
+            _manage_open_chat(
+                backend, handle, history, by_id[history.opened.thread_id], language, verify_identity
+            )
     return history.opened
 
 
@@ -209,10 +247,21 @@ def render_recent_chats(
     expected_owner: Principal | None = None,
     open_thread: Callable[[str, str], OpenedConversation | ThreadView] | None = None,
     on_session_error: Callable[[], None] | None = None,
+    compact=False,
+    new_chat_panel=None,
+    reuse_current=None,
 ) -> OpenedConversation | ThreadView | None:
     """Render personal threads, optionally opening them through the workspace adapter."""
     language = shared_language(st.session_state)
-    st.subheader(_label("Recent Chats", language))
+    if compact:
+        st.markdown(
+            '<div class="sc-side-rule"></div><div class="sc-side-title">'
+            + ("RECENT CHATS" if language == "en" else "最近会话")
+            + "</div>",
+            unsafe_allow_html=True,
+        )
+    else:
+        st.subheader(_label("Recent Chats", language))
 
     try:
         handle = session.read() if session is not None else None
@@ -273,6 +322,9 @@ def render_recent_chats(
                 language,
                 open_thread or backend.open_thread,
                 verify_identity,
+                compact=compact,
+                new_chat_panel=new_chat_panel,
+                reuse_current=reuse_current,
             )
     except Exception as error:
         code = _error_code(error)

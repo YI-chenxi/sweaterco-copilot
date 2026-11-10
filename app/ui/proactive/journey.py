@@ -34,7 +34,7 @@ def refresh_pending(application):
     model()["pending_count"] = len(result["data"].get("items", [])) if result.get("ok") else None
 
 
-def capture_proposal(result, slot=None, payload=None):
+def capture_proposal(result, slot=None, payload=None, *, thread_id=None):
     """Queue a modal only for an explicit new submission, never while replaying history."""
     state = model()
     state["notice_page"] = st.session_state["ui_page"]
@@ -62,7 +62,9 @@ def capture_proposal(result, slot=None, payload=None):
         {
             "page": page,
             "section": state["drafts"].get(page + "_section"),
-            "thread": st.session_state.get("active_thread") if page == "copilot" else None,
+            "thread": (thread_id or st.session_state.get("active_thread"))
+            if page == "copilot"
+            else None,
             "slot": slot,
             "timezone": st.session_state.get("pa_field_watch_zone") if page == "watches" else None,
         },
@@ -107,7 +109,25 @@ def go_back(identifier, item, focus=False):
     selected = target if focus else origin
     page = selected["page"]
     if page == "copilot" and origin.get("thread"):
-        if any(thread["id"] == origin["thread"] for thread in st.session_state.get("threads", [])):
+        from app.ui.accounts.workspace import current_workspace
+
+        workspace = current_workspace()
+        if workspace is not None:
+            try:
+                handle = workspace.current_handle()
+                if not handle:
+                    raise ValueError()
+                opened = workspace.chat.open_thread(handle, origin["thread"])
+                history = st.session_state.get("account_recent_chats")
+                if history is not None:
+                    history.select(opened)
+                workspace.sync_view()
+            except Exception:
+                page = target["page"]
+                selected = target
+        elif any(
+            thread["id"] == origin["thread"] for thread in st.session_state.get("threads", [])
+        ):
             st.session_state["active_thread"] = origin["thread"]
         else:
             page = target["page"]

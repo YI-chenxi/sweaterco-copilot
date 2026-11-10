@@ -36,6 +36,9 @@ _CONTEXT_KEYS = (
     "handled_recordings",
     "chat_notice",
     "text_translations",
+    "proactive_ui",
+    "proactive_scope",
+    "ui_page",
 )
 _LABELS = {
     "Account service is not configured. Contact the app maintainer.": (
@@ -85,6 +88,7 @@ class AccountTestMode:
 
     backend: AccountBackend
     session: BrowserSession
+    chat_ready: bool = False
 
 
 class AccountWorkspace:
@@ -95,6 +99,8 @@ class AccountWorkspace:
         self.owner: Principal | None = None
         self.scope = uuid4().hex
         self.thread = {"id": None, "messages": []}
+        self.thread_drafts: dict[str, dict[str, Any]] = {}
+        self.proactive_application = None
         self._snapshot = None
         self.preview: tuple[str, dict[str, Any], AgentReply, str] | None = None
         self.notice: str | None = None
@@ -119,15 +125,22 @@ class AccountWorkspace:
         for key in _CONTEXT_KEYS:
             st.session_state.pop(key, None)
         self.thread = {"id": None, "messages": []}
+        self.thread_drafts = {}
+        self.proactive_application = None
+        for key in list(st.session_state):
+            if key.startswith("pa_field_"):
+                st.session_state.pop(key, None)
         self._snapshot = None
         self.preview = None
         self.notice = None
 
-    def render_auth(self, *, signed_in: PanelContext, signed_out: PanelContext) -> bool:
+    def render_auth(
+        self, *, signed_in: PanelContext, signed_out: PanelContext, show_notice: bool = True
+    ) -> bool:
         @contextmanager
         def account_sidebar():
             with signed_in():
-                if isinstance(self.mode, AccountTestMode):
+                if show_notice and isinstance(self.mode, AccountTestMode):
                     st.info(label("Offline account test mode. No real login or cloud storage."))
                 yield
 
@@ -141,6 +154,16 @@ class AccountWorkspace:
             )
             is not None
         )
+
+    def validate_owner(self) -> bool:
+        """Validate the request before private rendering without adding another UI panel."""
+        try:
+            handle = self.mode.session.read() if self.mode.session is not None else None
+            owner = self.backend.current_user(handle) if handle else None
+        except Exception:
+            owner = None
+        self.sync_owner(owner)
+        return owner is not None
 
     def current_handle(self) -> str | None:
         """Check the current request before callbacks or private content render."""
@@ -165,8 +188,10 @@ class AccountWorkspace:
         self._snapshot = view
         thread_id = view.thread_id if view is not None else None
         if self.thread["id"] != thread_id:
+            if self.thread["id"] is not None:
+                self.thread_drafts[self.thread["id"]] = self.thread
             st.session_state.pop(f"follow_bridge_{self.thread['id']}", None)
-            self.thread = {"id": thread_id, "messages": []}
+            self.thread = self.thread_drafts.get(thread_id, {"id": thread_id, "messages": []})
             st.session_state["workflow"] = None
         self.thread["messages"] = (
             [

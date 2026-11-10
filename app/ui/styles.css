@@ -294,6 +294,8 @@ button[kind="primary"]:hover{background:#04635e!important;border-color:#04635e!i
 [data-testid="stChatInput"]:hover::after{border-color:#3a9b93}
 [data-testid="stChatInput"]:focus-within{box-shadow:0 0 0 4px #0a9c8e24,0 8px 25px #123d5412}
 [data-testid="stChatInput"]:focus-within::after{border:2px solid #087f78}
+[data-testid="stChatInputMicButton"]{color:var(--sc-ink)!important}
+[data-testid="stChatInputMicButton"] svg{color:inherit!important;fill:currentColor!important}
 [data-testid="stChatInputTextArea"]{background:transparent!important;min-height:2.3rem}
 [data-testid="stChatInputSubmitButton"]{border-radius:50%!important;transition:background .18s ease}
 [data-testid="stChatInputSubmitButton"]:not(:disabled){background:#087f78!important;color:#fff!important}
@@ -416,6 +418,18 @@ button[kind="primary"]:hover{background:#04635e!important;border-color:#04635e!i
 .st-key-follow_evidence [data-testid="stWidgetLabel"]{display:flex;align-items:center;min-height:2rem}
 .st-key-follow_evidence [data-testid="stWidgetLabel"] p{margin:0!important}
 /* A generous close target sits above resize handles and never becomes a drag surface. */
+.st-key-account_menu{border-top:1px solid var(--sc-line);padding-top:.5rem;gap:.5rem!important}
+.st-key-account_menu>[data-testid="stElementContainer"]:has(h3){display:none!important}
+.st-key-account_menu [data-testid="stText"]{font-size:.75rem;color:var(--sc-gray);overflow-wrap:anywhere}
+.st-key-account_menu button{min-height:2rem!important;padding:.2rem .5rem!important;white-space:nowrap}
+.st-key-account_menu button p{font-size:.75rem!important}
+/* The personal-history adapter adds nested containers; let only its list scroll. */
+.st-key-sidebar_layout:has(.st-key-account_menu) [data-testid="stLayoutWrapper"]:has(.st-key-recent_chats){
+ flex:1 1 0!important;height:0!important;min-height:0!important;overflow:hidden;
+}
+.st-key-sidebar_layout:has(.st-key-account_menu) [data-testid="stLayoutWrapper"]:has(.st-key-recent_chats)>[data-testid="stVerticalBlock"]{
+ flex:1 1 auto!important;height:100%!important;min-height:0!important;
+}
 .sc-workflow-dialog>button{position:absolute!important;top:8px!important;right:8px!important;
  width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important;
  display:flex!important;align-items:center;justify-content:center;border-radius:50%!important;

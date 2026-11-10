@@ -27,6 +27,7 @@ from tests.accounts.ui.test_account_chat_integration import (
     _open,
     _run,
     _send,
+    _visible_labels,
     _workspace,
 )
 from tests.accounts.ui.test_persistent_chat import _TEXT
@@ -277,7 +278,7 @@ def test_session_transition_clears_private_workspace(
         browser.set_cookie(bob.cookie)
 
     _run(app)
-    assert "Alice private thread" not in [item.value for item in app.text]
+    assert "Alice private thread" not in _visible_labels(app)
     assert _TEXT not in _html(app)
     assert not app.chat_message and not app.get("download_button")
     assert workspace.chat.selected is None and workspace.chat.submission is None
@@ -285,7 +286,7 @@ def test_session_transition_clears_private_workspace(
     assert agent.calls == 1
     if transition == "switch":
         assert workspace.owner.user_id == bob.user_id
-        assert "Bob private thread" in [item.value for item in app.text]
+        assert "Bob private thread" in _visible_labels(app)
         with pytest.raises(ConversationError) as error:
             mode.backend.open_thread(bob.cookie.value, thread.thread_id)
         assert error.value.code in {"FORBIDDEN", "NOT_FOUND"}

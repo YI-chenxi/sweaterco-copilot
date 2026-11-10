@@ -103,6 +103,10 @@ def _html(app):
     return "\n".join(element.proto.body for element in app.get("html"))
 
 
+def _visible_labels(app):
+    return [item.value for item in app.text] + [b.label.lstrip("●◦ ") for b in app.button]
+
+
 def _send(app, text):
     app.chat_input[0].set_value(text)
     return _run(app)
@@ -139,8 +143,8 @@ def test_unauthenticated_registration_and_login_gate_the_workspace(account):
     assert not app.tabs
     assert not any("Welcome back" in item.value for item in app.main.markdown)
     assert app.chat_input[0].proto.disabled
-    assert "Recent Chats" in [header.value for header in app.subheader]
-    assert "Alice private thread" in [text.value for text in app.text]
+    assert any("RECENT CHATS" in item.value for item in app.markdown)
+    assert any("Alice private thread" in button.label for button in app.button)
 
 
 @pytest.mark.parametrize(
@@ -190,9 +194,9 @@ def test_account_sidebar_and_composer_use_existing_language_and_theme(account, l
     assert app.session_state["ui_theme"] == theme
     assert all(app.button(key=f"theme_{name}") for name in ("day", "green", "night"))
     assert app.selectbox(key="ui_language").value == language
-    assert ("Recent Chats" if language == "en" else "最近聊天") in [
-        header.value for header in app.subheader
-    ]
+    assert any(
+        ("RECENT CHATS" if language == "en" else "最近会话") in item.value for item in app.markdown
+    )
     assert len(app.chat_input) == 1
     assert app.chat_input[0].proto.disabled
 
@@ -332,13 +336,13 @@ def test_identity_transition_clears_history_evidence_and_account_drafts(account,
         app.chat_input[0].set_value("old account event")
         browser.handle = "bob"
         _run(app)
-        assert "Bob private thread" in [text.value for text in app.text]
+        assert "Bob private thread" in _visible_labels(app)
         _open(app, bob_thread)
 
     if transition != "switch":
         assert [tab.label for tab in app.main.tabs] == ["Sign in", "Register"]
         assert any("Welcome back" in item.value for item in app.main.markdown)
-    assert "Alice private thread" not in [text.value for text in app.text]
+    assert "Alice private thread" not in _visible_labels(app)
     assert _TEXT not in _html(app)
     assert not any("orders.csv" in element.value for element in app.caption)
     assert composer_key not in app.session_state
@@ -446,8 +450,8 @@ def test_identity_change_during_sidebar_hides_all_private_data(
         assert backend.reads == reads_before + [("alice", thread_id)]
     else:
         assert backend.reads == reads_before
-    assert "Alice private thread" not in [item.value for item in app.text]
-    assert "Bob private thread" not in [item.value for item in app.text]
+    assert "Alice private thread" not in _visible_labels(app)
+    assert "Bob private thread" not in _visible_labels(app)
     assert not any("Alice private username" in item.value for item in app.text)
     assert "account_display_identity" not in app.session_state
     assert _TEXT not in _html(app) and not app.chat_message and not app.chat_input
@@ -461,7 +465,7 @@ def test_identity_change_during_sidebar_hides_all_private_data(
     backend.on_read = None
     browser.handle = "bob"
     _run(app)
-    assert [item.value for item in app.text if "private thread" in item.value] == [
+    assert [value for value in _visible_labels(app) if "private thread" in value] == [
         "Bob private thread"
     ]
     _open(app, bob_thread)
