@@ -1,5 +1,33 @@
 # Account UI
 
+## Login-only deployment on Streamlit Community Cloud
+
+Keep the existing app on `integration/intent-enhancement` with entrypoint
+`app/ui/streamlit_app.py`. After this change is merged, add the following
+top-level values to that app's Secrets alongside the existing model settings:
+
+```toml
+ACCOUNT_LOGIN_ONLY = true
+DATABASE_URL = "existing PostgreSQL connection URL"
+ACCOUNT_SECRET = "existing stable account secret, at least 32 UTF-8 bytes"
+```
+
+Use the database where the demo accounts were created and migrations 001/002
+are already applied. Restart the app and sign in with a pre-provisioned
+account. In an incognito window, verify that only sign-in is offered, run a
+Quick Workflow, close the window, and sign in again to recover its result
+from Recent Chats. A second account should have a separate history.
+
+The P2 login handle lives in the server-side Streamlit session. A fresh page
+session can require sign-in again. Saved chats and their Evidence still live
+in PostgreSQL. This deployment does not need `ACCOUNT_PUBLIC_URL` or the
+Render cookie endpoint. If `ACCOUNT_LOGIN_ONLY` is omitted, the original
+anonymous mode remains available. Enabling it without valid database
+configuration keeps the workspace closed. This mode reuses a bounded pool
+of PostgreSQL connections across requests.
+
+## Earlier UI handoff
+
 ## Phase 1 authentication
 
 `render_account_panel(backend, session)` in `panels.py` renders registration,

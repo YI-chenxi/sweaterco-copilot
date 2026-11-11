@@ -156,6 +156,9 @@ class AccountWorkspace:
                 on_identity=self.sync_owner,
                 signed_in=account_sidebar,
                 signed_out=signed_out,
+                allow_registration=(
+                    not isinstance(self.mode, RealAccountMode) or self.mode.allow_registration
+                ),
             )
             is not None
         )

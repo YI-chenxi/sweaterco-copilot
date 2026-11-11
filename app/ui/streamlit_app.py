@@ -1703,4 +1703,11 @@ def main(
 
 
 if __name__ == "__main__":
-    main()
+    from app.ui.accounts.streamlit_login import StreamlitTurnAgent, streamlit_login_mode
+
+    main(
+        real_account_mode=streamlit_login_mode(
+            agent=StreamlitTurnAgent(agent_service, _proactive_application),
+            chat_ready=_chat_ready,
+        )
+    )

@@ -2,6 +2,7 @@
 
 from datetime import datetime, timedelta, timezone
 from functools import partial
+from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
@@ -143,6 +144,69 @@ def _register_and_login(mode, browser, username="alice"):
     login = mode.backend.login(username, _PASSWORD)
     browser.set_cookie(login.cookie)
     return login
+
+
+def test_original_streamlit_entrypoint_logs_in_without_cookie_and_recovers_history(
+    dependencies,
+):
+    backend = _init(FakeAgent()).backend
+    backend.register("alice", _PASSWORD)
+    backend.register("bob", _PASSWORD)
+
+    def fresh_page():
+        entrypoint = Path(__file__).resolve().parents[3] / "app/ui/streamlit_app.py"
+        app = AppTest.from_file(str(entrypoint), default_timeout=20)
+        app.secrets.update(
+            ACCOUNT_LOGIN_ONLY=True,
+            DATABASE_URL=_FAKE_DATABASE,
+            ACCOUNT_SECRET=_FAKE_SECRET,
+        )
+        app.session_state["ui_language"] = "en"
+        return _run(app)
+
+    app = fresh_page()
+    assert not app.tabs and not app.chat_input
+    assert not any(button.label == "Register" for button in app.button)
+    _form(app, "login", "alice", "wrong offline password")
+    assert app.error[0].value == "The username or password is incorrect."
+    _form(app, "login", "alice")
+    for page in ("Morning Briefing", "Watches & Alerts", "Actions", "AI Co-Pilot"):
+        _click(app, page)
+        assert _workspace(app).owner is not None
+    app.button(key="center_Order_Status").click()
+    _run(app)
+    _click(app, "Run analysis →")
+    thread = _workspace(app).chat.selected
+    assert thread.revision == 1 and len(thread.messages) == 2
+
+    # Simulate closing the tab and logging in again with a fresh server session.
+    reopened = fresh_page()
+    assert not reopened.chat_input
+    _form(reopened, "login", "alice")
+    _open(reopened, thread.thread_id)
+    recovered = _workspace(reopened).chat.selected
+    assert recovered.thread_id == thread.thread_id
+    assert recovered.messages == thread.messages
+    handle = _workspace(reopened).mode.session.read()
+    _click(reopened, "Sign out")
+    assert not reopened.chat_input and _workspace(reopened).mode.session.read() is None
+    with pytest.raises(ConversationError):
+        backend.current_user(handle)
+
+    _form(reopened, "login", "bob")
+    workspace = _workspace(reopened)
+    assert thread.thread_id not in {
+        item.thread_id for item in backend.list_threads(workspace.current_handle())
+    }
+
+
+def test_login_only_with_missing_database_configuration_keeps_workspace_closed():
+    entrypoint = Path(__file__).resolve().parents[3] / "app/ui/streamlit_app.py"
+    app = AppTest.from_file(str(entrypoint))
+    app.secrets.update(ACCOUNT_LOGIN_ONLY=True, DATABASE_URL="")
+    _run(app)
+    assert app.error[0].value == "Account service is not configured. Contact the app maintainer."
+    assert not app.chat_input
 
 
 def test_repeated_new_conversation_reuses_the_same_uuid_with_actual_p4_services(account):

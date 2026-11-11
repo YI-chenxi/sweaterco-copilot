@@ -62,7 +62,7 @@ _ERROR_LABELS = {
 
 
 class BrowserSession(Protocol):
-    """Server-side cookie transport supplied by the host, separate from account logic."""
+    """Server-side login handle transport supplied by the host."""
 
     def read(self) -> str | None:
         """Read the current browser session handle for this request."""
@@ -153,26 +153,35 @@ def _credentials(form: str, action: str, language: str) -> tuple[str, str] | Non
     return username, password
 
 
-def _render_signed_out(backend: AccountBackend, session: BrowserSession, language: str) -> None:
+def _render_login(backend: AccountBackend, session: BrowserSession, language: str) -> None:
+    credentials = _credentials("login", "Sign in", language)
+    if credentials is None:
+        return
+    try:
+        login = backend.login(*credentials)
+    except Exception as error:
+        _show_error(error, language)
+        return
+    try:
+        session.set_cookie(login.cookie)
+    except Exception:
+        st.error(_label("Could not update the browser session. Please try again.", language))
+        return
+    principal = Principal(login.user_id, login.workspace_id, login.session_id)
+    st.session_state[_DISPLAY_IDENTITY] = (principal, login.username)
+    st.rerun()
+
+
+def _render_signed_out(
+    backend: AccountBackend, session: BrowserSession, language: str, *, allow_registration: bool
+) -> None:
+    if not allow_registration:
+        _render_login(backend, session, language)
+        return
+
     login_tab, register_tab = st.tabs([_label("Sign in", language), _label("Register", language)])
     with login_tab:
-        credentials = _credentials("login", "Sign in", language)
-        if credentials is not None:
-            try:
-                login = backend.login(*credentials)
-            except Exception as error:
-                _show_error(error, language)
-            else:
-                try:
-                    session.set_cookie(login.cookie)
-                except Exception:
-                    st.error(
-                        _label("Could not update the browser session. Please try again.", language)
-                    )
-                    return
-                principal = Principal(login.user_id, login.workspace_id, login.session_id)
-                st.session_state[_DISPLAY_IDENTITY] = (principal, login.username)
-                st.rerun()
+        _render_login(backend, session, language)
 
     with register_tab:
         credentials = _credentials("register", "Register", language)
@@ -247,6 +256,7 @@ def render_account_panel(
     on_identity: Callable[[Principal | None], None] | None = None,
     signed_in: PanelContext | None = None,
     signed_out: PanelContext | None = None,
+    allow_registration: bool = True,
 ) -> Principal | None:
     """Render controls and return only the identity verified by the backend."""
     language = shared_language(st.session_state)
@@ -288,5 +298,5 @@ def render_account_panel(
     with out_panel():
         if session_error is not None:
             _show_error(session_error, language)
-        _render_signed_out(backend, session, language)
+        _render_signed_out(backend, session, language, allow_registration=allow_registration)
     return None

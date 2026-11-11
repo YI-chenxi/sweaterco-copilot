@@ -20,6 +20,8 @@ class RealAccountMode:
 
     backend: AccountBackend | None = field(repr=False)
     session: BrowserSession | None = field(default=None, repr=False)
+    chat_ready: bool = field(default=False, compare=False)
+    allow_registration: bool = True
 
 
 def initialize_real_account_mode(
@@ -27,6 +29,7 @@ def initialize_real_account_mode(
     agent: TurnAgent,
     secrets: Mapping[str, object],
     session: BrowserSession | None = None,
+    reuse_connections: bool = False,
 ) -> RealAccountMode:
     """Compose P4 using the caller's settings without loading secrets or opening a DB.
 
@@ -34,7 +37,9 @@ def initialize_real_account_mode(
     main page can show a safe error and keep the private workspace closed.
     """
     try:
-        backend = build_account_backend(agent=agent, secrets=secrets)
+        backend = build_account_backend(
+            agent=agent, secrets=secrets, reuse_connections=reuse_connections
+        )
     except ConversationError:
         return RealAccountMode(backend=None)
     return RealAccountMode(backend, session)

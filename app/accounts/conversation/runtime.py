@@ -152,7 +152,7 @@ def compose_account_backend(*, agent, connection_factory, account_secret: bytes)
         raise ConversationError("CONFIGURATION_ERROR") from None
 
 
-def build_account_backend(*, agent, secrets) -> AccountBackend:
+def build_account_backend(*, agent, secrets, reuse_connections=False) -> AccountBackend:
     """P5 calls with secrets=st.secrets; DATABASE_URL never appears in returned errors."""
     try:
         database_url = secrets["DATABASE_URL"]
@@ -165,7 +165,11 @@ def build_account_backend(*, agent, secrets) -> AccountBackend:
             raise ValueError()
         from app.accounts.storage.database import create_connection_factory
 
-        factory = create_connection_factory(database_url)
+        factory = (
+            create_connection_factory(database_url, reuse=True)
+            if reuse_connections
+            else create_connection_factory(database_url)
+        )
         return compose_account_backend(
             agent=agent,
             connection_factory=factory,
