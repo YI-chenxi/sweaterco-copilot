@@ -20,6 +20,7 @@ class RealAccountMode:
 
     backend: AccountBackend | None = field(repr=False)
     session: BrowserSession | None = field(default=None, repr=False)
+    chat_ready: bool = False
 
 
 def initialize_real_account_mode(

@@ -1,5 +1,9 @@
 # Account UI
 
+For the new HTTP cookie transport and the real account entry point, see the
+[cloud deployment guide](../../../docs/account_cloud_deployment.md).
+The phase notes below describe the original P5 integration and its legacy entry.
+
 ## Phase 1 authentication
 
 `render_account_panel(backend, session)` in `panels.py` renders registration,
