@@ -4,3 +4,4 @@ python-dotenv>=1.0,<2
 openai>=2,<3
 argon2-cffi>=23,<27
 psycopg[binary]>=3.2,<4
+psycopg_pool>=3.2,<4
