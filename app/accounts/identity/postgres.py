@@ -55,6 +55,7 @@ class PostgresUserRepository:
                     (username_key,),
                 )
                 row = cursor.fetchone()
+            connection.commit()
             if row is None:
                 return None
             return UserRecord(str(row[0]), row[1], row[2], row[3], row[4])
