@@ -39,8 +39,12 @@ def test_ui_missing_date_followup_saves_final_state_and_source_history(monkeypat
     )
     send(app, "Check ORD-057 and assess 800 TOPS")
     assert app.button(key="reset_chat_request")
+    assert not any(expander.label == "Requests waiting for details" for expander in app.expander)
     first_reply = app.session_state["threads"][0]["messages"][1]["reply"]
     assert first_reply.needs_clarification
+    headline = first_reply.text.splitlines()[0].strip("* ")
+    assert sum(item.value.count(headline) for item in app.markdown) == 1
+    assert not any("Supporting Details" in item.value for item in app.markdown)
     for internal_term in (
         "task-002",
         "PENDING",
@@ -49,9 +53,6 @@ def test_ui_missing_date_followup_saves_final_state_and_source_history(monkeypat
         "requested_delivery_date",
     ):
         assert internal_term not in first_reply.text
-    captions = " ".join(item.value for item in app.caption)
-    assert "task-002" not in captions
-    assert "delivery date" in captions
     send(app, "TOPS is due on 2026-04-25")
     thread = app.session_state["threads"][0]
     assert len(thread["messages"]) == 4
@@ -59,6 +60,21 @@ def test_ui_missing_date_followup_saves_final_state_and_source_history(monkeypat
     assert len(executor.calls) == 2
     assert thread["messages"][1]["reply"].evidence
     assert thread["messages"][3]["reply"].assumptions
+    st.cache_resource.clear()
+
+
+def test_ui_bare_order_id_resumes_the_pending_request(monkeypatch):
+    app, client, executor = screen(monkeypatch, payload(task()))
+
+    send(app, "How is my order doing?")
+    send(app, "ORD-057")
+
+    thread = app.session_state["threads"][0]
+    assert len(client.calls) == 1
+    assert len(executor.calls) == 1
+    assert executor.calls[0].slots["order_id"] == "ORD-057"
+    assert thread["agent_session"].state.tasks[0].status == TaskStatus.COMPLETED
+    assert thread["messages"][-1]["reply"].needs_clarification is False
     st.cache_resource.clear()
 
 

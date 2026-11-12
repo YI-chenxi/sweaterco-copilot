@@ -379,8 +379,6 @@ button[kind="primary"]:hover{background:#04635e!important;border-color:#04635e!i
 .st-key-analysis_header{gap:.4rem}
 .st-key-analysis_header .sc-details-title{margin:0;padding:.5rem .1rem}
 .st-key-analysis_header button{min-height:2rem;font-size:.76rem}
-.sc-assessment{padding:.2rem 0 .6rem;margin:.2rem 0;background:transparent}
-.sc-assessment strong{font-size:1.03rem;line-height:1.55;color:var(--sc-ink)}
 @media(max-width:900px){.st-key-analysis_workspace{height:60dvh!important}}
 
 [data-testid="stDialog"] [role="dialog"]{
@@ -418,11 +416,6 @@ button[kind="primary"]:hover{background:#04635e!important;border-color:#04635e!i
 .sc-dialog-resize-sw{left:0;bottom:0;cursor:nesw-resize}
 .sc-dialog-resize:focus-visible{outline:2px solid #087f78;outline-offset:-3px;background:#bfe2cf80}
 
-/* Compact answer actions: reserve room at the right end of each conclusion. */
-[class*="st-key-answer_summary_"]{position:relative;min-height:2.5rem}
-[class*="st-key-answer_summary_"] .sc-assessment{padding-right:8.8rem;min-height:2.1rem}
-[class*="st-key-answer_summary_"]>[class*="st-key-evidence_"]{
- position:absolute!important;top:0;right:0;width:auto!important;max-width:8.5rem}
 [class*="st-key-evidence_"] button{background:transparent!important;border:0!important;
  box-shadow:none!important;color:#087f78!important;border-radius:9px!important;
  padding:.25rem .4rem!important;min-height:2rem!important;font-size:.76rem!important}
@@ -484,8 +477,4 @@ button[kind="primary"]:hover{background:#04635e!important;border-color:#04635e!i
 .sc-workflow-dialog:has(.sc-account-dialog-marker) button[kind^="primary"] p,
 .sc-workflow-dialog:has(.sc-account-dialog-marker) button[kind^="primary"] [data-testid="stMarkdownContainer"]{
  color:var(--sc-account-submit-ink,#ffffff)!important;
-}
-@media(max-width:600px){
- [class*="st-key-answer_summary_"] .sc-assessment{padding-right:6.9rem}
- [class*="st-key-answer_summary_"]>[class*="st-key-evidence_"]{max-width:6.7rem}
 }

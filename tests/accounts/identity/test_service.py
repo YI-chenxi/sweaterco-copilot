@@ -8,7 +8,7 @@ from app.accounts.identity.passwords import Argon2PasswordHasher
 from app.accounts.identity.throttle import InMemoryAttemptRepository, LoginThrottle
 
 NOW = datetime(2026, 11, 8, tzinfo=timezone.utc)
-PASSWORD = "long passphrase for account"
+PASSWORD = "valid-pass12"
 
 
 def service(users=None, attempts=None, *, clock=None):
@@ -45,9 +45,18 @@ def test_case_conflict_and_invalid_input():
     with pytest.raises(AuthError, match="INVALID_PASSWORD"):
         auth.register("other", "short")
     with pytest.raises(AuthError, match="INVALID_PASSWORD"):
+        auth.register("other", "sixteen-chars-xx")
+    with pytest.raises(AuthError, match="INVALID_PASSWORD"):
         auth.register("other", "password123456")
     with pytest.raises(AuthError, match="INVALID_PASSWORD"):
-        auth.register("other", "\ud800" * 20)
+        auth.register("other", "\ud800" * 6)
+
+
+@pytest.mark.parametrize("password", ["sixsix", "fifteen-chars15"])
+def test_password_length_boundaries_are_accepted(password):
+    auth, _, _ = service()
+    registered = auth.register("alice", password)
+    assert auth.authenticate("alice", password) == registered
 
 
 def test_wrong_and_unknown_credentials_have_same_public_error():

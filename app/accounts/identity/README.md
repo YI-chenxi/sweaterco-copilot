@@ -18,8 +18,8 @@ users = PostgresUserRepository(connection_factory)
 attempts = PostgresAttemptRepository(connection_factory)
 throttle = LoginThrottle(attempts, pepper=stable_server_secret_bytes)
 auth = AuthService(users, throttle)
-registered = auth.register("Alice_1", "a sufficiently long passphrase")
-verified = auth.authenticate("ALICE_1", "a sufficiently long passphrase")
+registered = auth.register("Alice_1", "valid-pass12")
+verified = auth.authenticate("ALICE_1", "valid-pass12")
 # Hand verified.user_id to the session composition layer, not the browser.
 ```
 
@@ -73,8 +73,8 @@ these other branches are unfinished.
 The UI should use one generic message for `INVALID_CREDENTIALS`; never display
 database exceptions, hashes, or whether a login username exists. Registration
 validates a trimmed, lowercase ASCII username of 3–32 letters, digits or
-underscores. Passwords remain byte-for-byte unchanged; the minimum is 15
-characters, maximum 256 characters and 1024 UTF-8 bytes. Common passwords are
+underscores. Passwords remain byte-for-byte unchanged; the minimum is 6
+characters and the maximum is 15 characters. Common passwords are
 rejected. The password hasher is Argon2id, with 19 MiB memory, 2 iterations,
 and one lane; benchmark this on the final deployment before increasing cost.
 

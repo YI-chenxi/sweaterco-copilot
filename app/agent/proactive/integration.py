@@ -14,6 +14,7 @@ from app.agent.proactive.adapters.briefing_actions import BriefingActionExecutor
 from app.agent.proactive.adapters.watch_actions import WatchActionExecutor
 from app.agent.proactive.briefing.service import BriefingService
 from app.agent.proactive.briefing.sqlite_repository import SQLiteBriefingRepository
+from app.agent.proactive.clock import action_now
 from app.agent.proactive.understanding.parser import ProactiveCommandParser
 from app.agent.proactive.watches.order_source import OrderLookupSource
 from app.agent.proactive.watches.serialization import record_data
@@ -383,6 +384,7 @@ def build_proactive_application(
     authorizer: Callable[..., bool],
     database: str | Path | None = None,
     orders_csv: str | Path | None = None,
+    action_clock: Callable[[], Any] = action_now,
 ) -> ProactiveApplication:
     """Build all P3/P4/P5 services with one shared, local SQLite database."""
     path = Path(database or os.getenv("PROACTIVE_DB_PATH", "runtime_data/proactive.sqlite3"))
@@ -419,6 +421,7 @@ def build_proactive_application(
         },
         actor_provider=actor_provider,
         authorizer=authorizer,
+        clock=action_clock,
     )
     return ProactiveApplication(
         parser=ProactiveCommandParser(llm_client),

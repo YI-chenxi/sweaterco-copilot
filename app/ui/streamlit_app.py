@@ -789,7 +789,6 @@ def _nav_sidebar(chat_ready: bool) -> None:
                         gap="small",
                     ),
                     signed_out=footer_fallback.container,
-                    show_notice=False,
                 )
                 if workspace.owner != sidebar_owner:
                     private_chats.empty()
@@ -1007,14 +1006,6 @@ def _structured_helper() -> None:
                 st.rerun()
 
 
-def _toggle_analysis(identity: str) -> None:
-    workspace = current_workspace()
-    if workspace is not None and not workspace.current_handle():
-        return
-    states = _thread().setdefault("expanded_answers", {})
-    states[identity] = not states.get(identity, False)
-
-
 def _reply_view(reply: AgentReply, identity: str) -> None:
     if isinstance(reply.metadata.get("proactive"), dict):
         from app.ui.proactive.pages import render_chat_result
@@ -1023,23 +1014,15 @@ def _reply_view(reply: AgentReply, identity: str) -> None:
         return
     from app.ui.result_cards import card_summary
 
-    _, _, tone, conclusion, metrics = card_summary(
+    _, _, _, _, metrics = card_summary(
         reply, shared_language(st.session_state), text=_reply_text(reply)
     )
-    with st.container(key="answer_summary_" + identity):
-        st.markdown(
-            f'<div class="sc-assessment sc-assessment-{tone}">'
-            f"<strong>{_safe(conclusion)}</strong></div>",
-            unsafe_allow_html=True,
-        )
-        st.button(
-            _t("View Evidence"),
-            icon=":material/manage_search:",
-            key=_evidence_widget(identity),
-            on_click=_view_evidence,
-            args=(identity,),
-            help=_t("Show only this answer's evidence, warnings and assumptions"),
-        )
+    from app.ui.copy_button import copy_analysis
+
+    with st.container(key="full_analysis_" + identity):
+        with st.container(key="analysis_copy_" + identity):
+            copy_analysis(_reply_text(reply), shared_language(st.session_state), identity)
+        st.markdown(_reply_text(reply))
     if metrics:
         st.markdown(
             '<div class="sc-mini-label">' + _t("KEY METRICS") + "</div>", unsafe_allow_html=True
@@ -1049,24 +1032,14 @@ def _reply_view(reply: AgentReply, identity: str) -> None:
             for col, metric in zip(st.columns(len(group), gap="small"), group, strict=True):
                 with col:
                     st.metric(metric.label, metric.value, help=metric.detail)
-    st.markdown(
-        '<div class="sc-mini-label">' + _t("Supporting Details") + "</div>", unsafe_allow_html=True
-    )
-    expanded = _thread().setdefault("expanded_answers", {}).get(identity, False)
     st.button(
-        _t("Hide full analysis" if expanded else "Show full analysis"),
-        key=_account_widget("full_" + identity),
-        on_click=_toggle_analysis,
+        _t("View Evidence"),
+        icon=":material/manage_search:",
+        key=_evidence_widget(identity),
+        on_click=_view_evidence,
         args=(identity,),
-        use_container_width=True,
+        help=_t("Show only this answer's evidence, warnings and assumptions"),
     )
-    if expanded:
-        from app.ui.copy_button import copy_analysis
-
-        with st.container(key="full_analysis_" + identity):
-            with st.container(key="analysis_copy_" + identity):
-                copy_analysis(_reply_text(reply), shared_language(st.session_state), identity)
-            st.markdown(_reply_text(reply))
 
 
 def _conversation() -> None:
@@ -1118,73 +1091,17 @@ def _request_context() -> None:
     session = _thread().get("agent_session") if account_mode else ensure_chat_session(_thread())
     if session is None:
         return
-    pending = [task for task in session.state.tasks if task.status.value == "pending"]
-    if not pending and not session.global_issues:
+    has_pending = any(task.status.value == "pending" for task in session.state.tasks)
+    if not has_pending and not session.global_issues:
         return
-    with st.expander(_t("Requests waiting for details"), expanded=True):
-        if session.global_issues:
-            st.info(_t("Please start fresh and submit up to two requests."))
-        for task in pending:
-            slots = task.decision.slots
-            intent = task.decision.intent.value
-            labels = {
-                "category": "product category",
-                "order_id": "order number",
-                "pieces": "order quantity",
-                "requested_delivery_date": "delivery date",
-                "stage": "production stage",
-                "top_n": "number of briefing items",
-            }
-            missing = ", ".join(
-                _t(labels.get(field, field.replace("_", " ")))
-                for field in task.decision.missing_slots
+    if st.button(_t("Start a fresh request"), key="reset_chat_request"):
+        if account_mode:
+            current_workspace().queue_guided(
+                "Start a fresh request", {}, shared_language(st.session_state)
             )
-            if intent == "order_status":
-                label = (
-                    f"{_t('Order')} {slots.get('order_id')}"
-                    if slots.get("order_id")
-                    else _t("Order check")
-                )
-            elif intent == "production_normality":
-                label = (
-                    f"{slots.get('stage')} · {_t('Production check')}"
-                    if slots.get("stage")
-                    else _t("Production check")
-                )
-            elif intent == "order_feasibility":
-                details = " ".join(
-                    value
-                    for value in (
-                        f"{slots.get('pieces')}-piece" if slots.get("pieces") else "",
-                        str(slots.get("category")) if slots.get("category") else "",
-                    )
-                    if value
-                )
-                label = (
-                    f"{details} · {_t('Order assessment')}"
-                    if details
-                    else _t("New-order assessment")
-                )
-            elif intent == "morning_briefing":
-                label = _t("Morning briefing")
-            else:
-                label = _t("Request")
-            st.caption(
-                label
-                + (
-                    f" · {_t('Still needed')}: {missing}"
-                    if missing
-                    else " · " + _t("Needs clarification")
-                )
-            )
-        if st.button(_t("Start a fresh request"), key="reset_chat_request"):
-            if account_mode:
-                current_workspace().queue_guided(
-                    "Start a fresh request", {}, shared_language(st.session_state)
-                )
-            else:
-                clear_chat_request(_thread())
-            st.rerun()
+        else:
+            clear_chat_request(_thread())
+        st.rerun()
 
 
 def _queue_account_prompt(widget_key: str, event_key: str | None) -> None:
@@ -1558,12 +1475,7 @@ def main(
     mode = real_account_mode if real_account_mode is not None else account_test_mode
     workspace = workspace_for(mode)
     if mode is not None:
-        notice = (
-            account_label("Offline account test mode. No real login or cloud storage.")
-            if isinstance(mode, AccountTestMode)
-            else None
-        )
-        signed_out = partial(auth_page, _auth_preferences, notice=notice)
+        signed_out = partial(auth_page, _auth_preferences)
         if workspace is None:
             with signed_out():
                 st.error(
@@ -1582,7 +1494,7 @@ def main(
     _nav_sidebar(ready)
     if workspace is not None:
         if workspace.owner is None:
-            with auth_page(lambda: None, notice=notice):
+            with auth_page(lambda: None):
                 st.warning(account_label("Your session ended. Sign in again."))
                 auth_retry()
             return

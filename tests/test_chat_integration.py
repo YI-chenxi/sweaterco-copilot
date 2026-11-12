@@ -168,6 +168,20 @@ def test_missing_date_followup_executes_only_pending_task():
     assert "task-002" in client.calls[-1]["user_prompt"]
 
 
+def test_bare_order_id_completes_the_pending_order_check_without_a_second_model_call():
+    agent, client, executor = service(payload(task()))
+
+    first = agent.handle_turn("How is my order doing?")
+    second = agent.handle_turn("ORD-057", first.session)
+
+    assert first.reply.needs_clarification is True
+    assert len(client.calls) == 1
+    assert len(executor.calls) == 1
+    assert executor.calls[0].slots["order_id"] == "ORD-057"
+    assert second.reply.needs_clarification is False
+    assert second.session.state.tasks[0].status == TaskStatus.COMPLETED
+
+
 @pytest.mark.parametrize("bad_quantity", [0, -5, 2.5, True])
 def test_invalid_quantity_cannot_execute_and_can_be_corrected(bad_quantity):
     agent, _, executor = service(

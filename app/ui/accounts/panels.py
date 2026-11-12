@@ -29,6 +29,9 @@ _LABELS = {
     "Password": "密码",
     "Enter your username": "请输入用户名",
     "Enter your password": "请输入密码",
+    "Use 6–15 characters; avoid your username and common passwords.": (
+        "密码需为 6–15 个字符，且不能与用户名相同或使用常见弱密码。"
+    ),
     "Welcome back": "欢迎回来",
     "Sign in to access your factory workspace": "登录以进入你的工厂工作区",
     "Your factory operations, all in one place.": "在一个地方管理工厂运营。",
@@ -44,7 +47,6 @@ _LABELS = {
         "无法清除浏览器会话，服务端登录已撤销。"
     ),
     "Check the username requirements and try again.": "请检查用户名是否符合要求后重试。",
-    "Check the password requirements and try again.": "请检查密码是否符合要求后重试。",
     "This username is unavailable.": "此用户名不可用。",
     "The username or password is incorrect.": "用户名或密码不正确。",
     "Too many attempts. Please try again later.": "尝试次数过多，请稍后重试。",
@@ -53,7 +55,7 @@ _LABELS = {
 }
 _ERROR_LABELS = {
     "INVALID_USERNAME": "Check the username requirements and try again.",
-    "INVALID_PASSWORD": "Check the password requirements and try again.",
+    "INVALID_PASSWORD": "Use 6–15 characters; avoid your username and common passwords.",
     "USERNAME_TAKEN": "This username is unavailable.",
     "INVALID_CREDENTIALS": "The username or password is incorrect.",
     "RATE_LIMITED": "Too many attempts. Please try again later.",
@@ -144,6 +146,13 @@ def _credentials(form: str, action: str, language: str) -> tuple[str, str] | Non
             placeholder=_label("Enter your password", language),
             key=f"account_{form}_password",
         )
+        if form == "register":
+            st.caption(
+                _label(
+                    "Use 6–15 characters; avoid your username and common passwords.",
+                    language,
+                )
+            )
         submitted = st.form_submit_button(_label(action, language), type="primary", width="stretch")
     if not submitted:
         return None

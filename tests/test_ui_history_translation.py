@@ -126,7 +126,6 @@ def test_reply_translation_preserves_user_text_selection_and_cache(screen, monke
         Mock(return_value=SimpleNamespace(provider="openai", api_key="test-only")),
     )
     app.selectbox(key="ui_language").set_value("zh").run()
-    app.button(key="full_" + identity).click().run()
     assert not app.exception
     assert any(m.value == "请查看产能限制。" for m in app.markdown)
     assert "What needs attention?" in app.chat_message[0].get("markdown")[0].value
@@ -142,7 +141,6 @@ def test_reply_translation_preserves_user_text_selection_and_cache(screen, monke
     assert translator.translate.call_count == count
     assert thread["messages"] == snapshot
     assert thread["selected_reply_id"] == identity
-    assert thread["expanded_answers"][identity]
     assert guided.call_count == 1
     service.assert_not_called()
 

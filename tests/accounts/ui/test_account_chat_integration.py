@@ -155,7 +155,7 @@ def test_unauthenticated_registration_and_login_gate_the_workspace(account):
     backend, browser, _ = account
     browser.handle = None
     app = _app(backend, browser)
-    assert "Offline account test mode" in app.info[0].value
+    assert not app.info
     assert [tab.label for tab in app.main.tabs] == ["Sign in", "Register"]
     assert not app.sidebar.tabs and not app.sidebar.text_input
     assert app.tabs[0].text_input(key="account_login_username").label == "Username"
@@ -248,9 +248,11 @@ def test_open_history_preserves_original_text_and_selects_evidence_by_saved_id(a
 
     assert backend.reads[initial_reads:] == [("alice", thread_id)]
     assert _workspace(app).thread["id"] == thread_id
+    assert _workspace(app).thread["selected_reply_id"] == second[1].id
     assert _TEXT in _html(app)
     assert len(app.chat_message) == 4
     assert any("second.csv" in element.value for element in app.caption)
+    assert any("sc-answer-" + second[1].id in item.proto.body for item in app.get("html"))
     next(button for button in app.button if button.key.endswith(f"evidence_{first[1].id}")).click()
     _run(app)
     assert any("first.csv" in element.value for element in app.caption)

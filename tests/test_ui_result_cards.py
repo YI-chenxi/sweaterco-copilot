@@ -1,4 +1,4 @@
-"""Unified cards preserve full original payloads and per-answer expansion."""
+"""Unified cards preserve and immediately display full original payloads."""
 
 from copy import deepcopy
 
@@ -9,24 +9,26 @@ from tests.ui_events import analysis_copy_payloads
 pytest_plugins = ["tests.test_ui_workflow_language"]
 
 
-def test_each_answer_expands_independently_without_execution(screen):
+def test_each_answer_is_complete_without_an_expansion_step_or_execution(screen):
     app, guided, service = screen
     execute(app)
     execute(app)
     thread = app.session_state["threads"][0]
     snapshot = deepcopy(thread["messages"])
     ids = [m["ui_reply_id"] for m in thread["messages"] if m["role"] == "assistant"]
-    app.button(key="full_" + ids[0]).click().run()
-    assert app.button(key="full_" + ids[0]).label == "Hide full analysis"
-    assert app.button(key="full_" + ids[1]).label == "Show full analysis"
-    assert any(m.value == snapshot[1]["reply"].text for m in app.markdown)
+    assert not any(
+        button.key.endswith("full_" + identity) for button in app.button for identity in ids
+    )
+    assert all(
+        any(markdown.value == snapshot[index]["reply"].text for markdown in app.markdown)
+        for index in (1, 3)
+    )
+    assert not any("Supporting Details" in markdown.value for markdown in app.markdown)
     assert analysis_copy_payloads(app) == {
-        ids[0]: {"text": snapshot[1]["reply"].text, "language": "en"}
+        ids[0]: {"text": snapshot[1]["reply"].text, "language": "en"},
+        ids[1]: {"text": snapshot[3]["reply"].text, "language": "en"},
     }
     assert not app.code and not app.get("popover")
-    app.button(key="full_" + ids[1]).click().run()
-    app.button(key="full_" + ids[0]).click().run()
-    assert app.button(key="full_" + ids[1]).label == "Hide full analysis"
     assert thread["messages"] == snapshot
     assert guided.call_count == 2
     service.assert_not_called()

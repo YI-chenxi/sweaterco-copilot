@@ -3,9 +3,10 @@
 import hashlib
 import json
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import datetime
 
 from app.agent.contracts import AgentReply, Evidence
+from app.agent.proactive.clock import action_now
 
 PAGES = ("copilot", "briefings", "watches", "actions")
 
@@ -108,7 +109,7 @@ def propose_once(application, command, model, slot):
                     item.get("status") == "pending_confirmation"
                     and item.get("execution_state") in {None, "not_started"}
                     and datetime.fromisoformat(item["expires_at"].replace("Z", "+00:00"))
-                    <= datetime.now(timezone.utc)
+                    <= action_now()
                 )
             except (KeyError, TypeError, ValueError):
                 terminal = False
@@ -142,7 +143,7 @@ def can_decide(proposal, *, now=None):
         return False
     try:
         expiry = datetime.fromisoformat(proposal["expires_at"].replace("Z", "+00:00"))
-        return expiry.tzinfo is not None and expiry > (now or datetime.now(timezone.utc))
+        return expiry.tzinfo is not None and expiry > (now or action_now())
     except (ValueError, TypeError, KeyError):
         return False
 

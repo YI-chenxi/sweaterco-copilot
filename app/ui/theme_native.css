@@ -34,7 +34,6 @@ button[kind="primary"] p,[data-testid="stBaseButton-primary"] p{color:__ON_ACCEN
 .sc-snapshot-heading,.sc-snapshot-date,.sc-snapshot-disclaimer{color:__ON_ACCENT__}
 .sc-snapshot-heading,.sc-snapshot-disclaimer{opacity:.85}
 .sc-details-title,.sc-mini-label,.sc-label,.sc-workflow-title{color:__MUTED__}
-.sc-assessment strong{color:__INK__}
 .st-key-conversation_surface,.sc-hero,[data-testid="stDialog"] [role="dialog"]{
  box-shadow:inset 0 2px 2px __GLOW__,inset 0 -2px 5px __SHADOW__,0 10px 28px __SHADOW__,0 1px 4px __SHADOW__}
 .st-key-center_Order_Status button,.st-key-center_Production_Health button,

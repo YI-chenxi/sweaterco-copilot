@@ -21,7 +21,7 @@ psycopg = pytest.importorskip("psycopg")
 sql = psycopg.sql
 
 SECRET = b"only-a-test-key-not-a-deployment-key" * 2
-PASSWORD = "P4 dedicated integration test phrase!"
+PASSWORD = "live-pass12"
 
 
 @pytest.fixture(scope="module")

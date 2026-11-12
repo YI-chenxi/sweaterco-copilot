@@ -467,6 +467,67 @@ def test_slot_update_targets_existing_task_and_normalizes_value():
     assert "task-002" in client.calls[0]["user_prompt"]
 
 
+def test_exact_order_id_updates_the_only_pending_destination_without_model_call():
+    context = ConversationState(
+        tasks=[
+            TaskState(
+                task_id="task-001",
+                decision=IntentDecision(
+                    intent=Intent.ORDER_STATUS,
+                    missing_slots=("order_id",),
+                ),
+                status=TaskStatus.PENDING,
+            )
+        ]
+    )
+    client = MockLLMClient()
+
+    result = EnhancedIntentParser(client).parse("ORD-057", context=context)
+
+    assert result.slot_updates == [SlotUpdate("task-001", {"order_id": "ORD-057"})]
+    assert result.decisions == []
+    assert client.calls == []
+
+
+def test_exact_value_does_not_guess_between_two_pending_destinations():
+    context = ConversationState(
+        tasks=[
+            TaskState(
+                task_id=task_id,
+                decision=IntentDecision(
+                    intent=Intent.ORDER_STATUS,
+                    missing_slots=("order_id",),
+                ),
+                status=TaskStatus.PENDING,
+            )
+            for task_id in ("task-001", "task-002")
+        ]
+    )
+    client = MockLLMClient(
+        [
+            payload(
+                is_ambiguous=True,
+                issues=[
+                    {
+                        "issue_type": "ambiguous_reference",
+                        "field": "order_id",
+                        "original_value": "ORD-057",
+                        "suggested_value": None,
+                        "decision_index": None,
+                        "task_id": None,
+                    }
+                ],
+            )
+        ]
+    )
+
+    result = EnhancedIntentParser(client).parse("ORD-057", context=context)
+
+    assert result.slot_updates == []
+    assert result.is_ambiguous is True
+    assert len(client.calls) == 1
+
+
 def test_unknown_slot_update_target_becomes_ambiguity_issue():
     client = MockLLMClient([payload(slot_updates=[update("task-999", order_id="ORD-057")])])
 

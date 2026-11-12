@@ -1,283 +1,363 @@
-# SweaterCo General Manager's Co-Pilot
+# SweaterCo Operations Co-Pilot
 
-NUS DSS5105 Capstone Project - Track 1.
+SweaterCo Operations Co-Pilot is a bilingual, evidence-first assistant for a fast-response garment factory general manager. It combines natural-language chat, deterministic business analysis, guided workflows, optional private accounts, voice transcription, and reviewed proactive actions in one Streamlit workspace.
 
-SweaterCo Co-Pilot 是一个面向快反服装厂总经理的 AI 助手。系统使用课程提供的订单、生产和外协车间数据检索事实、计算指标、发现风险并评估新订单，同时为用户可见的结论保留 Evidence 和结构化 trace。
+This repository is the NUS DSS5105 Capstone Project, Track 1.
 
-## 当前进展
+## What the App Does
 
-| 模块 | 状态 | 已实现内容 |
-|---|---|---|
-| A1 Retrieval | 已完成 | 订单检索、条件搜索、生产记录检索、外协车间检索、Evidence 溯源 |
-| A2 Judgement | 已完成 | 订单状态、生产正常性、风险发现、Morning Briefing、接单可行性 |
-| B1 Agent Orchestration | 已完成 | Intent 路由、缺参检查、四条 A1 到 A2 pipeline、确定性回复 |
-| B2 OpenAI Integration | 已完成 | OpenAI Responses API、严格 JSON Schema、中英文 Intent Parsing、安全降级 |
-| C Streamlit UI | 待接入 | 当前只有可启动的临时页面，还没有连接 `AgentService` |
+The current integrated application supports four core business workflows:
 
-当前 B 层支持英文和中文自然语言交互，以英文为默认语言。85 项自动化测试已通过，六种真实 OpenAI API 用例已完成端到端验证。
+| Workflow | Example request | Result |
+| --- | --- | --- |
+| Order Status | `How is order ORD-057?` | Current status, production progress, delivery risk, warnings, and source evidence |
+| Production Health | `Is Assembly operating normally?` | Stage-level production assessment with supporting production records |
+| Morning Briefing | `Give me the top 5 risks today.` | Ranked operational risks and the evidence behind each finding |
+| Order Feasibility | `Can we accept 800 TOPS by 2026-04-25?` | Capacity-based feasibility, constraints, assumptions, and workshop evidence |
 
-## 已支持的用户请求
+The same workflows are available through structured Quick Workflows. Structured workflows do not need an LLM to identify the task or extract parameters.
 
-| 功能 | 英文示例 | 中文示例 |
-|---|---|---|
-| 订单状态 | `How is order ORD-057?` | `ORD-057 现在怎么样？` |
-| 生产正常性 | `Is Assembly operating normally?` | `Assembly 最近生产正常吗？` |
-| Morning Briefing | `Give me the top 3 briefing items.` | `给我今天最重要的 5 个风险。` |
-| 接单可行性 | `Can we accept 800 TOPS by 2026-04-25?` | `800 件 TOPS 在 2026-04-25 前能交吗？` |
+Additional integrated capabilities include:
 
-如果请求缺少订单号、工序、产品类别、数量或交期，系统会返回 clarification，而不是猜测缺失信息。未知请求和模型调用失败会安全降级为 `unknown`。
+- English and Chinese questions, answers, interface labels, and clarification prompts.
+- Multi-turn slot completion and up to two tasks in one natural-language request.
+- Separate conversation state for each chat.
+- Warnings, assumptions, metrics, technical trace, and downloadable evidence.
+- Editable speech-to-text drafts that never execute a task until the user sends them.
+- Green, day, and night appearance modes.
+- Optional pre-provisioned accounts with PostgreSQL-backed private conversations.
+- Immediate and scheduled briefings.
+- Order watches, stored checks, and alerts.
+- Proposal, review, confirm, reject, idempotency, and audit flows for mutating proactive actions.
 
-## 系统架构
+## Design Principles
 
-```text
-English or Chinese user text
-  -> app/agent/service.py                Natural-language entry point
-  -> IntentParser                        LLM intent and slot extraction
-  -> OpenAILLMClient                     Responses API and strict JSON Schema
-  -> IntentDecision                      intent, language, slots, missing slots
-  -> AgentOrchestrator                   deterministic routing and validation
-  -> A1 Retrieval tools                  source facts and Evidence
-  -> A2 Judgement and Integration        business rules and calculated results
-  -> bilingual Response Builder          deterministic English or Chinese reply
-  -> AgentReply                          text, evidence, warnings, assumptions, metadata
-  -> future Streamlit UI
-```
-
-### A B C 分工
+The LLM understands language; it does not calculate business facts.
 
 ```text
-app/ui/       C：展示 chat、briefing、warning、assumptions、Evidence 和 trace
-app/agent/    B：理解问题、检查参数、选择 pipeline、调用工具、组织回复
-app/tools/    A：确定性读取、计算、风险判断、可行性评估和 Evidence 溯源
-data/         课程提供的 orders、production log 和 workshops
+Typed or reviewed voice input
+        |
+        v
+Intent and slot extraction
+        |
+        v
+Validation and multi-turn planning
+        |
+        v
+Deterministic A1 retrieval and A2 judgement tools
+        |
+        v
+AgentReply: answer + evidence + warnings + assumptions + metadata
+        |
+        v
+Streamlit chat, analysis panel, private history, or proactive review
 ```
 
-核心原则：LLM 只负责理解用户语言、识别 Intent 和抽取 slots。CSV 数据、检索结果和 A2 计算结果不会发送给模型。订单状态、产量、平均值、风险分和可行性均由 `app/tools/` 的确定性代码计算，最终回复由本地中英文模板生成。
+Order records, production totals, risk scores, and feasibility calculations come from local deterministic tools. The LLM is used for intent understanding and optional answer polishing. The application does not send the factory CSV datasets to the model for business calculation.
 
-## 本地运行
+## Data Semantics
 
-需要 Python 3.10 或更高版本。以下命令适用于 Windows PowerShell，并应在项目根目录执行。
+The included factory dataset is a simulated snapshot with a business reference date of **1 April 2026**. It is not live factory telemetry.
 
-### 1 创建虚拟环境并安装依赖
+The fixed reference date is intentional: it keeps order status, overdue logic, and feasibility results reproducible against the supplied dataset. Scheduled proactive services also have runtime timestamps, so the UI must not present the snapshot as current real-world factory data.
+
+Source files:
+
+- `data/orders.csv`
+- `data/production_log.csv`
+- `data/workshops.csv`
+- `data/data_dictionary.md`
+
+## Quick Start on Windows
+
+Requirements:
+
+- Windows PowerShell
+- Python 3.10 or newer
+- An OpenAI API key for natural-language chat and speech transcription
+
+From the repository root, run:
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-
-python -m pip install --upgrade pip
-python -m pip install -r requirements-dev.txt
+.\setup.cmd
+.\start.cmd
 ```
 
-`requirements-dev.txt` 会同时安装应用依赖、pytest 和 Ruff。应用依赖包括 Streamlit、pandas、python-dotenv 和 OpenAI Python SDK。
-
-### 2 配置 OpenAI API Key
-
-复制本地环境模板：
+For the complete local Sprint 3 demo with sign-in, private per-user chats, Briefing schedules, Watches, and reviewed Actions without PostgreSQL setup, run:
 
 ```powershell
-Copy-Item .env.example .env
+.\demo.cmd
 ```
 
-编辑 `.env`：
+This starts a clearly labelled local account test mode with two disposable users:
+
+```text
+Username: preview_alice, preview_bob, or Ellie
+Password: sweaterco
+```
+
+Account and chat data remain available while the demo server is running and reset when it stops. Proactive tasks use `runtime_data/sprint3-demo.sqlite3`. This mode listens only on `127.0.0.1` and must not be used as a public deployment.
+
+The setup command:
+
+1. Creates or reuses `.venv`.
+2. Installs the validated versions in `requirements-lock.txt`.
+3. Creates `.env` from `.env.example` only when `.env` does not already exist.
+4. Preserves existing secrets.
+5. Runs a safe environment check that reports configuration status without printing secret values.
+
+The start command validates the environment again and opens the app at:
+
+```text
+http://127.0.0.1:8501
+```
+
+PowerShell users can call the underlying scripts directly:
+
+```powershell
+.\setup.ps1
+.\start.ps1
+```
+
+Use a different port or prevent automatic browser opening with:
+
+```powershell
+.\start.ps1 -Port 8502 -Headless
+```
+
+Run the environment check without starting the app:
+
+```powershell
+.\.venv\Scripts\python.exe tools\check_environment.py
+```
+
+## Model Configuration
+
+Local model settings belong in `.env`, which is excluded from Git:
 
 ```dotenv
 MODEL_PROVIDER=openai
 OPENAI_MODEL=gpt-6-luna
 OPENAI_API_KEY=your_own_api_key_here
 OPENAI_TIMEOUT_SECONDS=30
+SPEECH_MODEL=gpt-transcribe
+SPEECH_TIMEOUT_SECONDS=30
 LOG_LEVEL=INFO
 ```
 
-`.env` 已被 `.gitignore` 排除。不要将真实 API Key 写入 `.env.example`、Python 文件、测试、日志或 Git commit。每位组员应使用自己的本地 `.env`。
+Never place real credentials in `.env.example`, source code, tests, logs, screenshots, or commits.
 
-安全确认配置是否加载成功：
+Without a valid API key:
 
-```powershell
-python -c "from app.agent.settings import LLMSettings; s=LLMSettings.from_env(); print(s.provider, s.model, bool(s.api_key))"
-git check-ignore -v .env
+- Structured Quick Workflows can still run.
+- Natural-language intent parsing, answer polishing, and speech transcription are unavailable or safely degraded.
+
+## Runtime Modes
+
+### Anonymous Mode
+
+Anonymous mode is the default when Streamlit account secrets are absent.
+
+- Core chat and Quick Workflows are available.
+- Conversations live in the current Streamlit session.
+- History is not guaranteed to survive a browser refresh or server restart.
+- Account-scoped Watches and Actions are unavailable unless local proactive demo mode is configured.
+
+### Local Proactive Demo Mode
+
+For a clearly labelled local demonstration only, add the following values to `.env`:
+
+```dotenv
+PROACTIVE_DEMO_MODE=true
+PROACTIVE_DEMO_WORKSPACE=local-demo
+PROACTIVE_DB_PATH=runtime_data/proactive.sqlite3
 ```
 
-预期第一条命令输出类似 `openai gpt-6-luna True`，但不会显示 Key 内容。
+This uses a local demo identity and SQLite persistence. Do not enable this mode on a public deployment.
 
-### 3 运行自然语言 Agent
+### Login-Only PostgreSQL Mode
 
-当前推荐直接调用 `AgentService` 验证后端：
+The integrated Streamlit entry point can use pre-provisioned accounts and PostgreSQL-backed private chats. Create `.streamlit/secrets.toml` locally, or add equivalent Streamlit Cloud secrets:
 
-```powershell
-python -c "from app.agent.service import AgentService; s=AgentService.from_env(); print(s.handle_text('How is order ORD-057?').text)"
+```toml
+ACCOUNT_LOGIN_ONLY = true
+DATABASE_URL = "postgresql://..."
+ACCOUNT_SECRET = "a stable random secret of at least 32 UTF-8 bytes"
 ```
 
-中文示例：
+Requirements for this mode:
 
-```powershell
-python -c "from app.agent.service import AgentService; s=AgentService.from_env(); print(s.handle_text('Assembly 最近生产正常吗？').text)"
+- Apply account storage migrations `001` and `002` before starting the app.
+- Use a stable `ACCOUNT_SECRET` across restarts and deployed instances.
+- Pre-provision demo users in the configured database.
+- Never commit `secrets.toml`, database URLs, passwords, session handles, or account secrets.
+
+Registration is disabled in the login-only entry point. A fresh Streamlit page session can require sign-in again, while saved conversations remain in PostgreSQL.
+
+Where registration is enabled, passwords must contain 6–15 characters and cannot match the username or use a blocked common password.
+
+## User Interface
+
+The app uses a chat-first, three-surface layout:
+
+- **Sidebar:** navigation, recent chats, account controls, language, and appearance.
+- **Conversation workspace:** chat history, Quick Workflows, and the centered composer.
+- **Analysis panel:** metrics, evidence, warnings, assumptions, business context, and technical trace.
+
+Primary navigation pages:
+
+- AI Co-Pilot
+- Morning Briefing
+- Watches & Alerts
+- Actions
+
+Voice transcription fills the ordinary composer as an editable draft. Recording does not write to chat storage or execute business tools. The user must review and send the text through the normal submission path.
+
+## Proactive Actions
+
+The proactive layer separates read operations from mutations.
+
+Supported briefing operations:
+
+- Create a schedule.
+- Update schedule fields.
+- Pause or resume a schedule.
+- Cancel a schedule.
+- View schedules, next run times, and saved history.
+
+Supported watch operations:
+
+- Create an order watch.
+- Cancel a watch.
+- View active watches, checks, and alerts.
+
+Mutating actions use the following journey:
+
+```text
+Request -> validated proposal -> user review -> confirm or reject -> execution -> audit history
 ```
 
-这些命令会调用 OpenAI API 解析 Intent，并产生少量 API 用量。工厂数据查询和业务判断仍在本地完成。
+Repeated request IDs reuse completion receipts and do not intentionally execute the same business mutation twice. Ambiguous or uncertain outcomes are surfaced for reconciliation instead of being blindly retried.
 
-### 4 运行自动化检查
+The standalone runners perform one due-task pass and exit:
 
 ```powershell
-python -m pytest
-python -m ruff check .
+.\.venv\Scripts\python.exe -m app.agent.proactive.briefing.runner --database runtime_data/proactive.sqlite3
+.\.venv\Scripts\python.exe -m app.agent.proactive.watches.runner --database runtime_data/proactive.sqlite3 --workspace local-demo
+```
+
+An external trusted scheduler is still required to invoke these runners when the browser is closed.
+
+## Architecture
+
+```text
+app/ui/
+  Streamlit layout, chat, accounts, voice drafts, evidence, and proactive pages
+
+app/agent/
+  LLM adapters, intent parsing, multi-turn planning, orchestration,
+  answer polishing, speech, and proactive services
+
+app/tools/
+  Deterministic retrieval, order judgement, production analysis,
+  risk discovery, morning briefing, and feasibility calculation
+
+app/accounts/
+  Identity, sessions, authorization, PostgreSQL storage,
+  persistent conversation state, and completion receipts
+
+data/
+  Simulated factory source data
+```
+
+Storage boundaries:
+
+- Anonymous chat: Streamlit session state.
+- Account chat: PostgreSQL.
+- Local proactive demo: `runtime_data/proactive.sqlite3` by default.
+- Secrets: local `.env` and ignored `.streamlit/secrets.toml`.
+
+## Tests and Quality Checks
+
+Install the locked development environment first, then run:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\python.exe -m ruff check .
 git diff --check
 ```
 
-当前基线：
+Latest full local regression on 12 November 2026:
 
 ```text
-pytest: 85 passed
-ruff: All checks passed
+1586 passed, 13 skipped in 312.64 seconds
 ```
 
-### 5 启动当前 Streamlit 页面
+The 13 skipped tests require dedicated PostgreSQL test configuration. A passing mock or local suite must not be presented as final deployed-database acceptance.
 
-```powershell
-streamlit run app/ui/streamlit_app.py
-```
+The current repository-wide Ruff run still reports three pre-existing import-order findings in test/review files. The environment checker and new startup scripts pass their scoped checks; repository-wide lint cleanup remains part of Sprint 3 hardening.
 
-当前页面只是临时集成壳。页面可以启动并接收输入，但尚未调用 `AgentService`，因此不会返回真实 Agent 结果。后端功能应先使用上一节的命令验证。
+## Evaluation
 
-## OpenAI 调用路径
+The checked-in live NLU evaluation contains 48 English, Chinese, mixed-language, colloquial, dual-intent, missing-slot, and unknown-intent cases.
+
+Latest recorded result:
 
 ```text
-.env
-  -> python-dotenv
-  -> LLMSettings.from_env
-  -> create_llm_client
-  -> OpenAILLMClient
-  -> client.responses.create
+48/48 exact matches (100.0%)
 ```
 
-当前使用 Responses API 和 `strict: true` JSON Schema。模型输出固定包含：
+This result measures intent sequence, language, slots, missing slots, and issue types for one recorded model run. It does not measure complete A1/A2 execution, final answer quality, voice accuracy, account persistence, or proactive scheduling. A broader end-to-end ground-truth evaluation and failure analysis are still required for Sprint 3 reporting.
 
-- `intent`
-- `language`
-- `order_id`
-- `stage`
-- `category`
-- `pieces`
-- `requested_delivery_date`
-- `top_n`
-- `missing_slots`
+See:
 
-没有 API Key 或不希望产生费用时，测试可以注入 `MockLLMClient`。`MODEL_PROVIDER=mock` 不会自动理解用户自然语言，因此不应作为真实 UI 的默认运行方式。
+- `evaluation/nlu_cases.json`
+- `evaluation/nlu_evaluation_report.md`
+- `docs/enhancement/NLU_EVALUATION_REPORT.md`
 
-## B Agent 文件说明
+## Known Limitations
 
-| 文件 | 作用 |
-|---|---|
-| `app/agent/contracts.py` | A、B、C 共用的 `Evidence`、`ToolResult`、`Tool` 和 `AgentReply` 契约 |
-| `app/agent/intents.py` | Intent、ResponseLanguage、必填 slots 和 `IntentDecision` |
-| `app/agent/settings.py` | `AgentSettings` 与环境变量驱动的 `LLMSettings` |
-| `app/agent/tool_registry.py` | 集中创建和持有 A1 Retrieval tools |
-| `app/agent/orchestrator.py` | 缺参检查、Intent 路由和四条确定性业务 pipeline |
-| `app/agent/response_builder.py` | 中英文确定性回复、warning 和 assumption 展示 |
-| `app/agent/prompts.py` | 双语 Intent Parsing prompt 与严格 JSON Schema |
-| `app/agent/llm_client.py` | OpenAI adapter、Mock adapter 和统一异常 |
-| `app/agent/intent_parser.py` | 模型 payload 校验、slot 标准化和失败降级 |
-| `app/agent/service.py` | 自然语言总入口；未来 Streamlit 应调用这里 |
+- The factory data is a static 1 April 2026 snapshot, not live telemetry.
+- Natural-language chat and speech depend on configured OpenAI services.
+- Live microphone accuracy has not been established by the mocked automated speech tests.
+- Anonymous history is session-local.
+- Final deployed login, logout, restart recovery, cookie metadata, and two-account isolation still require deployment acceptance testing.
+- Local proactive persistence uses SQLite and is not suitable for ephemeral multi-instance cloud storage.
+- No external scheduler is deployed by this repository.
+- Watches support create and cancel, but not update, pause, or resume.
+- Alerts are visible in the app; email, push, and voice delivery are not implemented.
+- The current planner accepts at most two tasks in one natural-language request.
+- Large evidence sets are downloadable, but response-level and full-audit evidence are not yet separate first-class contracts.
+- Token usage, model cost, latency, and operational success metrics are not yet persisted.
+- The current NLU report is not a full end-to-end product evaluation.
 
-`AgentReply` 向 UI 提供：
-
-- `text`
-- `evidence`
-- `warnings`
-- `assumptions`
-- `needs_clarification`
-- `suggested_question`
-- `metadata`
-
-如需修改这些共享字段，应同步通知 A、B、C 模块负责人。
-
-## 项目目录
+## Repository Structure
 
 ```text
 .
-├─ app/
-│  ├─ agent/                         # B：LLM adapter、Intent Parser 和 Agent 编排
-│  ├─ tools/                         # A：Retrieval、Judgement、风险和可行性工具
-│  │  ├─ a2_integration.py           # A1 Retrieval 到 A2 的集成层
-│  │  ├─ order_lookup.py             # 按订单号检索
-│  │  ├─ order_search_tool.py        # 按条件搜索订单
-│  │  ├─ production_retrieval_tool.py
-│  │  ├─ workshop_retrieval_tool.py
-│  │  ├─ order_status/
-│  │  ├─ production_normality/
-│  │  ├─ production_risks/
-│  │  └─ order_feasibility/
-│  └─ ui/
-│     └─ streamlit_app.py            # C：当前临时 Streamlit 壳
-├─ data/
-│  ├─ orders.csv
-│  ├─ production_log.csv
-│  ├─ workshops.csv
-│  └─ data_dictionary.md
-├─ docs/
-│  ├─ b_agent_first_iteration_report.md
-│  ├─ b_agent_llm_integration_report.md
-│  └─ tool_specifications.md
-├─ evaluation/                       # 后续中英文 ground-truth evaluation set
-├─ notebooks/                        # 探索性分析
-├─ tests/                            # 85 项自动化测试
-├─ .env.example                     # 本地配置模板，不含密钥
-├─ requirements.txt                 # 应用依赖
-├─ requirements-dev.txt             # 应用、测试和 lint 依赖
-└─ pyproject.toml                   # pytest 与 Ruff 配置
+|-- app/
+|   |-- accounts/
+|   |-- agent/
+|   |-- tools/
+|   `-- ui/
+|-- data/
+|-- docs/
+|-- evaluation/
+|-- notebooks/
+|-- tests/
+|-- tools/
+|-- requirements.txt
+|-- requirements-dev.txt
+|-- requirements-lock.txt
+|-- setup.cmd / setup.ps1
+`-- start.cmd / start.ps1
 ```
 
-## Streamlit 下一阶段
+## Safe Collaboration Workflow
 
-UI 接入时应复用 `AgentService.from_env()` 和 `AgentService.handle_text()`，不要在 `streamlit_app.py` 中复制 OpenAI client、Intent 路由或业务计算。
-
-建议的 Streamlit MVP：
-
-1. 使用 `st.cache_resource` 创建一次 `AgentService`。
-2. 使用 `st.session_state.messages` 保存当前聊天历史。
-3. 使用 `st.chat_input` 和 `st.chat_message` 展示中英文对话。
-4. 首屏展示 `AgentReply.text`。
-5. 分开展示 `warnings`、`assumptions` 和 `suggested_question`。
-6. 默认只展示少量直接 Evidence，完整 Evidence 放入折叠区、分页或下载文件。
-7. Sidebar 只显示 provider、model 和连接状态，不显示 API Key。
-8. 对 Key 缺失、网络失败和业务 validation failure 提供不同的安全提示。
-
-真实测试中，生产正常性、Morning Briefing 和可行性评估可能携带 90 到 400 条 Evidence。UI 不应默认全部展开。下一步建议将 Evidence 分为：
-
-```text
-response_evidence    直接支撑当前回答的精选证据
-full_evidence        完整审计和复现记录
-```
-
-## 当前限制
-
-- 当前是一问一答，不会自动合并多轮对话中的缺失 slots。
-- Streamlit 尚未连接 B 层。
-- 最终回答由确定性模板生成，尚未使用 LLM 润色。
-- 尚未持久化 latency、token usage、成本和 audit log。
-- 尚未建立 30 题以上的中英文 ground-truth evaluation set。
-- Watch、提醒和有副作用的 Actions 尚未实现。
-
-## 协作流程
-
-1. 开始工作前运行 `git status`，不要覆盖组员的本地改动。
-2. 从最新远端分支创建自己的功能分支。
-3. 功能代码、相关测试和文档放在同一个小提交中。
-4. 提交前运行 pytest、Ruff 和 `git diff --check`。
-5. 使用 `feat:`、`fix:`、`test:`、`docs:` 或 `chore:` 等提交前缀。
-6. 合并前确认 `.env`、`.venv`、API Key 和本地生成文件没有进入提交。
-7. 修改 `contracts.py` 或 `AgentReply` 字段前同步 A、B、C 负责人。
-
-## 后续优先级
-
-1. 将 `AgentService` 接入 Streamlit chat UI。
-2. 在 UI 中展示 clarification、warnings、assumptions 和 Evidence 摘要。
-3. 增加多轮 slot filling 和 session state。
-4. 将 Evidence 分为 response evidence 与 full evidence。
-5. 建立 30 题以上的中英文评测集和 failure analysis。
-6. 增加不记录敏感信息的 latency、token usage 和 audit log。
-7. 为提醒、备注和消息等 Actions 增加预览、用户确认和审计记录。
-
-## 开发报告
-
-- [第一轮确定性 Agent 编排](docs/b_agent_first_iteration_report.md)
-- [第二轮 OpenAI LLM 接入与真实 API 验证](docs/b_agent_llm_integration_report.md)
+1. Check `git status` before starting work.
+2. Branch from the latest approved integration baseline.
+3. Keep implementation, tests, and documentation in the same focused change.
+4. Run the relevant tests, Ruff, and `git diff --check` before review.
+5. Never commit `.env`, `.streamlit/secrets.toml`, `.venv`, runtime databases, API keys, database URLs, passwords, or session material.
+6. Treat changes to shared contracts, `AgentReply`, account state, and proactive action schemas as integration changes requiring cross-module review.

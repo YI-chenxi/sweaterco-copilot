@@ -60,9 +60,6 @@ ZH = {
         "查看证据只切换回答；下次主动滚动聊天时继续追随。"
     ),
     "Business Assessment": "业务评估",
-    "Supporting Details": "支持详情",
-    "Show full analysis": "展开完整分析",
-    "Hide full analysis": "收起完整分析",
     "Copy": "复制",
     "Use the copy icon to copy the complete original response.": "点击复制图标，复制完整原始回答。",
     "Order Status": "订单状态",
@@ -234,7 +231,6 @@ ZH.update(
         "Enter a question first.": "请先输入问题。",
         "Configure AI Chat or use Quick Workflows.": "请配置 AI 聊天，或使用上方快捷工作流。",
         "Agent is checking factory tools...": "正在查询工厂业务工具…",
-        "Requests waiting for details": "等待补充信息的请求",
         "Start a fresh request": "开始新请求",
         "Still needed": "还需补充",
         "Needs clarification": "需要澄清",

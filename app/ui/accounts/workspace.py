@@ -46,9 +46,6 @@ _LABELS = {
         "账号服务尚未配置，请联系应用负责人。"
     ),
     "Evidence CSV export is unavailable for private chats.": "私人聊天暂不提供证据 CSV 下载。",
-    "Offline account test mode. No real login or cloud storage.": (
-        "离线账号测试模式。未连接真实登录服务或云端存储。"
-    ),
     "Open or create a chat in Recent Chats to start.": "请在最近聊天中打开或新建聊天。",
     "Loading saved chat…": "正在读取已保存的聊天…",
     "Sending and saving your message…": "正在发送并保存消息…",
@@ -139,14 +136,10 @@ class AccountWorkspace:
         self.preview = None
         self.notice = None
 
-    def render_auth(
-        self, *, signed_in: PanelContext, signed_out: PanelContext, show_notice: bool = True
-    ) -> bool:
+    def render_auth(self, *, signed_in: PanelContext, signed_out: PanelContext) -> bool:
         @contextmanager
         def account_sidebar():
             with signed_in():
-                if show_notice and isinstance(self.mode, AccountTestMode):
-                    st.info(label("Offline account test mode. No real login or cloud storage."))
                 yield
 
         return (
@@ -231,6 +224,21 @@ class AccountWorkspace:
             self.thread["messages"] = _visible_messages(self.thread["messages"])
             if switched:
                 st.session_state["workflow_panel_expanded"] = not bool(self.thread["messages"])
+                latest = next(
+                    (
+                        message
+                        for message in reversed(self.thread["messages"])
+                        if message["role"] == "assistant"
+                    ),
+                    None,
+                )
+                if latest is None:
+                    self.thread.pop("selected_reply_id", None)
+                    self.thread.pop("scroll_to_answer", None)
+                else:
+                    identity = latest["ui_reply_id"]
+                    self.thread["selected_reply_id"] = identity
+                    self.thread["scroll_to_answer"] = identity
 
     def set_preview(self, workflow: str, values: dict[str, Any], reply: AgentReply) -> None:
         self.preview = (workflow, dict(values), reply, uuid4().hex)

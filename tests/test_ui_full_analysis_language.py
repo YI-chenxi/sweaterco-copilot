@@ -1,4 +1,4 @@
-"""Expanded workflow views follow locale without rewriting stored results."""
+"""Complete workflow answers follow locale without rewriting stored results."""
 
 from copy import deepcopy
 
@@ -27,7 +27,7 @@ pytest_plugins = ["tests.test_ui_workflow_language"]
         ),
     ],
 )
-def test_expanded_view_changes_language_and_preserves_original(
+def test_complete_answer_changes_language_and_preserves_original(
     screen, source, target, workflow, values
 ):
     app, guided, service = screen
@@ -44,14 +44,13 @@ def test_expanded_view_changes_language_and_preserves_original(
     identity = thread["selected_reply_id"]
     snapshot = deepcopy(thread["messages"])
     app.selectbox(key="ui_language").set_value(source).run()
-    app.button(key="full_" + identity).click().run()
     assert any(item.value == original.text for item in app.markdown)
+    assert not any(button.key.endswith("full_" + identity) for button in app.button)
     app.selectbox(key="ui_language").set_value(target).run()
     assert not app.exception
     assert any(item.value == expected.text for item in app.markdown)
     assert analysis_copy_payloads(app) == {identity: {"text": expected.text, "language": target}}
     assert thread["messages"] == snapshot
-    assert thread["expanded_answers"][identity]
     assert thread["selected_reply_id"] == identity
     app.selectbox(key="ui_language").set_value(source).run()
     assert any(item.value == original.text for item in app.markdown)

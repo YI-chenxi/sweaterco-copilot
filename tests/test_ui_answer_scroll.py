@@ -14,7 +14,7 @@ def test_scroll_request_consumed_once_and_stale_target_ignored():
     assert consume_scroll_target(thread) is None
 
 
-def test_new_result_scrolls_once_but_selection_and_expansion_do_not(screen):
+def test_new_result_scrolls_once_but_selection_and_reruns_do_not(screen):
     app, guided, _ = screen
     execute(app)
     thread = app.session_state["threads"][0]
@@ -22,7 +22,7 @@ def test_new_result_scrolls_once_but_selection_and_expansion_do_not(screen):
     scripts = [item.proto.body for item in app.get("html")]
     assert any("sc-answer-" + identity in s for s in scripts)
     assert "scroll_to_answer" not in thread
-    app.button(key="full_" + identity).click().run()
+    app.run()
     assert not app.get("html")
     app.button(key="evidence_" + identity).click().run()
     assert not app.get("html")

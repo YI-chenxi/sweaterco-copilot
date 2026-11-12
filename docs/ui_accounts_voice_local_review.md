@@ -135,8 +135,8 @@ Run `tools/review_accounts_voice.py` with `SWEATERCO_LOCAL_REVIEW=1` and
 
 The explicitly labeled account test mode uses actual P1/P2/P4 services with test-only
 in-memory storage and transport. It does not connect to Supabase or set production
-browser cookies. Seeded accounts are `preview_alice` and `preview_bob`, both with the
-public, disposable password `SweaterCo preview account 2026!`. Registration, personal
+browser cookies. Seeded accounts are `preview_alice`, `preview_bob`, and `ellie`, all with
+the public, disposable password `sweaterco`. Registration, personal
 chat operations and logout can be reviewed. Refresh returns to sign-in; server restart
 clears the in-memory users and chat data. These are not Cloud persistence results.
 

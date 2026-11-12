@@ -342,6 +342,29 @@ def _affirmative_slot_update(
     )
 
 
+def _direct_pending_slot_update(
+    user_text: str,
+    context: ConversationState | None,
+) -> UnderstandingResult | None:
+    """Bind an exact standalone value only when it has one pending destination."""
+    if context is None:
+        return None
+
+    candidates: list[SlotUpdate] = []
+    for task in context.tasks:
+        if task.status != TaskStatus.PENDING:
+            continue
+        for field in find_missing_slots(task.decision):
+            normalized = _normalizer_for(field)(user_text)
+            if field == "category" and normalized not in {"TOPS", "ACCESSORIES"}:
+                continue
+            if normalized is not None:
+                candidates.append(SlotUpdate(task.task_id, {field: normalized}))
+    if len(candidates) != 1:
+        return None
+    return UnderstandingResult(language=context.language, slot_updates=candidates)
+
+
 class EnhancedIntentParser:
     """Parse bilingual text into new tasks, slot updates, and issues."""
 
@@ -418,6 +441,9 @@ class EnhancedIntentParser:
         affirmative = _affirmative_slot_update(user_text, context)
         if affirmative is not None:
             return affirmative
+        direct_update = _direct_pending_slot_update(user_text.strip(), context)
+        if direct_update is not None:
+            return direct_update
 
         fallback_language = _fallback_response_language(user_text)
         normalized_text = normalize_order_ids_in_text(user_text.strip())

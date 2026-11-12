@@ -47,7 +47,7 @@ _BLOCKED = frozenset(
 
 def validate_password(password: str, username_key: str) -> None:
     # Passwords are not stripped, lowercased, or otherwise transformed.
-    if not isinstance(password, str) or not 15 <= len(password) <= 256:
+    if not isinstance(password, str) or not 6 <= len(password) <= 15:
         raise AuthError("INVALID_PASSWORD")
     try:
         encoded_length = len(password.encode("utf-8"))

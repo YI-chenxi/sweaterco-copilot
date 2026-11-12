@@ -8,13 +8,6 @@ pytest.importorskip("app.accounts.identity")
 pytest.importorskip("app.accounts.session")
 pytest.importorskip("app.accounts.storage")
 
-from app.accounts.identity.repository import InMemoryUserRepository
-from app.accounts.identity.service import AuthService
-from app.accounts.identity.throttle import InMemoryAttemptRepository, LoginThrottle
-from app.accounts.session.authorization import InMemoryAuthorizationRepository
-from app.accounts.session.repository import InMemorySessionRepository
-from app.accounts.session.service import SessionService
-
 from app.accounts.conversation.errors import ConversationError
 from app.accounts.conversation.identity_adapter import SessionIdentityAdapter
 from app.accounts.conversation.runtime import (
@@ -22,10 +15,16 @@ from app.accounts.conversation.runtime import (
     build_account_backend,
     compose_account_backend,
 )
+from app.accounts.identity.repository import InMemoryUserRepository
+from app.accounts.identity.service import AuthService
+from app.accounts.identity.throttle import InMemoryAttemptRepository, LoginThrottle
+from app.accounts.session.authorization import InMemoryAuthorizationRepository
+from app.accounts.session.repository import InMemorySessionRepository
+from app.accounts.session.service import SessionService
 
 from .fakes import FakeAgent, uid
 
-PASSWORD = "valid test-only passphrase 2026!"
+PASSWORD = "valid-pass12"
 
 
 @pytest.fixture

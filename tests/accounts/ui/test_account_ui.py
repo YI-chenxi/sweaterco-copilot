@@ -9,7 +9,7 @@ from streamlit.testing.v1 import AppTest
 from app.accounts.conversation import AccountBackend, ConversationError, LoginResult, Principal
 from app.accounts.session.models import SessionCookie
 
-_TEST_PASSWORD = "offline test passphrase"
+_TEST_PASSWORD = "valid-pass12"
 _COOKIE = SessionCookie("test-session", "opaque-test-only-token", max_age=300)
 _DELETE_COOKIE = replace(_COOKIE, value="", max_age=0)
 _PRINCIPAL = Principal("test-user", "test-workspace", "test-session-id")
@@ -90,6 +90,12 @@ def test_account_forms_render_in_supported_languages_and_themes(backend, languag
     )
     assert app.text_input(key="account_login_password").proto.type == 1  # masked
     assert app.text_input(key="account_register_password").proto.type == 1
+    requirement = (
+        "Use 6–15 characters; avoid your username and common passwords."
+        if language == "en"
+        else "密码需为 6–15 个字符，且不能与用户名相同或使用常见弱密码。"
+    )
+    assert requirement in [caption.value for caption in app.caption]
     assert not backend.mock_calls
 
 
@@ -210,7 +216,7 @@ def test_registration_policy_errors_are_localized(backend):
     backend.register.side_effect = ConversationError("INVALID_PASSWORD")
     app = _app(backend, FakeBrowserSession(), language="zh")
     _submit(app, "register")
-    assert app.error[0].value == "请检查密码是否符合要求后重试。"
+    assert app.error[0].value == "密码需为 6–15 个字符，且不能与用户名相同或使用常见弱密码。"
     assert not app.success
     backend.login.assert_not_called()
 

@@ -35,7 +35,7 @@ from tests.accounts.ui.test_persistent_chat import _TEXT
 
 _FAKE_DATABASE = "postgresql://offline.invalid/account_test"
 _FAKE_SECRET = "offline-test-key-" * 4
-_PASSWORD = "A valid offline account test passphrase!"
+_PASSWORD = "valid-pass12"
 _NOW = datetime(2026, 11, 9, tzinfo=timezone.utc)
 
 

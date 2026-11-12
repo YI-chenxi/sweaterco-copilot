@@ -2,8 +2,10 @@
 import pytest
 
 from app.ui.workflow_controls import (
-    workflow_title, select_workflow, toggle_workflow_panel,
     collapse_after_response,
+    select_workflow,
+    toggle_workflow_panel,
+    workflow_title,
 )
 
 

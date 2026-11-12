@@ -23,12 +23,20 @@ from app.accounts.session.authorization import InMemoryAuthorizationRepository  
 from app.accounts.session.repository import InMemorySessionRepository  # noqa: E402
 from app.accounts.session.service import SessionService  # noqa: E402
 from app.ui.accounts.workspace import AccountTestMode  # noqa: E402
-from app.ui.streamlit_app import _chat_ready, _proactive_application, agent_service, main  # noqa: E402
+from app.ui.streamlit_app import (  # noqa: E402
+    _chat_ready,
+    _proactive_application,
+    agent_service,
+    main,
+)
 from tests.accounts.ui.test_account_chat_integration import FakeBrowser  # noqa: E402
 from tests.accounts.ui.test_real_account_mode import (  # noqa: E402
     PrivateWorkspaceUsers,
     ThreadRepository,
 )
+
+DEMO_PASSWORD = "sweaterco"
+DEMO_USERS = ("preview_alice", "preview_bob", "ellie")
 
 
 class ReviewThreads(ThreadRepository):
@@ -56,8 +64,9 @@ def review_backend():
     import secrets
 
     authorization = InMemoryAuthorizationRepository()
+    users = PrivateWorkspaceUsers(authorization)
     auth = AuthService(
-        PrivateWorkspaceUsers(authorization),
+        users,
         LoginThrottle(InMemoryAttemptRepository(), pepper=secrets.token_bytes(32)),
     )
     sessions = SessionService(InMemorySessionRepository(), authorization)
@@ -68,8 +77,8 @@ def review_backend():
         ReviewThreads(),
         ReviewAgent(),
     )
-    for name in ("preview_alice", "preview_bob"):
-        backend.register(name, "SweaterCo preview account 2026!")
+    for name in DEMO_USERS:
+        backend.register(name, DEMO_PASSWORD)
     return backend
 
 
