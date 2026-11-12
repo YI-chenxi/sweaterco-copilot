@@ -50,6 +50,12 @@ def _metrics_for_reply(reply: AgentReply) -> list[ResultMetric]:
     if not isinstance(raw, dict):
         return []
     if intent == Intent.ORDER_STATUS.value:
+        if raw.get("status") == "COMPLETE":
+            return [
+                ResultMetric("Order", _display(raw.get("order_id"))),
+                ResultMetric("Completed", _display(raw.get("completed_date"))),
+                ResultMetric("Due date", _display(raw.get("due_date"))),
+            ]
         derived = raw.get("derived_metrics", {})
         return [
             ResultMetric("Order", _display(raw.get("order_id"))),

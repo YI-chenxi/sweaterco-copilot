@@ -37,8 +37,8 @@ def test_english_message_runs_real_order_pipeline_and_replies_in_english():
     assert reply.metadata["structured_result"]["judgement"] == "NORMAL"
     assert reply.metadata["language"] == "en"
     assert reply.text.startswith("**Order ORD-057")
-    assert "The due date passed 58 days ago" in reply.text
-    assert "the last recorded activity was 66 days ago" in reply.text
+    assert "completed (8 days early)" in reply.text
+    assert "Recorded completion: 2026-01-25; due date: 2026-02-02" in reply.text
     assert reply.evidence[0].reference == "ORD-057"
 
 

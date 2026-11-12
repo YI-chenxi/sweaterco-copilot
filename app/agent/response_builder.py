@@ -300,6 +300,36 @@ def build_order_status_reply(
     metrics = data["derived_metrics"]
     judgement = data["judgement"]
     labels = data.get("labels", [])
+    if data.get("status") == "COMPLETE":
+        completed = data.get("completed_date") or "the recorded completion date"
+        days_late = data.get("days_late")
+        if language == ResponseLanguage.CHINESE:
+            timing = (
+                f"比交期提前 {abs(int(days_late))} 天"
+                if isinstance(days_late, (int, float)) and days_late < 0
+                else f"比交期晚 {int(days_late)} 天"
+                if isinstance(days_late, (int, float)) and days_late > 0
+                else "按期完成" if days_late == 0 else "已完成"
+            )
+            conclusion = f"订单 {data['order_id']} 已完成（{timing}）。"
+            explanation = f"记录完成日期：{completed}；交期：{data.get('due_date')}。"
+        else:
+            timing = (
+                f"{abs(int(days_late))} days early"
+                if isinstance(days_late, (int, float)) and days_late < 0
+                else f"{int(days_late)} days late"
+                if isinstance(days_late, (int, float)) and days_late > 0
+                else "on time" if days_late == 0 else "completed"
+            )
+            conclusion = f"Order {data['order_id']} was completed ({timing})."
+            explanation = f"Recorded completion: {completed}; due date: {data.get('due_date')}."
+        return AgentReply(
+            text=_answer(conclusion, explanation) + _warning_suffix(result.warnings, language),
+            evidence=result.evidence,
+            warnings=result.warnings,
+            metadata={"intent": Intent.ORDER_STATUS.value, "language": language.value,
+                      "structured_result": data, "rule_version": data.get("rule_version")},
+        )
     if language == ResponseLanguage.CHINESE:
         label_text = "、".join(ORDER_LABEL_TEXT[language].get(label, label) for label in labels)
         flag_sentence = f"需要关注：{label_text}。" if label_text else "目前没有额外风险提示。"

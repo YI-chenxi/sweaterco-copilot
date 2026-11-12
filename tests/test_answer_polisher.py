@@ -123,9 +123,8 @@ def test_agent_service_applies_polisher_after_deterministic_execution():
         [
             {
                 "answer": (
-                    "**ORD-057 does not currently show a delivery risk.**\n\n"
-                    "The due date passed 58 days ago, and the last recorded activity "
-                    "was 66 days ago."
+                    "**ORD-057 was completed 8 days early.**\n\n"
+                    "It was completed on 2026-01-25, before its 2026-02-02 due date."
                 )
             }
         ]
@@ -149,9 +148,8 @@ def test_contextual_turn_polishes_reply_without_changing_saved_session():
         [
             {
                 "answer": (
-                    "**ORD-057 does not currently show a delivery risk.**\n\n"
-                    "The due date passed 58 days ago, and its last recorded activity "
-                    "was 66 days ago."
+                    "**ORD-057 was completed 8 days early.**\n\n"
+                    "It was completed on 2026-01-25, before its 2026-02-02 due date."
                 )
             }
         ]

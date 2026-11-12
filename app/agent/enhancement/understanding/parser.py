@@ -522,18 +522,6 @@ class EnhancedIntentParser:
         ):
             raise LLMClientError("Tasks, slot_updates, and issues must be arrays")
 
-        if len(task_payloads) > 2:
-            issue = InterpretationIssue(
-                issue_type=InterpretationIssueType.TOO_MANY_TASKS,
-                original_value=len(task_payloads),
-                suggested_value=2,
-            )
-            return UnderstandingResult(
-                is_ambiguous=True,
-                language=language,
-                issues=[issue],
-            )
-
         decisions: list[IntentDecision] = []
         issues: list[InterpretationIssue] = []
         for index, task_payload in enumerate(task_payloads):
@@ -559,7 +547,12 @@ class EnhancedIntentParser:
                 model_issues.append(issue)
 
         applicable_model_issues = [
-            issue for issue in model_issues if self._issue_still_applies(issue, decisions)
+            issue for issue in model_issues
+            if issue.issue_type != InterpretationIssueType.TOO_MANY_TASKS
+            and (issue.issue_type != InterpretationIssueType.AMBIGUOUS_REFERENCE
+                 or issue.task_id is not None or issue.decision_index is not None
+                 or (not decisions and not context))
+            and self._issue_still_applies(issue, decisions)
         ]
         dropped_all_model_issues = bool(model_issues) and not applicable_model_issues
         issues.extend(applicable_model_issues)

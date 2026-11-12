@@ -751,6 +751,29 @@ def render_chat_result(result, reply_id):
     item = result.get("data", {}).get("proposal", {})
     identifier = result.get("id") or item.get("id")
     item = model().get("action_snapshots", {}).get(identifier, item)
+    if result.get("status") == "listed":
+        kind = result.get("command", {}).get("task_type")
+        entries = result.get("data", {}).get("items", [])
+        title = {"briefing": "Briefing schedules", "watch": "Watches"}.get(kind, "Actions")
+        st.markdown("**" + t(title) + "**")
+        if not entries:
+            st.write(t("No saved items found."))
+        for entry in entries:
+            with st.container(border=True):
+                st.write(entry.get("id", "—"))
+                if kind == "briefing":
+                    detail_grid([
+                        ("Repeat every (days)", entry.get("interval_days")),
+                        ("Time of day", entry.get("local_time")),
+                        ("Start date", entry.get("start_date")),
+                        ("Schedule status", entry.get("enabled")),
+                    ])
+                elif kind == "watch":
+                    detail_grid([("Order number", entry.get("order_id")),
+                                 ("Watch condition", entry.get("condition_type"))])
+                else:
+                    st.write(t(status_label(entry)))
+        return
     st.markdown("**" + t(action_label(item)) + "**")
     if result.get("ok"):
         st.write(t(status_label(item or result)))

@@ -21,7 +21,7 @@ SYSTEM BACKGROUND
   date or claim access to live factory telemetry.
 
 RESPONSE MODES
-1. business: one or two factory tasks, or updates to existing tasks. Set
+1. business: factory tasks, or updates to existing tasks. Set
    conversation_response fields to null.
 2. conversation: no executable business task. Use this for greetings, light
    small talk, capability/format questions such as "What does an order ID look
@@ -56,7 +56,7 @@ BUSINESS ONTOLOGY AND NATURAL-LANGUAGE ALIASES
   typo: do not silently correct it; request confirmation and suggest ORD-057.
 
 TASK AND SLOT RULES
-1. Return one or two independent tasks in the user's expressed order. Keep each
+1. Return independent tasks in the user's expressed order. Keep each
    task's slots separate and never copy a value between tasks.
 2. Use en or zh for the response language. Follow the user's requested output
    language first. "翻译成英文", "用英文回答", and "in English" require en;
@@ -69,8 +69,8 @@ TASK AND SLOT RULES
    Do not guess month-end, next week, or another relative business deadline.
 6. Missing required values must be null and listed in missing_slots.
 7. Unknown tasks contain no business slots.
-8. If the user asks for more than two tasks, return no partial task list and emit
-   too_many_tasks.
+8. Preserve every requested task. If some need clarification, return the complete
+   ordered task list so executable tasks can proceed first.
 
 CONVERSATION MEMORY
 - The caller may supply existing task IDs, intent, slots, missing fields, status,
@@ -85,7 +85,7 @@ CLARIFICATION POLICY
 - You decide needs_clarification and write one concise clarification_question.
 - Ask only when information is required for execution, a value is invalid, a
   reference is ambiguous, a likely typo needs confirmation, or the request has
-  more than two tasks.
+  an unsupported request.
 - Do not ask for a field that can be mapped confidently through the ontology.
 - When clarification is not needed, set clarification_question to null.
 - Local validators will recompute required fields and may override an unsafe
@@ -183,12 +183,10 @@ ENHANCED_INTENT_RESPONSE_SCHEMA = {
         "tasks": {
             "type": "array",
             "items": TASK_SCHEMA,
-            "maxItems": 2,
         },
         "slot_updates": {
             "type": "array",
             "items": SLOT_UPDATE_SCHEMA,
-            "maxItems": 2,
         },
         "issues": {
             "type": "array",

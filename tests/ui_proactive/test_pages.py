@@ -137,6 +137,38 @@ def test_recent_chat_navigation_and_new_chat_restore_copilot(screen):
     assert app.session_state["ui_page"] == "copilot" and len(app.chat_input) == 1
 
 
+def test_chat_lists_saved_briefing_schedules(screen, monkeypatch):
+    from app.agent.proactive.understanding.parser import ProactiveCommand
+
+    _, application = screen
+    created = application.briefings.create_schedule("workspace", {
+        "interval_days": 1, "local_time": "09:00", "timezone": "Asia/Singapore",
+        "start_date": "2026-04-02", "enabled": True,
+    })
+    assert created["ok"]
+    monkeypatch.setattr(
+        application.parser, "parse",
+        lambda *_args, **_kwargs: ProactiveCommand(command_type="list", task_type="briefing"),
+    )
+    result = application.handle_text("List my briefing schedules.")
+    assert result["command"]["task_type"] == "briefing"
+
+    def page(entries):
+        from app.ui.proactive.pages import render_chat_result
+
+        render_chat_result({
+            "ok": True, "status": "listed", "command": {"task_type": "briefing"},
+            "data": {"items": entries},
+        }, "reply")
+
+    entries = result["data"]["items"]
+    app = AppTest.from_function(page, args=(entries,)).run(timeout=25)
+    assert not app.exception
+    rendered = " ".join(item.value for item in app.markdown)
+    assert "Briefing schedules" in rendered
+    assert created["id"] in rendered
+
+
 def test_generated_briefing_is_read_only_and_not_added_to_schedule_history(screen):
     app, application = screen
     click(app, "pa_nav_briefings")

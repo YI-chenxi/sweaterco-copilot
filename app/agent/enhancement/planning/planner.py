@@ -155,12 +155,12 @@ def _task_notices(task: TaskState) -> list[PlanningNotice]:
 
 
 def build_plan(state: ConversationState, task_ids: Sequence[str]) -> PlanningResult:
-    """Plan zero, one, or two explicitly requested tasks in request order.
+    """Plan explicitly requested tasks in request order.
 
     Only READY, supported, complete, issue-free tasks are selected. PENDING
     tasks wait even if their slots appear complete; finished tasks are skipped.
     Invalid IDs, duplicate IDs in either the request or state, missing targets,
-    and requests exceeding two tasks raise ValueError before any planning.
+    raise ValueError before any planning.
 
     Neither the state nor any input decision is mutated. No tool, model,
     execution coordinator, or Memory mutation function is called.
@@ -169,8 +169,6 @@ def build_plan(state: ConversationState, task_ids: Sequence[str]) -> PlanningRes
     if isinstance(task_ids, (str, bytes)):
         raise ValueError("task_ids must be a sequence of task IDs, not a string")
     requested = tuple(task_ids)
-    if len(requested) > 2:
-        raise ValueError("At most two tasks may be requested")
     for task_id in requested:
         _validate_id(task_id)
     if len(set(requested)) != len(requested):

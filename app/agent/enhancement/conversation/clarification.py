@@ -180,9 +180,8 @@ def _issue_problem(
     elif issue.issue_type == InterpretationIssueType.TOO_MANY_TASKS:
         question = _text(
             language,
-            "我一次最多可以处理两个请求。请重新发送你想优先处理的两个。",
-            "I can handle up to two requests at a time. Please resend the two you "
-            "would like me to handle first.",
+            "请重新描述你想查询的内容。",
+            "Please restate what you would like me to check.",
         )
         reason = _text(
             language, "超过本轮两个任务的上限。", "The request exceeds the two-task limit."
@@ -437,12 +436,6 @@ def validate_request(
             problem = replace(_issue_problem(issue, policy, language), task_id=None)
             if problem not in global_problems:
                 global_problems.append(problem)
-    if len(requested) > 2 and not any(p.code == "too_many_tasks" for p in global_problems):
-        global_problems.append(
-            _issue_problem(
-                InterpretationIssue(InterpretationIssueType.TOO_MANY_TASKS), policy, language
-            )
-        )
     if is_ambiguous and not issues and not any(bound.values()) and not global_problems:
         global_problems.append(
             _issue_problem(

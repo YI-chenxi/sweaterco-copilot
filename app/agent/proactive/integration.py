@@ -281,7 +281,7 @@ class ProactiveApplication:
                 }
         else:
             return {"handled": True, "ok": False, "status": "unsupported"}
-        return {"handled": True, **result}
+        return {"handled": True, "command": parsed, **result}
 
     @staticmethod
     def _clarification(command: dict) -> str:

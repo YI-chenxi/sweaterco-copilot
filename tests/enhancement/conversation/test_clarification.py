@@ -150,7 +150,7 @@ class ClarificationTests(unittest.TestCase):
             (InterpretationIssueType.POSSIBLE_TYPO, "confirm"),
             (InterpretationIssueType.INVALID_FORMAT, "positive whole-number"),
             (InterpretationIssueType.AMBIGUOUS_REFERENCE, "Which request"),
-            (InterpretationIssueType.TOO_MANY_TASKS, "up to two"),
+            (InterpretationIssueType.TOO_MANY_TASKS, "restate"),
         ]:
             with self.subTest(kind=kind):
                 issue = InterpretationIssue(kind, field="pieces")
@@ -182,11 +182,11 @@ class ClarificationTests(unittest.TestCase):
                 self.assertTrue(result.blocks_request)
                 self.assertEqual(result.executable_task_ids, ())
 
-    def test_more_than_two_tasks_blocks_all(self):
+    def test_more_than_two_tasks_can_all_execute(self):
         state = make_state(ready("one"), ready("two"), ready("three"))
         result = validate_request(state, ["one", "two", "three"], policy=POLICY)
-        self.assertTrue(result.blocks_request)
-        self.assertEqual(result.executable_task_ids, ())
+        self.assertFalse(result.blocks_request)
+        self.assertEqual(result.executable_task_ids, ("one", "two", "three"))
 
     def test_one_blocked_task_does_not_block_another(self):
         state = make_state(ready("one"), ready("two", slots={}))

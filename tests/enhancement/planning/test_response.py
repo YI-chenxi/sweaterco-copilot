@@ -78,7 +78,7 @@ def test_pending_before_successful_task_keeps_interleaved_order_and_missing_fiel
     ids = ["waiting", "first"]
     planning, batch = run_batch([task(), pending], ids, [source_reply()])
     reply = aggregate(planning, batch, ids)
-    assert reply.text.index("product category") < reply.text.index("Original conclusion first")
+    assert reply.text.index("Original conclusion first") < reply.text.index("product category")
     assert reply.metadata["tasks"]["waiting"]["intent"] == "order_feasibility"
     assert reply.metadata["tasks"]["waiting"]["display_status"] == "pending"
     assert reply.metadata["tasks"]["waiting"]["reply"] is None

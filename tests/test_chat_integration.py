@@ -182,6 +182,24 @@ def test_bare_order_id_completes_the_pending_order_check_without_a_second_model_
     assert second.session.state.tasks[0].status == TaskStatus.COMPLETED
 
 
+def test_three_tasks_show_ready_results_before_missing_details_and_resume_in_order():
+    agent, _, executor = service(
+        payload(
+            task(order_id="ORD-057"),
+            task("order_feasibility", category="TOPS", pieces=800),
+            task(order_id="ORD-002"),
+        ),
+        payload(updates=[{"task_id": "task-002", "requested_delivery_date": "2026-04-25"}]),
+    )
+    first = agent.handle_turn("Check ORD-057, assess 800 TOPS, and check ORD-002")
+    assert [call.slots.get("order_id") for call in executor.calls] == ["ORD-057", "ORD-002"]
+    assert first.reply.text.index("ORD-057") < first.reply.text.index("ORD-002")
+    assert first.reply.text.index("ORD-002") < first.reply.text.index("delivery date")
+    second = agent.handle_turn("The TOPS delivery date is 2026-04-25", first.session)
+    assert executor.calls[-1].intent.value == "order_feasibility"
+    assert all(task.status == TaskStatus.COMPLETED for task in second.session.state.tasks)
+
+
 @pytest.mark.parametrize("bad_quantity", [0, -5, 2.5, True])
 def test_invalid_quantity_cannot_execute_and_can_be_corrected(bad_quantity):
     agent, _, executor = service(
@@ -252,7 +270,7 @@ def test_two_threads_share_service_but_never_share_parameters():
 
 
 def test_global_issue_persists_until_explicit_reset():
-    too_many = {"issue_type": "too_many_tasks"}
+    too_many = {"issue_type": "ambiguous_reference"}
     agent, _, executor = service(
         payload(issues=[too_many], ambiguous=True),
         payload(task(order_id="ORD-057")),
@@ -267,7 +285,7 @@ def test_global_issue_persists_until_explicit_reset():
     third = agent.handle_turn("ORD-057?", reset_request(second.session))
     assert len(executor.calls) == 1
     assert not third.session.global_issues
-    assert third.session.state.tasks[0].task_id == "task-002"
+    assert third.session.state.tasks[0].task_id == "task-003"
 
 
 def test_unbound_ambiguity_is_not_cleared_by_an_unrelated_turn():

@@ -236,7 +236,8 @@ def render_user_text(metadata: dict[str, Any], language: ResponseLanguage) -> st
 
     task_order = metadata.get("task_order", [])
     task_records = metadata.get("tasks", {})
-    sections: list[tuple[str, list[str]]] = []
+    result_sections: list[tuple[str, list[str]]] = []
+    question_sections: list[tuple[str, list[str]]] = []
     has_result = False
     has_question = False
     for task_id in task_order:
@@ -258,7 +259,13 @@ def render_user_text(metadata: dict[str, Any], language: ResponseLanguage) -> st
         if not parts:
             parts.append(_safe_status_message(record, language))
         decision = record.get("current_decision") or record.get("decision") or {}
-        sections.append((_request_name(decision, language), parts))
+        section = (_request_name(decision, language), parts)
+        target_sections = (
+            question_sections if record.get("needs_clarification") else result_sections
+        )
+        target_sections.append(section)
+
+    sections = result_sections + question_sections
 
     global_questions = [
         item.get("question", "").strip()
@@ -460,7 +467,7 @@ def aggregate_results(
     *,
     task_ids: Sequence[str],
 ) -> AgentReply:
-    """Combine at most two tasks in explicit original request order.
+    """Combine requested tasks in explicit original request order.
 
     Use the original task_ids passed to build_plan, including waiting/skipped
     tasks. An entirely empty execution batch is valid: planned tasks are labeled
@@ -479,8 +486,6 @@ def aggregate_results(
     if isinstance(task_ids, (str, bytes)):
         raise ValueError("task_ids must be a sequence, not a string")
     requested = tuple(task_ids)
-    if len(requested) > 2:
-        raise ValueError("At most two tasks may be aggregated")
     if any(not isinstance(task_id, str) or not task_id.strip() for task_id in requested):
         raise ValueError("Task IDs must be non-empty strings")
     if len(set(requested)) != len(requested):

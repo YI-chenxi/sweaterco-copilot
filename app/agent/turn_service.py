@@ -136,9 +136,14 @@ class ConversationTurnService:
         if new_ids:
             requested = list(dict.fromkeys([*new_ids, *touched]))
         elif touched:
-            # Keep the original two-task order when completing that same request.
+            # Keep the request order, but do not repeat results already shown.
             if set(touched).issubset(current.active_task_ids):
-                requested = list(current.active_task_ids)
+                requested = [
+                    task_id for task_id in current.active_task_ids
+                    if any(task.task_id == task_id and task.status not in
+                           {TaskStatus.COMPLETED, TaskStatus.FAILED}
+                           for task in current.state.tasks)
+                ]
             else:
                 requested = touched
         else:

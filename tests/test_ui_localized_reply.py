@@ -37,9 +37,9 @@ def test_locale_view_reuses_stored_results_without_mutation_or_execution(workflo
 def test_screenshot_order_numbers_and_id_preserved_in_chinese_view():
     reply = AgentOrchestrator().handle(guided_decision("Order status", order_id="ORD-057"))
     chinese = localized_result_text(reply, "zh")
-    assert "ORD-057" in chinese and "58" in chinese and "66" in chinese
-    assert "交期已过去" in chinese
-    assert "does not currently show" in reply.text
+    assert "ORD-057" in chinese and "8" in chinese
+    assert "已完成" in chinese
+    assert "was completed" in reply.text
     assert reply.metadata["language"] == "en"
 
 

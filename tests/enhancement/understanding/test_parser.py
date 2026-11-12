@@ -329,6 +329,20 @@ def test_non_positive_quantity_becomes_issue_and_remains_missing():
     assert result.issues[0].field == "pieces"
 
 
+def test_spurious_task_limit_and_reference_issues_do_not_obscure_invalid_quantity():
+    client = MockLLMClient([payload(
+        task("order_feasibility", category="TOPS", pieces=-5,
+             requested_delivery_date="2026-04-25"),
+        issues=[{"issue_type": "too_many_tasks"},
+                {"issue_type": "ambiguous_reference"}],
+        needs_clarification=True,
+    )])
+    result = EnhancedIntentParser(client).parse("Can we accept -5 TOPS by 2026-04-25?")
+    assert [(issue.issue_type, issue.field) for issue in result.issues] == [
+        (InterpretationIssueType.INVALID_FORMAT, "pieces")
+    ]
+
+
 def test_possible_order_id_typo_becomes_issue_not_silent_correction():
     client = MockLLMClient(
         [
@@ -409,7 +423,7 @@ def test_local_guard_removes_model_silent_typo_update():
     ]
 
 
-def test_more_than_two_tasks_is_rejected_without_partial_results():
+def test_more_than_two_tasks_are_preserved_in_request_order():
     client = MockLLMClient(
         [
             payload(
@@ -422,9 +436,10 @@ def test_more_than_two_tasks_is_rejected_without_partial_results():
 
     result = EnhancedIntentParser(client).parse("Check three orders")
 
-    assert result.decisions == []
-    assert result.is_ambiguous is True
-    assert result.issues[0].issue_type == InterpretationIssueType.TOO_MANY_TASKS
+    assert [decision.slots["order_id"] for decision in result.decisions] == [
+        "ORD-001", "ORD-002", "ORD-003"
+    ]
+    assert result.issues == []
 
 
 def test_slot_update_targets_existing_task_and_normalizes_value():

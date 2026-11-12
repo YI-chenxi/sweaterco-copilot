@@ -43,7 +43,7 @@ def test_order_status_pipeline_uses_real_order_and_preserves_evidence():
     assert result["judgement"] == "NORMAL"
     assert result["rule_version"] == "ORDER_RISK_V1"
     assert reply.evidence[0].reference == "ORD-057"
-    assert "does not currently show a delivery risk" in reply.text
+    assert "completed (8 days early)" in reply.text
     assert "NORMAL" not in reply.text
 
 

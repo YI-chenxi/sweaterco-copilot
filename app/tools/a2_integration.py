@@ -60,7 +60,13 @@ def judge_order_from_retrieval(order_result: Any, *, today: date | str) -> Any:
     judgement = judge_order_status(payload)
     return _result_like(
         order_result,
-        data=judgement.to_dict(),
+        data={
+            **judgement.to_dict(),
+            "status": payload.get("status"),
+            "due_date": payload.get("due_date"),
+            "completed_date": payload.get("completed_date"),
+            "days_late": payload.get("days_late"),
+        },
         evidence=list(getattr(order_result, "evidence", []) or []),
         warnings=list(getattr(order_result, "warnings", []) or []),
     )

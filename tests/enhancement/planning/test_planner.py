@@ -157,7 +157,7 @@ def test_identical_decisions_are_not_merged_or_matched_by_equality():
     [
         (["task-001", "task-001"], "Duplicate requested"),
         (["task-001", "missing"], "Unknown task_id"),
-        (["task-001", "task-002", "task-003"], "At most two"),
+        (["task-001", "task-002", "task-003"], "Unknown task_id"),
         ([""], "non-empty strings"),
         (["  "], "non-empty strings"),
         ([None], "non-empty strings"),

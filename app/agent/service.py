@@ -89,7 +89,7 @@ class AgentService:
         )
 
     def _finalize(self, reply: AgentReply) -> AgentReply:
-        if self.answer_polisher is None:
+        if self.answer_polisher is None or len(reply.metadata.get("task_order", [])) > 1:
             return reply
         return self.answer_polisher.polish(reply)
 

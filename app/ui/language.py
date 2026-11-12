@@ -61,6 +61,8 @@ ZH = {
     ),
     "Business Assessment": "业务评估",
     "Copy": "复制",
+    "Completed": "完成日期",
+    "Due date": "交期",
     "Use the copy icon to copy the complete original response.": "点击复制图标，复制完整原始回答。",
     "Order Status": "订单状态",
     "Production Health": "生产健康",
@@ -193,7 +195,7 @@ SESSION_NOTE = "Session chat history is not saved to GitHub."
 WELCOME_NOTE = "Ask naturally, or choose a workflow backed by factory data."
 INPUT_PLACEHOLDER = "Ask about orders, production, risks or feasibility..."
 MODEL_NOTE = "AI chat uses the model. Quick Workflows need no API key."
-REQUEST_RESET_NOTE = "Please start fresh and submit up to two requests."
+REQUEST_RESET_NOTE = "Please start a fresh request."
 
 ZH.update(
     {
