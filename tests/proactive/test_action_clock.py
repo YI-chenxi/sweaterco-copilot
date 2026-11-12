@@ -84,3 +84,38 @@ def test_composed_watch_captures_baseline_on_snapshot_date(tmp_path):
     assert observed["checks"][0]["outcome"] == "not_due"
     assert observed["checks"][0]["timestamp"].startswith("2026-04-01")
     assert observed["alerts"] == []
+
+
+def test_spoken_status_watch_reaches_confirmation_without_input_error(tmp_path):
+    client = MockLLMClient([{
+        "command_type": "create",
+        "task_type": "watch",
+        "target_id": None,
+        "language": "en",
+        "parameters": {
+            "order_id": "057",
+            "condition_type": "status_equals",
+            "expected_status": "complete",
+            "check_interval_minutes": 60,
+        },
+    }])
+    application = build_proactive_application(
+        llm_client=client,
+        actor_provider=lambda: "operator",
+        workspace_provider=lambda: "workspace",
+        authorizer=lambda *_args: True,
+        database=tmp_path / "status-watch.sqlite3",
+    )
+
+    result = application.handle_text("Watch order 057 for complete, check every 60 minutes.")
+
+    assert result["status"] == "pending_confirmation"
+    assert result["command"]["parameters"] == {
+        "order_id": "ORD-057",
+        "condition_type": "status_equals",
+        "expected_status": "COMPLETE",
+        "check_interval_minutes": 60,
+    }
+    confirmed = application.confirm_action(result["id"])
+    assert confirmed["status"] == "executed"
+    assert application.list_watches()["data"]["items"][0]["expected_status"] == "COMPLETE"

@@ -32,6 +32,11 @@ _WATCH_FIELDS = frozenset(
     }
 )
 _ORDER_ID = re.compile(r"(?<![A-Z0-9])ORD(?:ER)?[\s_-]?(\d{1,3})(?![A-Z0-9])", re.IGNORECASE)
+_ORDER_STATUS = re.compile(r"\b(?:complete(?:d)?|in[\s_-]+progress)\b", re.IGNORECASE)
+_NEGATED_STATUS = re.compile(
+    r"\b(?:not|without|isn't|is not)\s+(?:yet\s+)?(?:complete(?:d)?|in[\s_-]+progress)\b",
+    re.IGNORECASE,
+)
 _EXPLICIT_DATE = re.compile(r"\d{4}[-/.年]\d{1,2}[-/.月]\d{1,2}")
 _MONTHS = {name.casefold(): number for number, name in enumerate(month_name) if name}
 _FIRST_NINETEEN = (
@@ -182,6 +187,18 @@ def _normalize_deadline(value: Any) -> str | None:
         return None
 
 
+def _explicit_order_status(text: str) -> str | None:
+    """Only use a single, positively stated order status from the source text."""
+
+    if _NEGATED_STATUS.search(text):
+        return None
+    statuses = {
+        "IN_PROGRESS" if match.group().casefold().startswith("in") else "COMPLETE"
+        for match in _ORDER_STATUS.finditer(text)
+    }
+    return next(iter(statuses)) if len(statuses) == 1 else None
+
+
 def _spoken_deadline(text: str, reference_date: date) -> str | None:
     """Resolve one explicit spoken month, day, time, and zone against the snapshot year."""
 
@@ -302,9 +319,10 @@ def _normalize_parameters(
             values["deadline_at"] = spoken_deadline
         elif deadline and has_day and _TIME_CUE.search(text):
             values["deadline_at"] = deadline
-        expected = raw.get("expected_status")
-        if isinstance(expected, str) and expected.strip():
-            values["expected_status"] = expected.strip()
+        if condition == "status_equals":
+            expected = _explicit_order_status(text)
+            if expected is not None:
+                values["expected_status"] = expected
         interval = _positive_int(raw.get("check_interval_minutes"))
         if interval is not None:
             values["check_interval_minutes"] = interval

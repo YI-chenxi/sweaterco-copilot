@@ -24,6 +24,8 @@ timezone (IANA name; default Asia/Singapore), start_date (YYYY-MM-DD), enabled.
 Watch parameters: order_id (ORD-057 form), condition_type
 (no_progress_by_deadline or status_equals), deadline_at (timezone-aware ISO 8601),
 expected_status, check_interval_minutes (positive integer).
+For status_equals, expected_status must be the canonical order status
+IN_PROGRESS or COMPLETE; "complete" and "completed" mean COMPLETE.
 Do not turn an unsupported watch condition into a supported one. Do not interpret
 an unclear hour as AM or PM. If a target such as "that one" is ambiguous, leave
 target_id null. Confirmation/rejection must identify one exact pending proposal.

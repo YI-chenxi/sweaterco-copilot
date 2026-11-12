@@ -89,6 +89,33 @@ def test_watch_accepts_spoken_order_number_without_confirmation():
     assert result.missing_fields == []
 
 
+def test_watch_normalizes_explicit_order_status_instead_of_model_casing():
+    for model_status in ("complete", "Complete", "COMPLETED", None):
+        result = parse(
+            "Watch order 057 for complete, check every 60 minutes.",
+            response(
+                "create", "watch", order_id="057",
+                condition_type="status_equals", expected_status=model_status,
+                check_interval_minutes=60,
+            ),
+        )
+        assert result.parameters["expected_status"] == "COMPLETE"
+        assert result.missing_fields == []
+
+
+def test_watch_rejects_negated_or_conflicting_status_in_source():
+    model = response(
+        "create", "watch", order_id="057", condition_type="status_equals",
+        expected_status="COMPLETE", check_interval_minutes=60,
+    )
+    for text in (
+        "Watch order 057 if not complete, check every 60 minutes.",
+        "Watch order 057 from IN_PROGRESS to COMPLETE, check every 60 minutes.",
+    ):
+        result = parse(text, model)
+        assert result.missing_fields == ["expected_status"]
+
+
 def test_spoken_watch_deadline_uses_factory_date_and_source_order_number():
     client = MockLLMClient([response(
         "create", "watch", order_id="002",
