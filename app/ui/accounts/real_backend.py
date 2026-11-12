@@ -22,6 +22,7 @@ class RealAccountMode:
     session: BrowserSession | None = field(default=None, repr=False)
     chat_ready: bool = field(default=False, compare=False)
     allow_registration: bool = True
+    login_defaults: tuple[str, str] | None = field(default=None, repr=False)
 
 
 def initialize_real_account_mode(

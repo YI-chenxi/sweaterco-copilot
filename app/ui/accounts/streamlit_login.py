@@ -9,6 +9,7 @@ from streamlit.errors import StreamlitSecretNotFoundError
 from app.ui.accounts.real_backend import RealAccountMode, initialize_real_account_mode
 
 _MODE_KEY = "_streamlit_login_only_mode"
+DEMO_LOGIN_USERNAME = "sweaterco_demo_guest"
 
 
 class StreamlitSession:
@@ -63,6 +64,12 @@ def streamlit_login_mode(*, agent, chat_ready) -> RealAccountMode | None:
             session=StreamlitSession(),
             reuse_connections=True,
         )
-        mode = replace(mode, allow_registration=False)
+        demo_password = st.secrets.get("DEMO_LOGIN_PASSWORD")
+        login_defaults = (
+            (DEMO_LOGIN_USERNAME, demo_password)
+            if isinstance(demo_password, str) and demo_password
+            else None
+        )
+        mode = replace(mode, allow_registration=False, login_defaults=login_defaults)
         st.session_state[_MODE_KEY] = mode
     return replace(mode, chat_ready=mode.backend is not None and chat_ready())

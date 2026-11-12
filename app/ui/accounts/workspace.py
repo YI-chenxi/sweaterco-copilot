@@ -159,6 +159,9 @@ class AccountWorkspace:
                 allow_registration=(
                     not isinstance(self.mode, RealAccountMode) or self.mode.allow_registration
                 ),
+                login_defaults=(
+                    self.mode.login_defaults if isinstance(self.mode, RealAccountMode) else None
+                ),
             )
             is not None
         )

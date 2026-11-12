@@ -167,6 +167,8 @@ def test_original_streamlit_entrypoint_logs_in_without_cookie_and_recovers_histo
     app = fresh_page()
     assert not app.tabs and not app.chat_input
     assert not any(button.label == "Register" for button in app.button)
+    assert app.text_input(key="account_login_username").value == ""
+    assert app.text_input(key="account_login_password").value == ""
     _form(app, "login", "alice", "wrong offline password")
     assert app.error[0].value == "The username or password is incorrect."
     _form(app, "login", "alice")
@@ -198,6 +200,38 @@ def test_original_streamlit_entrypoint_logs_in_without_cookie_and_recovers_histo
     assert thread.thread_id not in {
         item.thread_id for item in backend.list_threads(workspace.current_handle())
     }
+
+
+def test_login_only_prefills_a_demo_account_and_waits_for_sign_in(dependencies):
+    from app.ui.accounts.streamlit_login import DEMO_LOGIN_USERNAME
+
+    backend = _init(FakeAgent()).backend
+    guest = backend.register(DEMO_LOGIN_USERNAME, _PASSWORD)
+    other = backend.register("alice", _PASSWORD)
+    entrypoint = Path(__file__).resolve().parents[3] / "app/ui/streamlit_app.py"
+    app = AppTest.from_file(str(entrypoint), default_timeout=20)
+    app.secrets.update(
+        ACCOUNT_LOGIN_ONLY=True,
+        DATABASE_URL=_FAKE_DATABASE,
+        ACCOUNT_SECRET=_FAKE_SECRET,
+        DEMO_LOGIN_PASSWORD=_PASSWORD,
+    )
+    app.session_state["ui_language"] = "en"
+    _run(app)
+
+    assert app.text_input(key="account_login_username").value == DEMO_LOGIN_USERNAME
+    password = app.text_input(key="account_login_password")
+    assert password.value == _PASSWORD
+    assert password.proto.type == password.proto.PASSWORD
+    assert _workspace(app).owner is None and not app.chat_input
+    assert not app.tabs and not any(button.label == "Register" for button in app.button)
+
+    _click(app, "Sign in")
+    assert _workspace(app).owner.user_id == guest.user_id
+    _click(app, "Sign out")
+    assert app.text_input(key="account_login_username").value == DEMO_LOGIN_USERNAME
+    _form(app, "login", "alice")
+    assert _workspace(app).owner.user_id == other.user_id
 
 
 def test_login_only_with_missing_database_configuration_keeps_workspace_closed():
