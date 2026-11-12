@@ -1,4 +1,4 @@
-"""Validated bilingual understanding for one or two independent tasks."""
+"""Validated bilingual understanding for independent tasks."""
 
 from __future__ import annotations
 
@@ -79,6 +79,7 @@ _CHINESE_RESPONSE_CUES = (
     "translate to chinese",
     "translate into chinese",
 )
+_EXPLICIT_DATE_IN_TEXT = re.compile(r"(?<!\d)\d{4}[-/.]\d{1,2}[-/.]\d{1,2}(?!\d)")
 
 
 def _fallback_response_language(text: str) -> ResponseLanguage:
@@ -188,7 +189,10 @@ def _decision_from_payload(
     if not isinstance(declared_missing, list):
         declared_missing = []
     required = required_slots_for(intent)
-    missing = {slot for slot in declared_missing if isinstance(slot, str) and slot in required}
+    missing = {
+        slot for slot in declared_missing
+        if isinstance(slot, str) and slot in required and slot not in slots
+    }
     decision = IntentDecision(
         intent=intent,
         slots=slots,
@@ -386,6 +390,7 @@ class EnhancedIntentParser:
             "current_weekday": now.strftime("%A"),
             "timezone": self.timezone_name,
             "factory_snapshot_date": self.reference_date.isoformat(),
+            "business_today": self.reference_date.isoformat(),
             "canonical_order_id_example": "ORD-057",
         }
 
@@ -535,6 +540,33 @@ class EnhancedIntentParser:
             decisions.append(decision)
             issues.extend(task_issues)
 
+        # The model may compare an explicit business deadline with today's real
+        # calendar and omit it. Only restore a single unambiguous date for a
+        # single feasibility task; the business validator still checks it.
+        feasibility_indexes = [
+            index for index, decision in enumerate(decisions)
+            if decision.intent == Intent.ORDER_FEASIBILITY
+        ]
+        explicit_dates = {
+            normalized
+            for match in _EXPLICIT_DATE_IN_TEXT.finditer(original_text)
+            if (normalized := normalize_explicit_date(match.group())) is not None
+        }
+        restored_date = False
+        valid_business_date = False
+        if len(feasibility_indexes) == len(explicit_dates) == 1:
+            index = feasibility_indexes[0]
+            candidate = next(iter(explicit_dates))
+            if date.fromisoformat(candidate) > self.reference_date and (
+                decisions[index].slots.get("requested_delivery_date") in {None, candidate}
+            ):
+                valid_business_date = True
+            if valid_business_date and "requested_delivery_date" not in decisions[index].slots:
+                slots = {**decisions[index].slots, "requested_delivery_date": candidate}
+                amended = replace(decisions[index], slots=slots, missing_slots=())
+                decisions[index] = replace(amended, missing_slots=find_missing_slots(amended))
+                restored_date = True
+
         model_issues: list[InterpretationIssue] = []
         for issue_payload in issue_payloads:
             if not isinstance(issue_payload, dict):
@@ -549,6 +581,8 @@ class EnhancedIntentParser:
         applicable_model_issues = [
             issue for issue in model_issues
             if issue.issue_type != InterpretationIssueType.TOO_MANY_TASKS
+            and not (restored_date and issue.issue_type == InterpretationIssueType.INVALID_FORMAT
+                     and issue.field == "requested_delivery_date")
             and (issue.issue_type != InterpretationIssueType.AMBIGUOUS_REFERENCE
                  or issue.task_id is not None or issue.decision_index is not None
                  or (not decisions and not context))
@@ -570,6 +604,18 @@ class EnhancedIntentParser:
         clarification_question = _clean_model_text(payload.get("clarification_question"), limit=500)
         if clarification_question:
             clarification_question = clarification_question.replace("**", "").strip()
+        date_only_caution = (
+            valid_business_date and not local_needs_clarification
+            and clarification_question is not None
+            and any(word in clarification_question.casefold()
+                    for word in ("date", "deadline", "交期", "日期"))
+        )
+        stale_date_clarification = (
+            (restored_date or date_only_caution) and not local_needs_clarification
+        )
+        if stale_date_clarification:
+            clarification_question = None
+            model_needs_clarification = False
         if dropped_all_model_issues and not local_needs_clarification:
             # If every concrete reason supplied by the model is disproved by the
             # local validators, do not turn the stale clarification flag into a
@@ -593,7 +639,8 @@ class EnhancedIntentParser:
 
         return UnderstandingResult(
             decisions=decisions,
-            is_ambiguous=bool(payload.get("is_ambiguous")) or bool(issues),
+            is_ambiguous=(bool(payload.get("is_ambiguous"))
+                          and not stale_date_clarification) or bool(issues),
             language=language,
             issues=issues,
             slot_updates=updates,

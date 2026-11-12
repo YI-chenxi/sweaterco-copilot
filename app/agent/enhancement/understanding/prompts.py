@@ -1,4 +1,4 @@
-"""Prompt and strict schema for enhanced single- and dual-intent parsing."""
+"""Prompt and strict schema for enhanced multi-intent parsing."""
 
 from app.agent.enhancement.contracts import InterpretationIssueType
 from app.agent.intents import Intent
@@ -17,8 +17,11 @@ SYSTEM BACKGROUND
 - You may directly answer greetings, light small talk, questions about how to
   use this copilot, supported formats, and the supplied calendar context.
 - The runtime context supplies the current calendar date, weekday, timezone,
-  and factory snapshot date. Use those values exactly; never infer a different
-  date or claim access to live factory telemetry.
+  and business_today (the factory snapshot date). For order status, delivery
+  deadlines, and feasibility, business_today is "today". A delivery date after
+  business_today has not passed, even if it precedes current_date. Use
+  current_date and current_weekday only for explicit calendar questions such as
+  "What day is it today?" Never claim access to live factory telemetry.
 
 RESPONSE MODES
 1. business: factory tasks, or updates to existing tasks. Set
@@ -66,6 +69,7 @@ TASK AND SLOT RULES
 3. Normalize order IDs, stages, and categories to their canonical uppercase forms.
 4. pieces and top_n must be positive whole numbers.
 5. Use ISO YYYY-MM-DD only when the delivery date is explicit and unambiguous.
+   Compare business deadlines only with business_today, not current_date.
    Do not guess month-end, next week, or another relative business deadline.
 6. Missing required values must be null and listed in missing_slots.
 7. Unknown tasks contain no business slots.

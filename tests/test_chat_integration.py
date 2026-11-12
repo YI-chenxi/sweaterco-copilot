@@ -200,6 +200,25 @@ def test_three_tasks_show_ready_results_before_missing_details_and_resume_in_ord
     assert all(task.status == TaskStatus.COMPLETED for task in second.session.state.tasks)
 
 
+def test_three_task_snapshot_date_is_not_rejected_as_past_delivery():
+    agent, _, executor = service(payload(
+        task(order_id="ORD-057"),
+        task("production_normality", stage="ASSEMBLY"),
+        task("order_feasibility", category="TOPS", pieces=800),
+        needs_clarification=True,
+        clarification_question="What future delivery date should I use?",
+        issues=[{"issue_type": "invalid_format", "field": "requested_delivery_date",
+                 "original_value": "2026-04-25", "decision_index": 2}],
+    ))
+    result = agent.handle_turn(
+        "Check ORD-057, analyze Assembly, and assess 800 TOPS for delivery by 2026-04-25."
+    )
+    assert len(executor.calls) == 3
+    assert executor.calls[-1].slots["requested_delivery_date"] == "2026-04-25"
+    assert all(task.status == TaskStatus.COMPLETED for task in result.session.state.tasks)
+    assert "already passed" not in result.reply.text
+
+
 @pytest.mark.parametrize("bad_quantity", [0, -5, 2.5, True])
 def test_invalid_quantity_cannot_execute_and_can_be_corrected(bad_quantity):
     agent, _, executor = service(

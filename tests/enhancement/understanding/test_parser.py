@@ -163,6 +163,8 @@ def test_parser_supplies_calendar_and_factory_snapshot_context_to_model():
     assert '"current_weekday"' in prompt
     assert '"timezone": "Asia/Shanghai"' in prompt
     assert '"factory_snapshot_date": "2026-04-01"' in prompt
+    assert '"business_today": "2026-04-01"' in prompt
+    assert "Compare business deadlines only with business_today" in client.calls[0]["system_prompt"]
 
 
 def test_model_writes_followup_question_for_incomplete_business_request():
@@ -227,6 +229,56 @@ def test_parser_drops_spurious_model_invalid_format_for_locally_valid_value():
 
     assert result.issues == []
     assert result.needs_clarification is False
+
+
+def test_snapshot_restores_explicit_future_date_omitted_by_model():
+    client = MockLLMClient([payload(
+        task("order_status", order_id="ORD-057"),
+        task("production_normality", stage="ASSEMBLY"),
+        task("order_feasibility", category="TOPS", pieces=800),
+        needs_clarification=True,
+        is_ambiguous=True,
+        clarification_question="What future delivery date should I use?",
+        issues=[{
+            "issue_type": "invalid_format", "field": "requested_delivery_date",
+            "original_value": "2026-04-25", "suggested_value": None,
+            "decision_index": 2, "task_id": None,
+        }],
+    )])
+    result = EnhancedIntentParser(client).parse(
+        "Check ORD-057, analyze Assembly, and assess 800 TOPS for delivery by 2026-04-25."
+    )
+    assert result.decisions[2].slots["requested_delivery_date"] == "2026-04-25"
+    assert result.decisions[2].missing_slots == ()
+    assert result.issues == []
+    assert not result.needs_clarification
+    assert not result.is_ambiguous
+
+
+def test_valid_future_date_is_not_missing_when_model_marks_it_missing():
+    client = MockLLMClient([payload(task(
+        "order_feasibility", category="TOPS", pieces=800,
+        requested_delivery_date="2026-04-25",
+        missing_slots=["requested_delivery_date"],
+    ))])
+    result = EnhancedIntentParser(client).parse("Assess 800 TOPS by 2026-04-25")
+    assert result.decisions[0].missing_slots == ()
+    assert not result.needs_clarification
+
+
+def test_valid_business_date_drops_stale_model_clarification():
+    client = MockLLMClient([payload(
+        task("order_feasibility", category="TOPS", pieces=800,
+             requested_delivery_date="2026-04-25"),
+        needs_clarification=True,
+        is_ambiguous=True,
+        clarification_question="That delivery date has passed. What future date should I use?",
+    )])
+    result = EnhancedIntentParser(client).parse("Assess 800 TOPS by 2026-04-25")
+    assert result.decisions[0].slots["requested_delivery_date"] == "2026-04-25"
+    assert result.issues == []
+    assert not result.needs_clarification
+    assert not result.is_ambiguous
 
 
 def test_chinese_mixed_language_defaults_to_chinese_without_explicit_override():
