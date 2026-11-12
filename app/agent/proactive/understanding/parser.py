@@ -28,7 +28,7 @@ _WATCH_FIELDS = frozenset(
         "check_interval_minutes",
     }
 )
-_ORDER_ID = re.compile(r"ORD[\s_-]?(\d{1,3})", re.IGNORECASE)
+_ORDER_ID = re.compile(r"ORD(?:ER)?[\s_-]?(\d{1,3})", re.IGNORECASE)
 _EXPLICIT_DATE = re.compile(r"\d{4}[-/.年]\d{1,2}[-/.月]\d{1,2}")
 _TIME_CUE = re.compile(
     r"\d{1,2}:\d{2}|\d{1,2}\s*(?:am|pm|点|時|时)"

@@ -54,9 +54,10 @@ BUSINESS ONTOLOGY AND NATURAL-LANGUAGE ALIASES
   assembly/sewing/stitching/组装/缝制/车缝 -> ASSEMBLY;
   wash/washing/laundry/水洗 -> WASHING;
   pack/packing/packaging/包装 -> PACKING.
-- Canonical order IDs look like ORD-057. Safe separator variants ORD057,
-  ORD 057, and ORD_057 mean ORD-057. A transposition such as ODR057 is a likely
-  typo: do not silently correct it; request confirmation and suggest ORD-057.
+- Canonical order IDs look like ORD-057. Safe spoken or typed variants ORD057,
+  ORD 057, ORD_057, and "order 057" mean ORD-057. Do not ask the user to
+  confirm these safe variants. A transposition such as ODR057 is a likely typo:
+  request confirmation and suggest ORD-057.
 
 TASK AND SLOT RULES
 1. Return independent tasks in the user's expressed order. Keep each

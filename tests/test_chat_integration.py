@@ -70,6 +70,17 @@ def test_single_workflow_exposes_real_result_and_source_rows():
     assert len(executor.calls) == 1
 
 
+def test_spoken_order_number_variant_executes_without_confirmation():
+    agent, client, executor = service(payload(task(order_id="ORD-002")))
+
+    result = agent.handle_turn("Check order 002")
+
+    assert result.reply.needs_clarification is False
+    assert result.session.state.tasks[0].status == TaskStatus.COMPLETED
+    assert executor.calls[0].slots["order_id"] == "ORD-002"
+    assert "Check ORD-002" in client.calls[0]["user_prompt"]
+
+
 def test_natural_product_alias_reaches_business_tool_as_canonical_category():
     agent, _, executor = service(
         payload(

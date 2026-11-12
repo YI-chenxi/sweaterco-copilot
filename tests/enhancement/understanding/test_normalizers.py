@@ -21,6 +21,8 @@ from app.agent.enhancement.understanding.normalizers import (
         ("ord-057", "ORD-057"),
         ("ORD 057", "ORD-057"),
         ("ORD_057", "ORD-057"),
+        ("order 002", "ORD-002"),
+        ("Order-2", "ORD-002"),
         ("ORD57", "ORD-057"),
         (" ORD-7 ", "ORD-007"),
     ],
@@ -31,17 +33,17 @@ def test_normalize_order_id_accepts_safe_format_variants(raw, expected):
 
 @pytest.mark.parametrize(
     "raw",
-    ["ODR057", "OR057", "ORD-57A", "order 57", 57, None],
+    ["ODR057", "OR057", "ORD-57A", "ordering 57", 57, None],
 )
 def test_normalize_order_id_does_not_guess_unsafe_values(raw):
     assert normalize_order_id(raw) is None
 
 
 def test_normalize_order_ids_in_text_preserves_other_content():
-    text = "Check ord057 and ORD 8, but do not alter ODR057."
+    text = "Check ord057, order 002 and ORD 8, but do not alter ODR057."
 
     assert normalize_order_ids_in_text(text) == (
-        "Check ORD-057 and ORD-008, but do not alter ODR057."
+        "Check ORD-057, ORD-002 and ORD-008, but do not alter ODR057."
     )
 
 

@@ -7,11 +7,11 @@ from datetime import date
 from typing import Any
 
 _SAFE_ORDER_ID_FULL = re.compile(
-    r"^\s*ORD[\s_-]?(\d{1,3})\s*$",
+    r"^\s*ORD(?:ER)?[\s_-]?(\d{1,3})\s*$",
     re.IGNORECASE,
 )
 _SAFE_ORDER_ID_IN_TEXT = re.compile(
-    r"(?<![A-Z0-9])ORD[\s_-]?(\d{1,3})(?![A-Z0-9])",
+    r"(?<![A-Z0-9])ORD(?:ER)?[\s_-]?(\d{1,3})(?![A-Z0-9])",
     re.IGNORECASE,
 )
 _POSSIBLE_ORDER_ID_TYPO_IN_TEXT = re.compile(

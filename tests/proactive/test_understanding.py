@@ -71,6 +71,22 @@ def test_watch_requires_exact_time_and_retains_order_id():
     assert result.missing_fields == ["deadline_at"]
 
 
+def test_watch_accepts_spoken_order_number_without_confirmation():
+    result = parse(
+        "Watch order 002 for Complete, checking every 60 minutes",
+        response(
+            "create",
+            "watch",
+            order_id="order 002",
+            condition_type="status_equals",
+            expected_status="COMPLETE",
+            check_interval_minutes=60,
+        ),
+    )
+    assert result.parameters["order_id"] == "ORD-002"
+    assert result.missing_fields == []
+
+
 def test_watch_explicit_utc_deadline():
     result = parse(
         "Watch ORD-058 for no progress by 2026-11-06 18:00, check every hour",
