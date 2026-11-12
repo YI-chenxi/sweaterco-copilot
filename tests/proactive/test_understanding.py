@@ -1,5 +1,7 @@
 """P1 contract and safety checks with offline model outputs."""
 
+from datetime import date
+
 from app.agent.llm_client import LLMClientError, MockLLMClient
 from app.agent.proactive.understanding import ProactiveCommandParser
 
@@ -138,6 +140,62 @@ def test_spoken_watch_deadline_accepts_common_transcription_variants():
     ):
         result = parse(f"Watch order 002 for no progress by {phrase}, check hourly", model)
         assert result.missing_fields == []
+
+
+def test_spoken_watch_deadline_varies_time_and_timezone():
+    model = response(
+        "create", "watch", order_id="ORD-002",
+        condition_type="no_progress_by_deadline",
+        deadline_at=None, check_interval_minutes=60,
+    )
+    cases = {
+        "May tenth at nine thirty AM Singapore time": "2026-05-10T01:30:00+00:00",
+        "May 10 at 17:30 Singapore time": "2026-05-10T09:30:00+00:00",
+        "June 12 at 4 PM Tokyo time": "2026-06-12T07:00:00+00:00",
+        "June 12 at 4 PM Europe/London": "2026-06-12T15:00:00+00:00",
+        "June 12 at 4 PM New York time": "2026-06-12T20:00:00+00:00",
+        "June 12 at 4 PM Pacific time": "2026-06-12T23:00:00+00:00",
+        "June 12 at 4 PM Asia/Kolkata": "2026-06-12T10:30:00+00:00",
+        "December 12 at 4 PM Europe/London": "2026-12-12T16:00:00+00:00",
+        "May 10 at 5 PM UTC": "2026-05-10T17:00:00+00:00",
+    }
+    for phrase, expected in cases.items():
+        result = parse(f"Watch order 002 for no progress by {phrase}, check hourly", model)
+        assert result.parameters["deadline_at"] == expected
+        assert result.missing_fields == []
+
+
+def test_spoken_watch_deadline_uses_injected_business_year():
+    client = MockLLMClient([response(
+        "create", "watch", order_id="ORD-002",
+        condition_type="no_progress_by_deadline",
+        deadline_at=None, check_interval_minutes=60,
+    )])
+    result = ProactiveCommandParser(client, reference_date=date(2027, 4, 1)).parse(
+        "Watch order 002 for no progress by May tenth at nine AM Singapore time"
+    )
+    assert result.parameters["deadline_at"] == "2027-05-10T01:00:00+00:00"
+    assert "Business date: 2027-04-01" in client.calls[0]["user_prompt"]
+
+
+def test_spoken_watch_deadline_rejects_ambiguous_or_nonexistent_timezone_time():
+    model = response(
+        "create", "watch", order_id="ORD-002",
+        condition_type="no_progress_by_deadline",
+        deadline_at=None, check_interval_minutes=60,
+    )
+    for phrase in (
+        "October 25 at 1:30 AM Europe/London",  # repeated at the DST rollback
+        "May 10 at 5 PM PST",  # abbreviation is ambiguous
+        "May 10 at five Singapore time",  # AM or PM was not stated
+    ):
+        result = parse(f"Watch order 002 for no progress by {phrase}", model)
+        assert result.missing_fields == ["deadline_at"]
+    client = MockLLMClient([model])
+    result = ProactiveCommandParser(client, reference_date=date(2026, 3, 1)).parse(
+        "Watch order 002 for no progress by March 29 at 1:30 AM Europe/London"
+    )
+    assert result.missing_fields == ["deadline_at"]
 
 
 def test_watch_explicit_utc_deadline():

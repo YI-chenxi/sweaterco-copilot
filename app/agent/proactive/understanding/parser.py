@@ -59,15 +59,42 @@ _SPOKEN_HOURS = {
         ("zero", "one", "two", "three", "four", "five", "six", "seven", "eight",
          "nine", "ten", "eleven", "twelve"))
 }
+_MINUTE_WORDS = {
+    word: number for number, word in enumerate(
+        ("zero", "one", "two", "three", "four", "five", "six", "seven", "eight",
+         "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen",
+         "sixteen", "seventeen", "eighteen", "nineteen"))
+}
+for tens, prefix in ((20, "twenty"), (30, "thirty"), (40, "forty"), (50, "fifty")):
+    _MINUTE_WORDS[prefix] = tens
+    _MINUTE_WORDS.update({f"{prefix} {word}": tens + value for word, value in
+                          list(_MINUTE_WORDS.items())[:10] if 1 <= value <= 9})
+_MINUTE_WORDS.update({f"oh {word}": value for word, value in _SPOKEN_HOURS.items()
+                      if 1 <= value <= 9})
+_MINUTE_PATTERN = "|".join(
+    re.escape(word).replace(r"\ ", r"[\s-]+")
+    for word in sorted(_MINUTE_WORDS, key=len, reverse=True)
+)
 _SPOKEN_TIME = re.compile(
-    r"\bat\s+(?P<hour>\d{1,2}|zero|one|two|three|four|five|six|seven|eight|nine|ten|"
-    r"eleven|twelve)(?::(?P<minute>\d{2}))?\s*(?P<period>a\.?m\.?|p\.?m\.?)\b",
+    rf"\bat\s+(?P<hour>\d{{1,2}}|{'|'.join(_SPOKEN_HOURS)})"
+    rf"(?::(?P<minute_digits>\d{{2}})|\s+(?P<minute_words>{_MINUTE_PATTERN}))?"
+    r"\s*(?P<period>a\.?m\.?|p\.?m\.?)?(?=\W|$)",
     re.IGNORECASE,
 )
+_ZONE_ALIASES = {
+    "singapore": "Asia/Singapore", "sgt": "Asia/Singapore",
+    "shanghai": "Asia/Shanghai", "tokyo": "Asia/Tokyo", "jst": "Asia/Tokyo",
+    "london": "Europe/London", "paris": "Europe/Paris",
+    "new york": "America/New_York", "eastern": "America/New_York",
+    "los angeles": "America/Los_Angeles", "pacific": "America/Los_Angeles",
+    "sydney": "Australia/Sydney", "utc": "UTC", "gmt": "Etc/GMT",
+}
+_ZONE_CITIES = "|".join(re.escape(name) for name in sorted(_ZONE_ALIASES, key=len, reverse=True)
+                        if " " in name or name not in {"sgt", "jst", "utc", "gmt"})
 _SPOKEN_ZONE = re.compile(
-    r"\b(?P<zone>Singapore|Shanghai)\s+time\b"
-    r"|\bAsia/(?P<iana>Singapore|Shanghai)\b"
-    r"|\b(?P<sgt>SGT)\b",
+    rf"\b(?P<city>{_ZONE_CITIES})\s+time\b"
+    r"|\b(?P<iana>[A-Za-z_]+(?:/[A-Za-z_]+)+)\b"
+    r"|\b(?P<abbr>SGT|JST|UTC|GMT)\b",
     re.IGNORECASE,
 )
 _TIME_CUE = re.compile(
@@ -180,13 +207,34 @@ def _spoken_deadline(text: str, reference_date: date) -> str | None:
         return None
     hour_text = times[0]["hour"].casefold()
     hour = int(hour_text) if hour_text.isdigit() else _SPOKEN_HOURS[hour_text]
-    minute = int(times[0]["minute"] or 0)
-    if not 1 <= hour <= 12 or minute > 59:
+    minute_text = times[0]["minute_words"]
+    minute = (int(times[0]["minute_digits"]) if times[0]["minute_digits"]
+              else _MINUTE_WORDS[minute_text.casefold().replace("-", " ")] if minute_text
+              else 0)
+    if hour > 23 or minute > 59:
         return None
-    hour = hour % 12 + (12 if times[0]["period"].casefold().startswith("p") else 0)
-    zone_name = (zones[0]["zone"] or zones[0]["iana"] or "Singapore").capitalize()
-    local = datetime.combine(deadline_date, time(hour, minute), ZoneInfo(f"Asia/{zone_name}"))
-    return local.astimezone(timezone.utc).isoformat()
+    period = times[0]["period"]
+    if period:
+        if not 1 <= hour <= 12:
+            return None
+        hour = hour % 12 + (12 if period.casefold().startswith("p") else 0)
+    elif hour <= 12 and not (hour == 0 or (hour_text.startswith("0") and len(hour_text) == 2)):
+        return None
+    zone_text = zones[0]["iana"] or _ZONE_ALIASES[
+        (zones[0]["city"] or zones[0]["abbr"]).casefold()
+    ]
+    try:
+        zone = ZoneInfo(zone_text)
+    except ZoneInfoNotFoundError:
+        return None
+    local = datetime.combine(deadline_date, time(hour, minute), zone)
+    utc = local.astimezone(timezone.utc)
+    # An IANA zone may have a skipped or repeated local hour at a DST change.
+    if utc.astimezone(zone).replace(tzinfo=None) != local.replace(tzinfo=None):
+        return None
+    if local.utcoffset() != local.replace(fold=1).utcoffset():
+        return None
+    return utc.isoformat()
 
 
 def _context_ids(context: dict[str, Any], task_type: str | None, command: str) -> set[str]:

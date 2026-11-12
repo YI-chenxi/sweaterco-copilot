@@ -33,8 +33,12 @@ message-send actions are unsupported by the current V1 service contract.
 Times use `Asia/Singapore` by default. A deadline is converted to UTC only when
 the source message includes an explicit date and time. Spoken month/day dates
 such as "April seventh at five PM Singapore time" use the configured factory
-business date to supply the year, provided the date is still ahead. Relative
-dates and ambiguous times remain missing. `reference_text` is left null to avoid copying
+business date to supply the year, provided the date is still ahead. Spoken AM/PM
+and 24-hour times are supported, as are named zones (Singapore, Shanghai, Tokyo,
+London, Paris, New York, Los Angeles, Sydney, Eastern, Pacific), UTC/GMT/SGT/JST, and explicit IANA
+zones such as `Europe/London`. Daylight-saving gaps and repeated local times,
+relative dates, and ambiguous time zones or hours remain missing.
+`reference_text` is left null to avoid copying
 possible secrets into persistent audit records. The model may assist with language extraction,
 but final value validation is deterministic. Model failures return `unknown`.
 
