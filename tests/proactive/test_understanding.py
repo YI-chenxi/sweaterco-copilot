@@ -87,6 +87,59 @@ def test_watch_accepts_spoken_order_number_without_confirmation():
     assert result.missing_fields == []
 
 
+def test_spoken_watch_deadline_uses_factory_date_and_source_order_number():
+    client = MockLLMClient([response(
+        "create", "watch", order_id="002",
+        condition_type="no_progress_by_deadline",
+        deadline_at=None,
+        check_interval_minutes=60,
+    )])
+    result = ProactiveCommandParser(client).parse(
+        "Watch order 002 for no progress by April seventh, at five PM Singapore time. "
+        "Check every sixty minutes."
+    )
+
+    assert result.parameters == {
+        "order_id": "ORD-002",
+        "condition_type": "no_progress_by_deadline",
+        "deadline_at": "2026-04-07T09:00:00+00:00",
+        "check_interval_minutes": 60,
+    }
+    assert result.missing_fields == []
+    assert "Watch ORD-002" in client.calls[0]["user_prompt"]
+    assert "Business date: 2026-04-01" in client.calls[0]["user_prompt"]
+
+
+def test_spoken_watch_deadline_keeps_unclear_time_or_past_date_missing():
+    model = response(
+        "create", "watch", order_id="ORD-002",
+        condition_type="no_progress_by_deadline",
+        deadline_at=None,
+        check_interval_minutes=60,
+    )
+    for text in (
+        "Watch order 002 for no progress by April seventh at five Singapore time",
+        "Watch order 002 for no progress by March seventh at five PM Singapore time",
+    ):
+        result = parse(text, model)
+        assert result.missing_fields == ["deadline_at"]
+
+
+def test_spoken_watch_deadline_accepts_common_transcription_variants():
+    model = response(
+        "create", "watch", order_id="ORD-002",
+        condition_type="no_progress_by_deadline",
+        deadline_at=None,
+        check_interval_minutes=60,
+    )
+    for phrase in (
+        "April 7th at 5pm Singapore time",
+        "April twenty-first at five PM SGT",
+    ):
+        result = parse(f"Watch order 002 for no progress by {phrase}, check hourly", model)
+        assert result.missing_fields == []
+
+
 def test_watch_explicit_utc_deadline():
     result = parse(
         "Watch ORD-058 for no progress by 2026-11-06 18:00, check every hour",

@@ -5,14 +5,17 @@ from __future__ import annotations
 import json
 import logging
 import re
+from calendar import month_name
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime, time, timezone
 from typing import Any
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from app.agent.enhancement.understanding.normalizers import normalize_order_ids_in_text
 from app.agent.intent_parser import detect_response_language
 from app.agent.llm_client import LLMClientError, StructuredLLMClient
+from app.agent.settings import AgentSettings
 
 from .prompts import RESPONSE_SCHEMA, SYSTEM_PROMPT
 
@@ -28,8 +31,45 @@ _WATCH_FIELDS = frozenset(
         "check_interval_minutes",
     }
 )
-_ORDER_ID = re.compile(r"ORD(?:ER)?[\s_-]?(\d{1,3})", re.IGNORECASE)
+_ORDER_ID = re.compile(r"(?<![A-Z0-9])ORD(?:ER)?[\s_-]?(\d{1,3})(?![A-Z0-9])", re.IGNORECASE)
 _EXPLICIT_DATE = re.compile(r"\d{4}[-/.年]\d{1,2}[-/.月]\d{1,2}")
+_MONTHS = {name.casefold(): number for number, name in enumerate(month_name) if name}
+_FIRST_NINETEEN = (
+    "first", "second", "third", "fourth", "fifth", "sixth", "seventh",
+    "eighth", "ninth", "tenth", "eleventh", "twelfth", "thirteenth",
+    "fourteenth", "fifteenth", "sixteenth", "seventeenth", "eighteenth",
+    "nineteenth",
+)
+_DAY_WORDS = {word: number for number, word in enumerate(_FIRST_NINETEEN, start=1)}
+_DAY_WORDS.update({f"twenty {word}": number for number, word in
+                   enumerate(_FIRST_NINETEEN[:9], start=21)})
+_DAY_WORDS.update({"twentieth": 20, "thirtieth": 30, "thirty first": 31})
+_SPOKEN_DAY = "|".join(
+    re.escape(word).replace(r"\ ", r"[\s-]+")
+    for word in sorted(_DAY_WORDS, key=len, reverse=True)
+)
+_SPOKEN_DATE = re.compile(
+    rf"\b(?P<month>{'|'.join(_MONTHS)})\s+(?:the\s+)?"
+    rf"(?P<day>\d{{1,2}}(?:st|nd|rd|th)?|{_SPOKEN_DAY})"
+    r"(?:,?\s+(?P<year>20\d{2}))?\b",
+    re.IGNORECASE,
+)
+_SPOKEN_HOURS = {
+    word: number for number, word in enumerate(
+        ("zero", "one", "two", "three", "four", "five", "six", "seven", "eight",
+         "nine", "ten", "eleven", "twelve"))
+}
+_SPOKEN_TIME = re.compile(
+    r"\bat\s+(?P<hour>\d{1,2}|zero|one|two|three|four|five|six|seven|eight|nine|ten|"
+    r"eleven|twelve)(?::(?P<minute>\d{2}))?\s*(?P<period>a\.?m\.?|p\.?m\.?)\b",
+    re.IGNORECASE,
+)
+_SPOKEN_ZONE = re.compile(
+    r"\b(?P<zone>Singapore|Shanghai)\s+time\b"
+    r"|\bAsia/(?P<iana>Singapore|Shanghai)\b"
+    r"|\b(?P<sgt>SGT)\b",
+    re.IGNORECASE,
+)
 _TIME_CUE = re.compile(
     r"\d{1,2}:\d{2}|\d{1,2}\s*(?:am|pm|点|時|时)"
     r"|(?:早上|上午|下午|晚上|中午)",
@@ -115,11 +155,38 @@ def _normalize_deadline(value: Any) -> str | None:
         return None
 
 
-def _normalize_order_id(value: Any) -> str | None:
-    if not isinstance(value, str):
+def _spoken_deadline(text: str, reference_date: date) -> str | None:
+    """Resolve one explicit spoken month, day, time, and zone against the snapshot year."""
+
+    dates = list(_SPOKEN_DATE.finditer(text))
+    times = list(_SPOKEN_TIME.finditer(text))
+    zones = list(_SPOKEN_ZONE.finditer(text))
+    if len(dates) != 1 or len(times) != 1 or len(zones) != 1:
         return None
-    match = _ORDER_ID.fullmatch(value.strip())
-    return f"ORD-{int(match.group(1)):03d}" if match else None
+    day_text = dates[0]["day"].casefold().replace("-", " ")
+    day = (
+        int(re.sub(r"(?:st|nd|rd|th)$", "", day_text))
+        if day_text[0].isdigit()
+        else _DAY_WORDS.get(day_text)
+    )
+    if day is None:
+        return None
+    year = int(dates[0]["year"]) if dates[0]["year"] else reference_date.year
+    try:
+        deadline_date = date(year, _MONTHS[dates[0]["month"].casefold()], day)
+    except ValueError:
+        return None
+    if deadline_date <= reference_date:
+        return None
+    hour_text = times[0]["hour"].casefold()
+    hour = int(hour_text) if hour_text.isdigit() else _SPOKEN_HOURS[hour_text]
+    minute = int(times[0]["minute"] or 0)
+    if not 1 <= hour <= 12 or minute > 59:
+        return None
+    hour = hour % 12 + (12 if times[0]["period"].casefold().startswith("p") else 0)
+    zone_name = (zones[0]["zone"] or zones[0]["iana"] or "Singapore").capitalize()
+    local = datetime.combine(deadline_date, time(hour, minute), ZoneInfo(f"Asia/{zone_name}"))
+    return local.astimezone(timezone.utc).isoformat()
 
 
 def _context_ids(context: dict[str, Any], task_type: str | None, command: str) -> set[str]:
@@ -142,7 +209,9 @@ def _context_ids(context: dict[str, Any], task_type: str | None, command: str) -
     return ids
 
 
-def _normalize_parameters(raw: dict[str, Any], task_type: str, text: str) -> dict[str, Any]:
+def _normalize_parameters(
+    raw: dict[str, Any], task_type: str, text: str, reference_date: date
+) -> dict[str, Any]:
     values: dict[str, Any] = {}
     if task_type == "briefing":
         for key in ("interval_days",):
@@ -172,15 +241,18 @@ def _normalize_parameters(raw: dict[str, Any], task_type: str, text: str) -> dic
         if isinstance(raw.get("enabled"), bool):
             values["enabled"] = raw["enabled"]
     else:
-        order_id = _normalize_order_id(raw.get("order_id"))
-        if order_id and _ORDER_ID.search(text):
-            values["order_id"] = order_id
+        mentioned_orders = {f"ORD-{int(match.group(1)):03d}" for match in _ORDER_ID.finditer(text)}
+        if len(mentioned_orders) == 1:
+            values["order_id"] = next(iter(mentioned_orders))
         condition = raw.get("condition_type")
         if condition in {"no_progress_by_deadline", "status_equals"}:
             values["condition_type"] = condition
         deadline = _normalize_deadline(raw.get("deadline_at"))
         has_day = _EXPLICIT_DATE.search(text)
-        if deadline and has_day and _TIME_CUE.search(text):
+        spoken_deadline = _spoken_deadline(text, reference_date)
+        if spoken_deadline is not None:
+            values["deadline_at"] = spoken_deadline
+        elif deadline and has_day and _TIME_CUE.search(text):
             values["deadline_at"] = deadline
         expected = raw.get("expected_status")
         if isinstance(expected, str) and expected.strip():
@@ -194,8 +266,9 @@ def _normalize_parameters(raw: dict[str, Any], task_type: str, text: str) -> dic
 class ProactiveCommandParser:
     """Extract a single proactive command using a replaceable structured LLM."""
 
-    def __init__(self, client: StructuredLLMClient) -> None:
+    def __init__(self, client: StructuredLLMClient, *, reference_date: date | None = None) -> None:
         self.client = client
+        self.reference_date = reference_date or AgentSettings().reference_date
 
     def parse(self, user_text: str, context: dict[str, Any] | None = None) -> ProactiveCommand:
         if not isinstance(user_text, str) or not user_text.strip():
@@ -215,7 +288,11 @@ class ProactiveCommandParser:
         try:
             raw = self.client.generate_structured(
                 system_prompt=SYSTEM_PROMPT,
-                user_prompt=f"User message: {text}\nAvailable IDs: {json.dumps(prompt_context)}",
+                user_prompt=(
+                    f"User message: {normalize_order_ids_in_text(text)}\n"
+                    f"Business date: {self.reference_date.isoformat()}\n"
+                    f"Available IDs: {json.dumps(prompt_context)}"
+                ),
                 schema=RESPONSE_SCHEMA,
             )
             if not isinstance(raw, dict):
@@ -268,7 +345,7 @@ class ProactiveCommandParser:
             raw_params = {}
         parameters = {}
         if kind and command in {"create", "update"}:
-            parameters = _normalize_parameters(raw_params, kind, text)
+            parameters = _normalize_parameters(raw_params, kind, text, self.reference_date)
         if kind == "briefing":
             parameters = {
                 key: value for key, value in parameters.items() if key in _BRIEFING_FIELDS

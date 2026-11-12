@@ -391,7 +391,7 @@ def build_proactive_application(
     path.parent.mkdir(parents=True, exist_ok=True)
     action_repo = SQLiteActionRepository(path)
     briefing_repo = SQLiteBriefingRepository(path)
-    watch_repo = SQLiteWatchRepository(path)
+    watch_repo = SQLiteWatchRepository(path, clock=action_clock)
     briefings = BriefingService(briefing_repo)
 
     def current_workspace() -> str:
@@ -409,7 +409,7 @@ def build_proactive_application(
                 workspace_id, order_id
             )
 
-    watches = WatchService(watch_repo, order_source=WorkspaceOrderSource())
+    watches = WatchService(watch_repo, order_source=WorkspaceOrderSource(), clock=action_clock)
     actions = ActionService(
         action_repo,
         {

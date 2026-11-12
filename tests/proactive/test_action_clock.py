@@ -47,3 +47,40 @@ def test_composed_actions_use_the_injected_snapshot_clock(tmp_path):
     record = proposal["data"]["proposal"]
     assert record["created_at"].startswith("2026-04-01T06:23:45")
     assert record["expires_at"].startswith("2026-04-01T06:38:45")
+
+
+def test_composed_watch_captures_baseline_on_snapshot_date(tmp_path):
+    now = datetime(2026, 4, 1, 6, 23, 45, tzinfo=timezone.utc)
+    client = MockLLMClient([{
+        "command_type": "create",
+        "task_type": "watch",
+        "target_id": None,
+        "language": "en",
+        "parameters": {
+            "order_id": "002",
+            "condition_type": "no_progress_by_deadline",
+            "deadline_at": None,
+            "check_interval_minutes": 60,
+        },
+    }])
+    application = build_proactive_application(
+        llm_client=client,
+        actor_provider=lambda: "operator",
+        workspace_provider=lambda: "workspace",
+        authorizer=lambda *_args: True,
+        database=tmp_path / "watch-clock.sqlite3",
+        action_clock=lambda: now,
+    )
+    proposal = application.handle_text(
+        "Watch order 002 for no progress by April seventh, at five PM Singapore time. "
+        "Check every sixty minutes."
+    )
+    assert proposal["status"] == "pending_confirmation"
+
+    confirmed = application.confirm_action(proposal["id"])
+    assert confirmed["status"] == "executed"
+    observed = application.list_watches()["data"]
+    assert observed["items"][0]["order_id"] == "ORD-002"
+    assert observed["checks"][0]["outcome"] == "not_due"
+    assert observed["checks"][0]["timestamp"].startswith("2026-04-01")
+    assert observed["alerts"] == []

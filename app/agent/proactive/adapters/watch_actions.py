@@ -79,8 +79,6 @@ class WatchActionExecutor:
         from app.agent.proactive.watches.repository import (
             CancellationContext,
         )
-        from app.agent.proactive.watches.service import WatchService
-
         if not isinstance(command, dict):
             raise ActionError("INVALID_ARGUMENT")
 
@@ -94,14 +92,11 @@ class WatchActionExecutor:
         if not isinstance(idempotency_key, str) or not idempotency_key.strip():
             raise ActionError("INVALID_ARGUMENT")
 
-        repository = self.watch_service.repository
-
         if operation == "create":
             if expected_version is not None:
                 raise ActionError("INVALID_ARGUMENT")
 
-            request_service = WatchService(
-                repository,
+            request_service = self.watch_service.for_confirmed_action(
                 action_id_provider=lambda: idempotency_key,
             )
 
@@ -122,8 +117,7 @@ class WatchActionExecutor:
             except WatchValidationError:
                 raise ActionError("INVALID_ARGUMENT") from None
 
-            request_service = WatchService(
-                repository,
+            request_service = self.watch_service.for_confirmed_action(
                 cancellation_context_provider=lambda: context,
             )
 

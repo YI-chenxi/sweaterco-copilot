@@ -31,8 +31,10 @@ Ambiguous targets remain missing. Watch updates and order-note or
 message-send actions are unsupported by the current V1 service contract.
 
 Times use `Asia/Singapore` by default. A deadline is converted to UTC only when
-the source message includes an explicit date and a time. Relative dates and
-ambiguous times remain missing. `reference_text` is left null to avoid copying
+the source message includes an explicit date and time. Spoken month/day dates
+such as "April seventh at five PM Singapore time" use the configured factory
+business date to supply the year, provided the date is still ahead. Relative
+dates and ambiguous times remain missing. `reference_text` is left null to avoid copying
 possible secrets into persistent audit records. The model may assist with language extraction,
 but final value validation is deterministic. Model failures return `unknown`.
 

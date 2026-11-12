@@ -779,7 +779,7 @@ def render_chat_result(result, reply_id):
         st.write(t(status_label(item or result)))
         if item.get("status", result.get("status")) == "pending_confirmation":
             st.caption(t("A request is ready for review. Nothing has changed yet."))
-    else:
+    elif result.get("status") != "needs_clarification":
         error(result)
     if item:
         parameters(item)
@@ -792,4 +792,4 @@ def render_chat_result(result, reply_id):
             icon=":material/fact_check:",
         )
     if result.get("status") == "needs_clarification":
-        st.write(result.get("message", ""))
+        st.info(t(result.get("message", "")))

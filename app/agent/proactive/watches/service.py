@@ -86,6 +86,24 @@ class WatchService:
         self._action_id_provider = action_id_provider or (lambda: None)
         self._id_factory = id_factory or (lambda: str(uuid4()))
 
+    def for_confirmed_action(
+        self,
+        *,
+        action_id_provider: Callable[[], str | None] | None = None,
+        cancellation_context_provider: Callable[[], CancellationContext | None] | None = None,
+    ) -> "WatchService":
+        """Keep the configured source and clock when a confirmed action runs."""
+
+        return WatchService(
+            self.repository,
+            action_id_provider=action_id_provider,
+            id_factory=self._id_factory,
+            cancellation_context_provider=cancellation_context_provider,
+            order_source=self._order_source,
+            clock=self._clock,
+            record_id_factory=self._record_id_factory,
+        )
+
     def create_watch(self, workspace_id: str, parameters: dict) -> dict:
         try:
             validate_workspace(workspace_id)
