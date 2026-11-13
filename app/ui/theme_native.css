@@ -1,0 +1,123 @@
+/* Native widgets share the active palette; no geometry is changed here. */
+:root{color-scheme:__SCHEME__;--sc-control:__SURFACE__;--sc-control-soft:__SOFT__;
+ --sc-copy-ink:__MUTED__;--sc-copy-hover:__ACTIVE__;--sc-copy-active:__ACCENT__;
+ --sc-field-bg:__SOFT__;}
+[data-testid="stApp"], [data-testid="stAppViewContainer"], [data-testid="stMain"]{color:__INK__}
+[data-testid="stMarkdownContainer"], [data-testid="stWidgetLabel"],
+[data-testid="stText"], [data-testid="stHeading"]{color:__INK__}
+[data-testid="stSidebar"]{border-right-color:__LINE__}
+[data-testid="stSelectbox"] [role="group"], [data-testid="stSelectbox"] [role="combobox"],
+[data-testid="stSelectbox"] button,[data-testid="stTextInputRootElement"],
+[data-testid="stNumberInputContainer"], [data-testid="stDateInput"] [role="group"],
+[data-testid="stDateInput"] input,[data-testid="stTextInput"] input,
+[data-testid="stTimeInput"] input,[data-testid="stTimeInput"] [role="group"],
+[data-testid="stTimeInputTimeDisplay"],
+[data-testid="stTimeInputField"],[data-testid="stTimeInputField"]>div,
+[data-testid="stTimeInput"] button,
+[data-testid="stNumberInput"] input,[data-testid="stTextArea"] textarea{
+ background:__SOFT__!important;color:__INK__!important;border-color:__LINE__!important}
+[data-testid="stTimeInput"] [role="spinbutton"]{color:__INK__!important}
+[data-testid="stSelectbox"] svg{color:__MUTED__}
+input::placeholder,textarea::placeholder{color:__MUTED__!important;opacity:1}
+[data-testid="stChatInput"]{background:__SOFT__!important}
+[data-testid="stChatInputTextArea"]{color:__INK__!important;caret-color:__ACCENT__}
+[data-testid="stChatInputSubmitButton"]:not(:disabled){background:__ACCENT__!important;color:__ON_ACCENT__!important}
+[data-testid="stChatInputSubmitButton"]:not(:disabled):hover{filter:brightness(1.1)}
+[data-testid="stChatInputSubmitButton"]:disabled{background:__ACTIVE__!important;color:__MUTED__!important}
+button[kind="primary"],[data-testid="stBaseButton-primary"]{
+ background:__ACCENT__!important;border-color:__ACCENT__!important;color:__ON_ACCENT__!important}
+button[kind="primary"]:hover,[data-testid="stBaseButton-primary"]:hover{
+ background:__ACCENT__!important;filter:brightness(1.08)}
+button[kind="primary"] p,[data-testid="stBaseButton-primary"] p{color:__ON_ACCENT__!important}
+.sc-mark{background:__ACCENT__;color:__ON_ACCENT__}
+.sc-snapshot-card{background:__ACCENT__;border-color:__ACCENT__}
+.sc-snapshot-heading,.sc-snapshot-date,.sc-snapshot-disclaimer{color:__ON_ACCENT__}
+.sc-snapshot-heading,.sc-snapshot-disclaimer{opacity:.85}
+.sc-details-title,.sc-mini-label,.sc-label,.sc-workflow-title{color:__MUTED__}
+.st-key-conversation_surface,.sc-hero,[data-testid="stDialog"] [role="dialog"]{
+ box-shadow:inset 0 2px 2px __GLOW__,inset 0 -2px 5px __SHADOW__,0 10px 28px __SHADOW__,0 1px 4px __SHADOW__}
+.st-key-center_Order_Status button,.st-key-center_Production_Health button,
+.st-key-center_Morning_Briefing button,.st-key-center_Check_Feasibility button{
+ box-shadow:inset 0 2px 2px __GLOW__,inset 0 -3px 6px __SHADOW__,0 5px 12px __SHADOW__}
+[data-testid="stCheckbox"]>label{color:__INK__}
+.st-key-follow_evidence label>div:not([data-testid="stWidgetLabel"]){background:__LINE__}
+.st-key-follow_evidence [data-selected="true"]>label>div:not([data-testid="stWidgetLabel"]){background:__ACCENT__}
+.st-key-follow_evidence label>div:not([data-testid="stWidgetLabel"])>div{background:__SURFACE__}
+[data-testid="stIconMaterial"],button[aria-label="Collapse sidebar"]{color:inherit}
+[data-testid="stIconMaterial"]{opacity:.9}
+[data-rac][role="listbox"],[data-rac][role="option"],[data-rac][role="dialog"]:not(.sc-workflow-dialog),
+[data-baseweb="popover"],[data-testid="stPopoverBody"],[role="tooltip"]{
+ background:__SURFACE__!important;color:__INK__!important;border-color:__LINE__!important}
+[data-rac][role="option"][data-focused="true"], [data-rac][role="option"][aria-selected="true"]{
+ background:__ACTIVE__!important}
+[data-testid="stDateInput"] button,[data-testid="stNumberInput"] button{
+ background:__SOFT__!important;color:__INK__!important;border-color:__LINE__!important}
+[data-rac][role="dialog"]:not(.sc-workflow-dialog) button{color:__INK__}
+[data-testid="stExpander"] summary,[data-testid="stCaptionContainer"],
+[data-testid="stMetricLabel"]{color:__MUTED__!important}
+[data-testid="stJson"], [data-testid="stJson"] *{color:__INK__!important;background-color:transparent!important}
+[data-testid="stCode"] pre,[data-testid="stCode"] code{background:__SOFT__!important;color:__INK__!important}
+[data-testid="stAlert"]{border:1px solid __LINE__;background:__SOFT__;color:__INK__}
+[data-testid="stAlert"] [data-testid="stMarkdownContainer"]{color:__INK__}
+[data-testid="stDataFrame"]{border-color:__LINE__!important;background:__SOFT__}
+[data-testid="stBaseButton-elementToolbar"]{color:__MUTED__!important;background:__SOFT__!important}
+
+[data-testid="stChatInput"]>div{background:__SOFT__!important}
+button[kind="primary"] [data-testid="stMarkdownContainer"],
+[data-testid="stBaseButton-primary"] [data-testid="stMarkdownContainer"]{color:__ON_ACCENT__!important}
+[data-testid="stTooltipContent"]{background:__SURFACE__!important;color:__INK__!important;
+ border:1px solid __LINE__;border-radius:9px}
+button[aria-label="Collapse sidebar"] *, [data-testid="stExpandSidebarButton"] *{
+ color:__MUTED__!important}
+[data-testid="stTooltipIcon"] button[aria-label^="Help"]{color:__MUTED__!important}
+
+[data-testid="stDialog"]{background:__BACKDROP__!important}
+[data-testid="stDialog"] [role="dialog"],
+[data-testid="stDialog"] [role="dialog"] h2{color:__INK__!important}
+.sc-workflow-dialog>button{color:__INK__!important}
+
+[data-testid="stDownloadButton"] button{background:__SOFT__!important;
+ color:__INK__!important;border:1px solid __LINE__!important}
+[data-testid="stDownloadButton"] button:hover{background:__ACTIVE__!important}
+[data-testid="stExpander"] summary{background:__SOFT__!important}
+[data-testid="stExpander"] summary:hover{background:__ACTIVE__!important}
+.sc-workflow-dialog [data-testid="stVerticalBlock"]{border-color:__LINE__!important}
+[data-testid="stDateInputField"],[data-testid="stDateInputField"]>div{
+ background:__SOFT__!important;color:__INK__!important;border-color:__LINE__!important}
+[data-testid="stDateInput"] [data-type]{color:__INK__!important}
+[data-testid="stDateInputCalendarButton"] svg{color:__INK__!important}
+[data-testid="stDateInputCalendar"], [data-testid="stDateInputCalendar"] [role="application"],
+[data-testid="stDateInputCalendar"] header,[data-testid="stDateInputCalendar"] table{
+ background:__SURFACE__!important;color:__INK__!important;border-color:__LINE__!important}
+[data-testid="stDateInputCalendar"] *{color:__INK__;border-color:__LINE__}
+[data-testid="stDateInputCalendar"] button{background:__SOFT__!important;color:__INK__!important}
+[data-testid="stDateInputCalendar"] [role="button"]{background:transparent;color:__INK__!important}
+[data-testid="stDateInputCalendar"] [role="button"]:hover{background:__ACTIVE__}
+[data-testid="stDateInputCalendar"] [data-selected="true"]{
+ background:__ACCENT__!important;color:__ON_ACCENT__!important}
+[data-testid="stDateInputCalendar"] [data-disabled="true"]{opacity:.35}
+[data-testid="stDateInput"] [data-focused="true"]{background:__ACTIVE__}
+
+/* Native menu item text has its own highlight layer, separate from the option row. */
+[role="listbox"] [role="option"]{background:__SURFACE__!important;color:__INK__!important}
+[role="listbox"] [role="option"][aria-selected="true"],
+[role="listbox"] [role="option"][data-selected],
+[role="listbox"] [role="option"][data-focused],
+[role="listbox"] [role="option"]:hover{background:__ACTIVE__!important;color:__INK__!important}
+[role="listbox"] [role="option"] [data-item-hl]{background:transparent!important;color:inherit!important}
+/* Use the same neutral scrollbar material for the rails and the native evidence grid. */
+.st-key-recent_chats,.st-key-conversation_scroll,[class*="st-key-analysis_scroll_"],
+[data-testid="stDataFrame"] .dvn-scroller{
+ scrollbar-color:__SCROLL__ transparent!important;scrollbar-width:thin!important;
+}
+.st-key-recent_chats::-webkit-scrollbar,.st-key-conversation_scroll::-webkit-scrollbar,
+[class*="st-key-analysis_scroll_"]::-webkit-scrollbar,[data-testid="stDataFrame"] .dvn-scroller::-webkit-scrollbar{
+ width:6px;height:6px;background:transparent!important;
+}
+.st-key-recent_chats::-webkit-scrollbar-thumb,.st-key-conversation_scroll::-webkit-scrollbar-thumb,
+[class*="st-key-analysis_scroll_"]::-webkit-scrollbar-thumb,
+[data-testid="stDataFrame"] .dvn-scroller::-webkit-scrollbar-thumb{
+ background:__SCROLL__!important;border-radius:999px!important;border:0!important;
+}
+[data-testid="stDataFrame"] .dvn-scroller::-webkit-scrollbar-track,
+[data-testid="stDataFrame"] .dvn-scroller::-webkit-scrollbar-corner{background:transparent!important}

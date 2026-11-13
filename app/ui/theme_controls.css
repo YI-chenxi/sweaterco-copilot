@@ -1,0 +1,36 @@
+/* Swatches keep their actual colours in every palette. */
+.st-key-workspace_heading{position:relative;min-height:2rem;padding-right:6rem}
+.st-key-workspace_heading .sc-side-title{margin:0!important;padding:.4rem 0}
+.st-key-workspace_heading>div:has(>.st-key-theme_controls){
+ position:absolute!important;top:0;right:6px;width:auto!important}
+.st-key-theme_controls{gap:7px!important;align-items:center;min-height:2rem;padding:5px 5px 5px 4px}
+.st-key-theme_controls>[data-testid="stElementContainer"]{width:20px!important;flex:0 0 20px!important}
+:is([data-testid="stSidebar"], .st-key-account_auth_page) .st-key-theme_controls button{
+ width:14px!important;height:14px!important;min-height:14px!important;min-width:14px!important;
+ border-radius:50%!important;border:1px solid #999999!important;padding:0!important;margin:0!important;
+ box-shadow:inset 0 1px 2px #ffffff90,0 1px 3px #00000022!important;transition:transform .15s ease}
+:is([data-testid="stSidebar"], .st-key-account_auth_page) .st-key-theme_controls button:hover{transform:translateY(-1px);border-color:#777777!important}
+.st-key-theme_controls button p{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+:is([data-testid="stSidebar"], .st-key-account_auth_page) .st-key-theme_day button{background:linear-gradient(135deg,#fff,#d8d8d8)!important}
+:is([data-testid="stSidebar"], .st-key-account_auth_page) .st-key-theme_green button{background:linear-gradient(135deg,#a9ddc8,#64a98e)!important}
+:is([data-testid="stSidebar"], .st-key-account_auth_page) .st-key-theme_night button{background:linear-gradient(135deg,#454545,#090909)!important}
+.st-key-theme_controls button:focus-visible{outline:2px solid var(--sc-teal)!important;outline-offset:3px}
+
+/* The portal is only a positioning wrapper; all visible material belongs to one rounded bubble. */
+[role="tooltip"]{background:transparent!important;border:0!important;padding:0!important;
+ box-shadow:none!important;border-radius:12px!important;overflow:visible!important}
+[data-testid="stTooltipContent"]{border-radius:12px!important;border:1px solid var(--sc-line)!important;
+ box-shadow:0 5px 16px #00000018!important}
+
+/* Keep the native modal's focus and click handling, with no page tint or dimming. */
+[data-testid="stDialog"]{background:transparent!important;backdrop-filter:none!important}
+[data-testid="stDialog"]::backdrop{background:transparent!important;backdrop-filter:none!important}
+
+/* A clean round-ended arrow; the native accessible send control and behavior stay intact. */
+[data-testid="stChatInputSubmitButton"] svg{display:none!important}
+[data-testid="stChatInputSubmitButton"]::before{
+ content:"";display:block;width:20px;height:20px;background:currentColor;
+ mask:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M12%2019V5M6%2011l6-6%206%206%22%2F%3E%3C%2Fsvg%3E") center/contain no-repeat;
+ -webkit-mask:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M12%2019V5M6%2011l6-6%206%206%22%2F%3E%3C%2Fsvg%3E") center/contain no-repeat;
+}
+[data-testid="stChatInputSubmitButton"]:disabled{box-shadow:none}

@@ -1,0 +1,106 @@
+/* Bright satin silver: neutral reflected light rather than a flat grey fill. */
+:root{
+ --sc-account-submit-bg:#ffffff;--sc-account-submit-hover:#ffffff;
+ --sc-account-submit-ink:#303030;--sc-account-submit-line:#aaaaaa;
+ --sc-account-submit-shadow:0 2px 6px #0000000d;
+ --sc-nav-selected:linear-gradient(120deg,#ffffff 0%,#e8e8e8 55%,#f9f9f9 100%);
+ --sc-nav-selected-line:#c3c3c3;--sc-nav-text:#303030;
+ --sc-control-hover:linear-gradient(145deg,#ffffff,#ededed);
+ --sc-control-hover-line:#aaaaaa;
+ --sc-control-shadow:inset 0 2px 2px #ffffff,0 7px 16px #0000001a;
+ --sc-control-pressed-shadow:inset 0 2px 5px #00000025,0 2px 6px #00000012;
+ --sc-dock-bg:#f8f8f8;
+ --sc-create-bg:#ffffff;
+ --sc-create-ink:#303030;--sc-create-line:#aaaaaa;
+ --sc-create-shadow:0 2px 6px #0000000d;
+}
+[data-testid="stAppViewContainer"]{
+ background:linear-gradient(125deg,#fafafa 0%,#f1f1f1 42%,#f8f8f8 100%);
+}
+[data-testid="stSidebar"]{
+ background:linear-gradient(135deg,#ffffffa0 0%,transparent 58%),
+  repeating-linear-gradient(0deg,#ffffff30 0 1px,#00000001 1px 2px),
+  linear-gradient(110deg,#f6f6f6 0%,#ededed 50%,#f9f9f9 100%);
+ border-right-color:#d7d7d7;
+}
+.sc-mark{
+ background:linear-gradient(130deg,#ffffff 0%,#e2e2e2 48%,#fafafa 100%);
+ color:#363636;border:1px solid #c6c6c6;
+ box-shadow:inset 0 1px 1px #ffffff,0 2px 7px #00000012;
+}
+.sc-nav-active{
+ background:linear-gradient(120deg,#ffffff 0%,#e8e8e8 55%,#f9f9f9 100%);
+ border-color:#cfcfcf;
+}
+[data-testid="stSidebar"] .st-key-new_chat button[kind="primary"]{
+ background:linear-gradient(115deg,#ffffff 0%,#e5e5e5 48%,#fafafa 100%)!important;
+ border:1px solid #c3c3c3!important;color:#353535!important;
+ box-shadow:inset 0 1px 1px #ffffff,0 3px 9px #0000000d!important;
+}
+[data-testid="stSidebar"] .st-key-new_chat button[kind="primary"]:hover{
+ background:linear-gradient(115deg,#ffffff,#eeeeee)!important;
+ border-color:#aaaaaa!important;filter:none;
+}
+[data-testid="stSidebar"] .st-key-new_chat button [data-testid="stMarkdownContainer"]{
+ color:#353535!important;
+}
+.st-key-analysis_workspace .sc-analysis-context{
+ background:linear-gradient(120deg,#fdfdfd,#ebebeb);border:1px solid #dddddd;
+}
+.st-key-analysis_workspace .st-key-detail_empty,
+.st-key-analysis_workspace .st-key-detail_evidence{
+ background:linear-gradient(125deg,#ffffff,#f9f9f9);border-color:#dedede!important;
+}
+.st-key-theme_controls .st-key-theme_day button{background:linear-gradient(135deg,#ffffff,#e4e4e4)!important}
+
+/* Platinum conversation surface: slightly softer than white, still lifted from the silver rails. */
+.st-key-conversation_surface{
+ background:linear-gradient(135deg,#fbfbfb 0%,#f6f6f6 65%,#f1f1f1 100%);
+ border-color:#dedede;
+ box-shadow:inset 0 1px 1px #ffffffbb,0 7px 20px #0000000c;
+}
+.sc-hero{
+ background:linear-gradient(115deg,#fcfcfc 0%,#f6f6f6 68%,#eeeeee 100%);
+ border-color:#e4e4e4;box-shadow:inset 0 1px 1px #ffffff,0 3px 10px #00000008;
+}
+.sc-snapshot-card{
+ background:linear-gradient(115deg,#ffffff 0%,#e5e5e5 48%,#fafafa 100%);
+ border-color:#c3c3c3;
+ box-shadow:inset 0 1px 1px #ffffff,0 3px 9px #0000000d;
+}
+.sc-snapshot-heading,.sc-snapshot-date,.sc-snapshot-disclaimer{color:#353535}
+.sc-snapshot-heading,.sc-snapshot-disclaimer{opacity:.8}
+[class*="st-key-center_"] button[kind="primary"]{
+ background:linear-gradient(135deg,#fdfdfd 0%,#d8d8d8 48%,#eeeeee 100%)!important;
+ border:1px solid #aaaaaa!important;color:#303030!important;filter:none!important;
+ box-shadow:inset 0 1px 1px #ffffff,inset 0 -2px 3px #b5b5b520,0 4px 12px #00000018!important;
+}
+[class*="st-key-center_"] button[kind="primary"] [data-testid="stMarkdownContainer"],
+[class*="st-key-center_"] button[kind="primary"] p{color:#303030!important}
+.st-key-run_workflow button[kind="primary"]{
+ background:#ffffff!important;
+ border:1px solid #aaaaaa!important;color:#303030!important;
+ box-shadow:0 2px 6px #0000000d!important;filter:none!important;
+}
+.st-key-run_workflow button[kind="primary"]:hover{
+ background:#ffffff!important;border-color:#999999!important;
+}
+.st-key-run_workflow button[kind="primary"] [data-testid="stMarkdownContainer"],
+.st-key-run_workflow button[kind="primary"] p{color:#303030!important}
+/* No grey pills behind the native icons: one white tray and quiet grey glyphs. */
+[data-testid="stElementToolbarButtonContainer"]{
+ background:#ffffff!important;border:0!important;box-shadow:0 3px 12px #0000000c!important;
+}
+[data-testid="stElementToolbar"] [data-testid="stBaseButton-elementToolbar"],
+[data-testid="stElementToolbar"] [data-testid="stBaseButton-elementToolbar"]:hover{
+ background:#ffffff!important;color:#777777!important;box-shadow:none!important;
+}
+[data-testid="stElementToolbarButtonIcon"]{color:inherit!important}
+
+[data-testid="stChatInputSubmitButton"]:not(:disabled){
+ background:#232323!important;color:#ffffff!important;background-image:none!important;
+ border:1px solid #232323!important;box-shadow:0 2px 6px #00000020;filter:none!important;
+}
+[data-testid="stChatInputSubmitButton"]:not(:disabled):hover{
+ background:#101010!important;color:#ffffff!important;
+}

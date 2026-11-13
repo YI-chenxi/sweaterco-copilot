@@ -34,7 +34,12 @@ class Tool(Protocol):
 
 @dataclass
 class AgentReply:
+    """A user-facing answer plus the trace information needed by the UI."""
+
     text: str
     evidence: list[Evidence] = field(default_factory=list)
     needs_clarification: bool = False
     suggested_question: str | None = None
+    warnings: list[str] = field(default_factory=list)
+    assumptions: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
