@@ -39,6 +39,7 @@ _LABELS = {
     "Signed in": "已登录",
     "Signed in as {username}": "已登录：{username}",
     "Enter your username and password.": "请输入用户名和密码。",
+    "Demo account. Chat history is shared.": "演示账号。聊天记录由使用者共享。",
     "Account created. Sign in to continue.": "注册成功，请登录以继续。",
     "Your session ended. Sign in again.": "会话已结束，请重新登录。",
     "Secure browser sign-in is not configured.": "尚未配置安全的浏览器登录方式。",
@@ -133,15 +134,26 @@ def auth_retry() -> None:
     st.button(_label("Return to sign in", shared_language(st.session_state)))
 
 
-def _credentials(form: str, action: str, language: str) -> tuple[str, str] | None:
+def _credentials(
+    form: str,
+    action: str,
+    language: str,
+    *,
+    login_defaults: tuple[str, str] | None = None,
+) -> tuple[str, str] | None:
+    default_username, default_password = login_defaults or ("", "")
     with st.form(f"account_{form}", clear_on_submit=True, border=False):
+        if login_defaults:
+            st.caption(_label("Demo account. Chat history is shared.", language))
         username = st.text_input(
             _label("Username", language),
+            value=default_username,
             placeholder=_label("Enter your username", language),
             key=f"account_{form}_username",
         )
         password = st.text_input(
             _label("Password", language),
+            value=default_password,
             type="password",
             placeholder=_label("Enter your password", language),
             key=f"account_{form}_password",
@@ -162,8 +174,14 @@ def _credentials(form: str, action: str, language: str) -> tuple[str, str] | Non
     return username, password
 
 
-def _render_login(backend: AccountBackend, session: BrowserSession, language: str) -> None:
-    credentials = _credentials("login", "Sign in", language)
+def _render_login(
+    backend: AccountBackend,
+    session: BrowserSession,
+    language: str,
+    *,
+    login_defaults: tuple[str, str] | None = None,
+) -> None:
+    credentials = _credentials("login", "Sign in", language, login_defaults=login_defaults)
     if credentials is None:
         return
     try:
@@ -182,10 +200,15 @@ def _render_login(backend: AccountBackend, session: BrowserSession, language: st
 
 
 def _render_signed_out(
-    backend: AccountBackend, session: BrowserSession, language: str, *, allow_registration: bool
+    backend: AccountBackend,
+    session: BrowserSession,
+    language: str,
+    *,
+    allow_registration: bool,
+    login_defaults: tuple[str, str] | None,
 ) -> None:
     if not allow_registration:
-        _render_login(backend, session, language)
+        _render_login(backend, session, language, login_defaults=login_defaults)
         return
 
     login_tab, register_tab = st.tabs([_label("Sign in", language), _label("Register", language)])
@@ -266,6 +289,7 @@ def render_account_panel(
     signed_in: PanelContext | None = None,
     signed_out: PanelContext | None = None,
     allow_registration: bool = True,
+    login_defaults: tuple[str, str] | None = None,
 ) -> Principal | None:
     """Render controls and return only the identity verified by the backend."""
     language = shared_language(st.session_state)
@@ -307,5 +331,11 @@ def render_account_panel(
     with out_panel():
         if session_error is not None:
             _show_error(session_error, language)
-        _render_signed_out(backend, session, language, allow_registration=allow_registration)
+        _render_signed_out(
+            backend,
+            session,
+            language,
+            allow_registration=allow_registration,
+            login_defaults=login_defaults,
+        )
     return None

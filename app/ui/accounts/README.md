@@ -26,6 +26,14 @@ anonymous mode remains available. Enabling it without valid database
 configuration keeps the workspace closed. This mode reuses a bounded pool
 of PostgreSQL connections across requests.
 
+For a shared recording demo, first provision the dedicated account
+`sweaterco_demo_guest` in the same database. Add `DEMO_LOGIN_PASSWORD` to the
+app's top-level Secrets using that account's password. A fresh sign-in form
+will prefill both fields and still require the user to click **Sign in**.
+Treat this account's credentials and history as public to visitors. Remove
+`DEMO_LOGIN_PASSWORD` to return to blank fields, and retire the guest account
+when public access to its history is no longer needed.
+
 ## Earlier UI handoff
 
 ## Phase 1 authentication
