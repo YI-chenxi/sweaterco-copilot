@@ -354,12 +354,3 @@ See:
 |-- setup.cmd / setup.ps1
 `-- start.cmd / start.ps1
 ```
-
-## Safe Collaboration Workflow
-
-1. Check `git status` before starting work.
-2. Branch from the latest approved integration baseline.
-3. Keep implementation, tests, and documentation in the same focused change.
-4. Run the relevant tests, Ruff, and `git diff --check` before review.
-5. Never commit `.env`, `.streamlit/secrets.toml`, `.venv`, runtime databases, API keys, database URLs, passwords, or session material.
-6. Treat changes to shared contracts, `AgentReply`, account state, and proactive action schemas as integration changes requiring cross-module review.

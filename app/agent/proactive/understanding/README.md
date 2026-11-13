@@ -42,14 +42,6 @@ relative dates, and ambiguous time zones or hours remain missing.
 possible secrets into persistent audit records. The model may assist with language extraction,
 but final value validation is deterministic. Model failures return `unknown`.
 
-## Integration handoff
-
-The integration owner routes `create`, `update`, and `cancel` through P4's action
-proposal and confirmation service. `list` and `get` are read-only. Before wiring,
-agree on the context ID format, whether `get` includes briefing history, and
-whether P5 will support watch updates. This module does not edit shared agent or
-UI files. The integration baseline for this branch is `fec149e`.
-
 ## Verification
 
 ```powershell
