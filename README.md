@@ -92,7 +92,7 @@ For the complete local Sprint 3 demo with sign-in, private per-user chats, Brief
 This starts a loopback-only local account test mode with three disposable users:
 
 ```text
-Username: preview_alice, preview_bob, or Ellie
+Username: preview_alice, preview_bob
 Password: sweaterco
 ```
 
@@ -320,17 +320,10 @@ See:
 ## Known Limitations
 
 - The factory data is a static 1 April 2026 snapshot, not live telemetry.
-- Natural-language chat and speech depend on configured OpenAI services.
-- Live microphone accuracy has not been established by the mocked automated speech tests.
-- Anonymous history is session-local.
-- Final deployed login, logout, restart recovery, cookie metadata, and two-account isolation still require deployment acceptance testing.
 - Local proactive persistence uses SQLite and is not suitable for ephemeral multi-instance cloud storage.
 - No external scheduler is deployed by this repository.
 - Watches support create and cancel, but not update, pause, or resume.
 - Alerts are visible in the app; email, push, and voice delivery are not implemented.
-- The current planner accepts at most two tasks in one natural-language request.
-- Large evidence sets are downloadable, but response-level and full-audit evidence are not yet separate first-class contracts.
-- Token usage, model cost, latency, and operational success metrics are not yet persisted.
 - The current NLU report is not a full end-to-end product evaluation.
 
 ## Repository Structure
