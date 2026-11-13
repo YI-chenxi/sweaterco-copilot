@@ -1,12 +1,11 @@
-# SessionService (Person 2)
+# SessionService
 
-This module independently owns authenticated browser session lifecycle
+This module owns authenticated browser session lifecycle
 metadata. It does not authenticate credentials, persist chat messages, or
 mutate Streamlit state. Its public contract accepts an already-authenticated
 `user_id` and a required `workspace_id`, and returns those trusted values only
 after bearer-token resolution. UI code can apply the returned cookie
-instructions. Authentication, chat storage, or UI implementations are not
-required to run this service's tests.
+instructions.
 
 ## API
 
@@ -105,9 +104,3 @@ workspace membership checks, PostgreSQL parameterization/rollback, naive clocks,
 and storage failure mapping. The fake checks adapter behavior but does not prove
 integration with a live PostgreSQL server, deployed login-provider behavior,
 browser cookie integration, or deployment authorization policies.
-
-## Deployment acceptance
-
-See [DEPLOYMENT_ACCEPTANCE.md](DEPLOYMENT_ACCEPTANCE.md) for the real-environment
-login, cookie, expiry, logout, restart, and ownership checks that still require
-the deployed login provider, UI cookie integration, and database configuration.
