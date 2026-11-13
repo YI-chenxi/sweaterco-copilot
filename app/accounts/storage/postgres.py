@@ -57,6 +57,8 @@ class PostgresChatRepository:
             title=row[3],
             created_at=row[4],
             updated_at=row[5],
+            first_request=row[6] if len(row) > 6 else None,
+            preview_loaded=len(row) > 6,
         )
 
     def create_thread(
@@ -114,8 +116,13 @@ class PostgresChatRepository:
         rows = self._read(
             """
             SELECT thread_id, user_id, workspace_id,
-                   title, created_at, updated_at
-            FROM chat_threads
+                   title, created_at, updated_at, first_user.content
+            FROM chat_threads t
+            LEFT JOIN LATERAL (
+                SELECT content FROM chat_messages
+                WHERE chat_messages.thread_id = t.thread_id AND role = 'user'
+                ORDER BY sequence ASC LIMIT 1
+            ) first_user ON TRUE
             WHERE user_id = %s AND workspace_id = %s
             ORDER BY updated_at DESC, thread_id DESC
             """,

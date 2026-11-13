@@ -21,6 +21,8 @@ class ChatThread:
     title: str
     created_at: datetime
     updated_at: datetime
+    first_request: str | None = None
+    preview_loaded: bool = False
 
 
 @dataclass(frozen=True)

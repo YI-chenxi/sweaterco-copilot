@@ -311,6 +311,34 @@ def test_new_conversation_reuses_an_existing_empty_chat_after_fresh_login():
     assert len(backend.list_threads("alice")) == 1 and not backend.sends
 
 
+def test_sidebar_previews_do_not_open_other_conversations():
+    backend, browser = FakeWorkspaceBackend(), FakeBrowser("alice")
+    selected = backend.add_thread(title="New conversation")
+    app = _app(backend, browser)
+    assert _workspace(app).chat.selected.thread_id == selected
+
+    requests = ("Check ORD-057", "Analyze ASSEMBLY", "List my watches")
+    for request in requests:
+        backend.add_thread(title="New conversation")
+    original_list = backend.list_threads
+
+    def list_with_previews(handle):
+        threads = original_list(handle)
+        return [
+            replace(thread, first_request=requests[index - 1], preview_loaded=True)
+            if index else replace(thread, preview_loaded=True)
+            for index, thread in enumerate(threads)
+        ]
+
+    backend.list_threads = list_with_previews
+    reads_before = list(backend.reads)
+    _run(app)
+
+    assert backend.reads == reads_before
+    assert any("ORD-057" in button.label for button in app.button)
+    assert any("ASSEMBLY" in button.label for button in app.button)
+
+
 def test_login_is_ready_for_typing_and_audio_without_creating_duplicate_empty_chats():
     backend, browser = FakeWorkspaceBackend(), FakeBrowser("alice")
     app = _app(backend, browser)

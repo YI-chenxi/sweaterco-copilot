@@ -1,5 +1,7 @@
 """Natural-language entry point that composes parsing and orchestration."""
 
+import re
+
 from app.agent.answer_polisher import AnswerPolisher
 from app.agent.contracts import AgentReply
 from app.agent.enhancement.understanding.parser import EnhancedIntentParser
@@ -8,6 +10,20 @@ from app.agent.llm_client import create_llm_client
 from app.agent.orchestrator import AgentOrchestrator
 from app.agent.settings import AgentSettings, LLMSettings
 from app.agent.turn_service import ChatSession, ConversationTurnService, TurnResult
+
+_PROACTIVE_CUE = re.compile(
+    r"\b(?:watch(?:es)?|alerts?|monitor|notify|remind|schedules?|scheduled|every|"
+    r"daily|weekly|plans?|tasks?|actions?|proposals?|briefings|list|show|saved|"
+    r"cancel|delete|confirm|approve|reject)\b|"
+    r"监控|提醒|告警|定时|每天|每隔|每周|计划|任务|操作|提案|取消|删除|确认|批准|拒绝|如果|若",
+    re.IGNORECASE,
+)
+_BUSINESS_CUE = re.compile(
+    r"\b(?:ORD[-\s]?\d{1,3}|order|production|knitting|assembly|washing|packing|"
+    r"capacity|feasibility|delivery|factory|briefing|tops|accessories|pieces)\b|"
+    r"订单|生产|产能|交期|可行|工厂|晨报",
+    re.IGNORECASE,
+)
 
 
 class AgentService:
@@ -122,6 +138,10 @@ class AgentService:
     def _handle_proactive(self, user_text: str) -> AgentReply | None:
         """Keep scheduled commands out of the ordinary immediate-briefing route."""
         if self.proactive_application is None:
+            return None
+        # Clear business queries cannot create a proactive task. Skip the
+        # otherwise serial context read and model classification for these.
+        if _BUSINESS_CUE.search(user_text) and not _PROACTIVE_CUE.search(user_text):
             return None
         result = self.proactive_application.handle_text(user_text)
         if not result.get("handled"):

@@ -444,6 +444,36 @@ def test_from_env_wires_legacy_and_enhanced_parsers_to_same_client(monkeypatch):
     assert result.session.state.tasks[0].status == TaskStatus.COMPLETED
 
 
+def test_clear_business_question_skips_proactive_model_classification():
+    from unittest.mock import Mock
+
+    client = MockLLMClient([payload(task(order_id="ORD-057"))])
+    proactive = Mock()
+    service = AgentService(
+        IntentParser(client), AgentOrchestrator(), proactive_application=proactive
+    )
+
+    result = service.handle_turn("Check ORD-057")
+
+    proactive.handle_text.assert_not_called()
+    assert result.session.state.tasks[0].status == TaskStatus.COMPLETED
+
+
+def test_watch_request_still_reaches_proactive_router():
+    from unittest.mock import Mock
+
+    client = MockLLMClient([])
+    proactive = Mock()
+    proactive.handle_text.return_value = {"handled": False}
+    service = AgentService(
+        IntentParser(client), AgentOrchestrator(), proactive_application=proactive
+    )
+
+    service._handle_proactive("Watch ORD-002 for no progress by April seventh")
+
+    proactive.handle_text.assert_called_once()
+
+
 def test_all_failed_tasks_do_not_show_a_successful_ui_assessment():
     from app.ui.context_panels import reply_headline
 

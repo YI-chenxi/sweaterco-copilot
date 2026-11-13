@@ -323,6 +323,16 @@ class AccountWorkspace:
             return thread.title, thread.title
         language = shared_language(st.session_state)
         view = self.chat.selected
+        if (view is None or view.thread_id != thread.thread_id) and thread.preview_loaded:
+            request = thread.first_request
+            if not request:
+                title = translate("New conversation", language)
+                return title, title
+            title = translate(
+                conversation_title([{"role": "user", "content": request}], language=language),
+                language,
+            )
+            return title, clean_request_text(request)
         if view is None or view.thread_id != thread.thread_id:
             view = self.title_snapshots.get(thread.thread_id)
             if view is None:
