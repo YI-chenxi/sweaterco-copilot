@@ -89,6 +89,18 @@ def test_owner_listing_scopes_by_both_user_and_workspace() -> None:
     assert connection.commits == 1
 
 
+def test_authorized_session_lookup_joins_workspace_in_one_query() -> None:
+    cursor = FakeCursor(response=None)
+    connection = FakeConnection(cursor)
+    repository = PostgresSessionRepository(lambda: connection)
+
+    assert repository.get_authorized_by_token_hash("a" * 64) is None
+    assert "JOIN account_workspaces" in cursor.query
+    assert "w.user_id = s.user_id AND w.workspace_id = s.workspace_id" in cursor.query
+    assert cursor.parameters == ("a" * 64,)
+    assert connection.commits == 1
+
+
 def test_id_revocation_is_owner_scoped_and_maps_returned_session() -> None:
     row = {
         "session_id": session().session_id,

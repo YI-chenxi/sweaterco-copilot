@@ -83,6 +83,56 @@ def test_resolve_uses_token_as_identity_and_refreshes_sliding_expiry() -> None:
     assert resolved.expires_at == clock.current + timedelta(days=14)
 
 
+def test_repeated_session_checks_do_not_write_until_renewal_is_due() -> None:
+    from unittest.mock import patch
+
+    clock = FixedClock()
+    repo = InMemorySessionRepository()
+    svc = service(clock, repo)
+    created = svc.create_session(user_id="trusted-user", workspace_id="workspace-a")
+
+    with patch.object(repo, "touch", wraps=repo.touch) as touch:
+        for _ in range(4):
+            assert svc.resolve_session(created.token).session_id == created.session.session_id
+        touch.assert_not_called()
+
+        clock.advance(minutes=5)
+        assert svc.resolve_session(created.token).last_seen_at == clock.current
+        touch.assert_called_once()
+
+
+def test_authorized_lookup_uses_one_repository_read_and_checks_revocation() -> None:
+    from unittest.mock import patch
+
+    from app.accounts.conversation.identity_adapter import SessionIdentityAdapter
+
+    class AuthorizedRepo(InMemorySessionRepository):
+        def get_authorized_by_token_hash(self, token_hash):
+            return super().get_by_token_hash(token_hash)
+
+    repo = AuthorizedRepo()
+    authz = default_authorization()
+    svc = SessionService(
+        repo,
+        authz,
+        clock=FixedClock(),
+        token_factory=TokenFactory(),
+        token_pepper=b"test-only-pepper-0123456789abcdef",
+    )
+    created = svc.create_session(user_id="trusted-user", workspace_id="workspace-a")
+    with patch.object(
+        repo, "get_authorized_by_token_hash", wraps=repo.get_authorized_by_token_hash
+    ) as read:
+        with patch.object(authz, "can_access_workspace", side_effect=AssertionError("extra read")):
+            principal = SessionIdentityAdapter(svc, authz).require_principal(created.token)
+        assert principal.user_id == "trusted-user"
+        read.assert_called_once()
+
+    svc.revoke_session(created.token)
+    with pytest.raises(InvalidSession):
+        svc.resolve_authorized_current_user(created.token)
+
+
 def test_unknown_token_and_client_chosen_id_are_rejected() -> None:
     svc = service()
     svc.create_session(user_id="user-1", workspace_id="ws-1")

@@ -46,6 +46,17 @@ class PostgresSessionRepository:
         )
         return self._to_session(row) if row else None
 
+    def get_authorized_by_token_hash(self, token_hash: str) -> Session | None:
+        """Read a session and its current workspace membership in one query."""
+        row = self._fetch_one(
+            """SELECT s.* FROM account_sessions s
+               JOIN account_workspaces w
+                 ON w.user_id = s.user_id AND w.workspace_id = s.workspace_id
+               WHERE s.token_hash = %s""",
+            (token_hash,),
+        )
+        return self._to_session(row) if row else None
+
     def list_for_owner(self, user_id: str, workspace_id: str) -> list[Session]:
         rows = self._fetch_all(
             """SELECT * FROM account_sessions

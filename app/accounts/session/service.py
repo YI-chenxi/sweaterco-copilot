@@ -56,6 +56,10 @@ class SessionService:
         self._pepper = token_pepper if token_pepper is not None else secrets.token_bytes(32)
         self._ttl = ttl
         self._sliding_ttl = sliding_ttl
+        # Resolving a session still reads its current revoked/expiry state on
+        # every request. Renewing it on every check adds a database write and
+        # network round trip to each Streamlit rerun.
+        self._renew_after = min(timedelta(minutes=5), ttl / 4)
         self._cookie_name = cookie_name
         self._cookie_secure = cookie_secure
         self._cookie_same_site = cookie_same_site
@@ -95,10 +99,15 @@ class SessionService:
 
     def resolve_session(self, token: str | None) -> Session:
         """Resolve the browser bearer token; any caller-provided user/session ID is ignored."""
+        return self._resolve_session(token, self._repository.get_by_token_hash)
+
+    def _resolve_session(
+        self, token: str | None, lookup: Callable[[str], Session | None]
+    ) -> Session:
         if not token:
             raise InvalidSession("session token is required")
         try:
-            result = self._repository.get_by_token_hash(self._token_hash(token))
+            result = lookup(self._token_hash(token))
         except Exception as exc:
             raise SessionRepositoryError("could not load session") from exc
         if result is None:
@@ -107,7 +116,7 @@ class SessionService:
         now = self._now()
         if session.revoked_at is not None or session.expires_at <= now:
             raise InvalidSession("session is expired or revoked")
-        if self._sliding_ttl:
+        if self._sliding_ttl and now - session.last_seen_at >= self._renew_after:
             try:
                 session = self._repository.touch(session.session_id, now, now + self._ttl)
             except Exception as exc:
@@ -133,6 +142,19 @@ class SessionService:
             user_id=session.user_id,
             workspace_id=session.workspace_id,
         )
+
+    def resolve_authorized_current_user(self, token: str | None) -> CurrentUserContext:
+        """Resolve the session and membership together when storage supports it."""
+        lookup = getattr(self._repository, "get_authorized_by_token_hash", None)
+        if lookup is None:
+            context = self.resolve_current_user(token)
+            if not self._authorization.can_access_workspace(
+                context.user_id, context.workspace_id
+            ):
+                raise AuthorizationDenied("user cannot access this workspace")
+            return context
+        session = self._resolve_session(token, lookup)
+        return CurrentUserContext(session.session_id, session.user_id, session.workspace_id)
 
     def authorize_thread(self, token: str | None, thread_id: str) -> bool:
         """Check thread ownership using identity resolved from the bearer token."""
