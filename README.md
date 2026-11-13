@@ -89,7 +89,7 @@ For the complete local Sprint 3 demo with sign-in, private per-user chats, Brief
 .\demo.cmd
 ```
 
-This starts a clearly labelled local account test mode with two disposable users:
+This starts a loopback-only local account test mode with three disposable users:
 
 ```text
 Username: preview_alice, preview_bob, or Ellie
@@ -193,6 +193,8 @@ Requirements for this mode:
 - Never commit `secrets.toml`, database URLs, passwords, session handles, or account secrets.
 
 Registration is disabled in the login-only entry point. A fresh Streamlit page session can require sign-in again, while saved conversations remain in PostgreSQL.
+
+For the deployed recording demo, provision `sweaterco_demo_guest` in that PostgreSQL database and set `DEMO_LOGIN_PASSWORD` in the app's top-level Streamlit Secrets to the account's password. The sign-in form then prefills that demo account and still requires a click on **Sign in**. Its chat history is shared by everyone using the guest account. Remove the secret to return to blank sign-in fields. This deployment path is separate from the disposable `demo.cmd` accounts above; `start.cmd` remains anonymous without account Secrets.
 
 Where registration is enabled, passwords must contain 6–15 characters and cannot match the username or use a blocked common password.
 
